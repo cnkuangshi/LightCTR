@@ -1,0 +1,5 @@
+*.o
+*.a
+*.out
+*.dylib
+LightCTR.xcodeproj/xcuserdata
