@@ -20,6 +20,7 @@
 #include "assert.h"
 #include "util/random.h"
 #include "util/gradientUpdater.h"
+#include "util/momentumUpdater.h"
 
 #define FM
 

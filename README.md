@@ -2,7 +2,7 @@
 ## LightCTR Overview
 LightCTR is a light-weight framework that combines mainstream algorithms of Click-Through-Rate Based Machine Learning and Deep Learning. The library is suitable for sparse data and designed for Stand-alone Multi-threaded Model Training.
 
-Meanwhile, LightCTR is also a open source project that oriented to code readers. The clear execute logic will be of significance to leaners on Machine-Learning-related field.
+Meanwhile, LightCTR is also an open source project that oriented to code readers. The clear execute logic will be of significance to leaners on Machine-Learning-related field.
 
 #### 用于群体发现
 群体发现作为点击率预估中用户画像的重要指标之一，LightCTR提供了相关的算法支持。可将离散id特征与连续特征组合输入`LightCTR::GBM`预先找群体，训练得到的每个叶子节点代表一个用户群，再使用`LightCTR::LR`或`LightCTR::MLP`对GBDT建立的低维0/1群体特征做高层分类。
@@ -31,7 +31,7 @@ LightCTR可通过分析用户评论、兴趣得到推荐信息，作为点击率
 * Variational AutoEncoder
 
 ## Features
-* Optimizer implemented by Mini-Batch GD, Negative sampling, Adagrad, FTRL
+* Optimizer implemented by Mini-Batch GD, Negative sampling, Adagrad, FTRL, RMSprop, etc
 * Regularization: L1, L2, Dropout, Partially connected
 * Template-customized Activation and Loss function
 * Evaluate methods including F1, AUC

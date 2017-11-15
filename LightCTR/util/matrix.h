@@ -135,12 +135,12 @@ public:
         return this;
     }
     
-    inline Matrix* add(const Matrix* const another, double scale = 1.0) {
+    inline Matrix* add(const Matrix* const another, double scale = 1.0, double self_scale = 1.0) {
         assert(x_len == another->x_len);
         assert(y_len == another->y_len);
         for (size_t i = 0; i < x_len; i++) {
             for (size_t j = 0; j < y_len; j++) {
-                *getEle(i, j) = *getEle(i, j) + scale * *another->getEle(i, j);
+                *getEle(i, j) = self_scale * *getEle(i, j) + scale * *another->getEle(i, j);
             }
         }
         return this;

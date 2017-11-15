@@ -22,7 +22,7 @@ void Train_GBM_Algo::init() { // run once per gbm train stage
     sampleDataSetIndex = new bool[this->dataRow_cnt];
     sampleFeatureSetIndex = new bool[this->feature_cnt];
     dataRow_LocAtTree = new RegTreeNode*[this->dataRow_cnt];
-    dataSet_Grad.clear();
+    dataSet_Grad.resize(this->dataRow_cnt);
     
     splitNodeStat_thread = new SplitNodeStat_Thread[((1<<this->maxDepth) - 1) * this->proc_cnt];
 }

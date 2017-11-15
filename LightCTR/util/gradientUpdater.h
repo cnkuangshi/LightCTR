@@ -145,6 +145,82 @@ private:
     size_t __adagrad_params_cnt;
 };
 
+class RMSpropUpdater : public GradientUpdater {
+public:
+    void learnable_params_cnt(size_t cnt) {
+        __adadelta_params_cnt = cnt;
+        __adadelta_accum.resize(__adadelta_params_cnt);
+        tmp = NULL;
+    }
+    void clear() {
+        for (size_t i = 0; i < __adadelta_params_cnt; i++) {
+            __adadelta_accum[i]->zeroInit();
+        }
+    }
+    void update(size_t offset, vector<Matrix*>& weight, vector<Matrix*>& grad) {
+        assert(weight.size() == grad.size());
+        assert(offset + weight.size() <= __adadelta_params_cnt);
+        for (size_t i = 0; i < weight.size(); i++) {
+            if (tmp) {
+                tmp->reshape(grad[i]->x_len, grad[i]->y_len);
+            }
+            tmp = grad[i]->scale(1.0 / __global_minibatch_size)->copy(tmp);
+            tmp->pow(2.0);
+            
+            if (__adadelta_accum[offset + i] == NULL) {
+                __adadelta_accum[offset + i] = new Matrix(tmp->x_len, tmp->y_len);
+                __adadelta_accum[offset + i]->zeroInit();
+            }
+            __adadelta_accum[offset + i]->add(tmp, 0.5, 0.5);
+            
+            tmp = __adadelta_accum[offset + i]->copy(tmp);
+            tmp->add(1e-12);
+            tmp->pow(0.5);
+            
+            grad[i]->dotProduct(tmp->inverse());
+            
+            weight[i]->subtract(grad[i], __global_learning_rate);
+            grad[i]->zeroInit();
+        }
+    }
+private:
+    Matrix *tmp;
+    vector<Matrix*> __adadelta_accum;
+    size_t __adadelta_params_cnt;
+};
+
+class RMSpropUpdater_Num : public GradientUpdater {
+public:
+    void learnable_params_cnt(size_t cnt) {
+        __adadelta_params_cnt = cnt;
+        __adadelta_accum.resize(__adadelta_params_cnt);
+        fill(__adadelta_accum.begin(), __adadelta_accum.end(), 0.0f);
+    }
+    void clear() {
+        for (size_t i = 0; i < __adadelta_params_cnt; i++) {
+            __adadelta_accum[i] = 0;
+        }
+    }
+    template<typename T>
+    void update(size_t offset, size_t len, T& weight, T& grad) {
+        assert(offset + len <= __adadelta_params_cnt);
+        for (size_t i = 0; i < len; i++) {
+            double g = grad[i] / __global_minibatch_size, tmp;
+            if (g != 0) {
+                __adadelta_accum[offset + i] = __adadelta_accum[offset + i] * 0.5 + 0.5 * g * g;
+                tmp = 1.0 / (__adadelta_accum[offset + i] + 1e-12);
+                g *= sqrt(tmp);
+                
+                weight[i] -= __global_learning_rate * g;
+            }
+            grad[i] = 0.0f;
+        }
+    }
+private:
+    vector<double> __adadelta_accum;
+    size_t __adadelta_params_cnt;
+};
+
 class FTRLUpdater : public GradientUpdater { // Online Learning
 public:
     ~FTRLUpdater() {

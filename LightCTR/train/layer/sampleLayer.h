@@ -45,8 +45,7 @@ public:
             output_act = new Matrix(1, this->output_dimention);
         }
         
-        gaussDelta = 0.0f;
-//        cout << "-- forw";
+        double gaussDelta = 0.0f;
         FOR(i, gauss_cnt) {
             // prev layer output is mu and log(sigma^2)
             double mu = prevLOutput->at(i);
@@ -56,7 +55,6 @@ public:
             gaussDelta += exp(inner_scale * logSigma2) - (1 + logSigma2) + mu * mu;
             assert(!isinf(gaussDelta));
             
-//            cout << " " << mu << "," << logSigma2;
             // standard deviation equal to exp(0.5 * logSigma2)
             *output_act->getEle(0, i) = exp(inner_scale * 0.5f * logSigma2) * noise[i] + mu;
             assert(!isinf(*output_act->getEle(0, i)));
@@ -90,8 +88,6 @@ public:
             input_delta = new Matrix(1, this->input_dimention);
         }
         
-        double delta_scale = 0.006;
-        
         FOR(i, gauss_cnt) {
             assert(!isnan(outputDelta->at(i)));
             auto muPtr = input_delta->getEle(0, i);
@@ -106,9 +102,6 @@ public:
             // update Gauss Parameters Loss close to Normal distribution
             *muPtr += prev_output_act->at(i);
             *sigmaPtr += exp(inner_scale * prev_output_act->at(i + gauss_cnt)) - 1.0f;
-            
-            *muPtr *= delta_scale;
-            *sigmaPtr *= delta_scale;
             
             assert(!isinf(*sigmaPtr));
         }
@@ -140,7 +133,6 @@ private:
     
     double inner_scale;
     
-    double gaussDelta;
     double* noise;
     size_t gauss_cnt;
 };

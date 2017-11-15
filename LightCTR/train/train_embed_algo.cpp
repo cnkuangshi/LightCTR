@@ -171,9 +171,9 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
                     wid = cur_wid;
                 } else {
                     label = 0;
-                    while (wid == cur_wid) { // smaple negative word
+                    do { // smaple negative word
                         wid = negSampleTable[rand() % negTable_size];
-                    }
+                    } while (wid == cur_wid);
                 }
                 double preddir = 0.0f;
                 FOR_D {
@@ -203,7 +203,8 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
             }
         }
     }
-    cout << "Train docid " << docid << " has " << doc_wordid_vec.size() << " words" << " alpha = " << decay_alpha << endl;
+    cout << "Train docid " << docid << " has " << doc_wordid_vec.size()
+                      << " words" << " alpha = " << decay_alpha << endl;
 }
 
 void Train_Embed_Algo::EmbeddingCluster(shared_ptr<vector<int> > clustered, size_t cluster_cnt) {

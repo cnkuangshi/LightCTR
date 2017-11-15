@@ -38,16 +38,17 @@ using namespace std;
 
 /* Recommend Configuration
  * FM/NFM batch=50 lr=0.1
- * VAE batch=1 lr=0.2
+ * VAE batch=10 lr=0.1
  * CNN batch=10 lr=0.03
  * RNN batch=10 lr=0.03
  */
 
 size_t GradientUpdater::__global_minibatch_size(50);
 double GradientUpdater::__global_learning_rate(0.1);
-double GradientUpdater::__global_sparse_rate(0.4);
+double GradientUpdater::__global_sparse_rate(0.6);
 double GradientUpdater::__global_lambdaL2(0.001f);
 double GradientUpdater::__global_lambdaL1(1e-5);
+double MomentumUpdater::__global_momentum(0.8);
 
 bool GradientUpdater::__global_bTraining(true);
 
@@ -97,18 +98,18 @@ int main(int argc, const char * argv[]) {
     DL_Algo_Abst<Square<double, int>, Tanh, Softmax> *train =
     new Train_CNN_Algo<Square<double, int>, Tanh, Softmax>(
                          "./data/train_dense.csv",
-                         /*epoch*/100,
+                         /*epoch*/300,
                          /*feature_cnt*/784,
-                         /*hidden_size*/100,
+                         /*hidden_size*/50,
                          /*multiclass_output_cnt*/10);
     T = 1;
 #elif defined TEST_VAE
     Train_VAE_Algo<Square<double, double>, Sigmoid> *train =
     new Train_VAE_Algo<Square<double, double>, Sigmoid>(
                          "./data/train_dense.csv",
-                         /*epoch*/100,
+                         /*epoch*/600,
                          /*feature_cnt*/784,
-                         /*hidden*/100,
+                         /*hidden*/60,
                          /*gauss*/20);
     T = 1;
 #elif defined TEST_RNN
@@ -117,7 +118,7 @@ int main(int argc, const char * argv[]) {
                          "./data/train_dense.csv",
                          /*epoch*/600,
                          /*feature_cnt*/784,
-                         /*hidden_size*/30,
+                         /*hidden_size*/50,
                          /*recurrent_cnt*/28,
                          /*multiclass_output_cnt*/10);
     T = 1;
@@ -135,7 +136,7 @@ int main(int argc, const char * argv[]) {
         // Notice whether the algorithm have Predictor
         pred.Predict("");
 #ifdef TEST_EMB
-        // Notice, word embedding vector multiply 100 to cluster
+        // Notice, word embedding vector multiply 10 to cluster
         EM_Algo_Abst<vector<double> > *cluster =
         new Train_GMM_Algo(
                         "./output/word_embedding.txt",

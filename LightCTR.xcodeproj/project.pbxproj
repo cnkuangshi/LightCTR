@@ -56,6 +56,7 @@
 		E4B989FD1F7750AE00B61423 /* fm_predict.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = fm_predict.cpp; path = predict/fm_predict.cpp; sourceTree = "<group>"; };
 		E4B989FE1F7750AE00B61423 /* fm_predict.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = fm_predict.h; path = predict/fm_predict.h; sourceTree = "<group>"; };
 		E4C5FA431F99EE8200E68474 /* loss.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = loss.h; path = util/loss.h; sourceTree = "<group>"; };
+		E4D5A73C1FBC5340008035B5 /* momentumUpdater.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = momentumUpdater.h; path = util/momentumUpdater.h; sourceTree = "<group>"; };
 		E4D5D17A1F79DF8A00966501 /* gbm_algo_abst.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = gbm_algo_abst.h; sourceTree = "<group>"; };
 		E4D5D17B1F79E16E00966501 /* train_gbm_algo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = train_gbm_algo.cpp; path = train/train_gbm_algo.cpp; sourceTree = "<group>"; };
 		E4D5D17C1F79E16E00966501 /* train_gbm_algo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = train_gbm_algo.h; path = train/train_gbm_algo.h; sourceTree = "<group>"; };
@@ -105,6 +106,7 @@
 				E409E95A1F999DDF00679FF1 /* activations.h */,
 				E4C5FA431F99EE8200E68474 /* loss.h */,
 				E455A53D1F9D8E4000DD0DD6 /* gradientUpdater.h */,
+				E4D5A73C1FBC5340008035B5 /* momentumUpdater.h */,
 				E489A5F21F9ECF3600470707 /* random.h */,
 				E489A5F51F9F208A00470707 /* matrix.h */,
 				E4D9B6A01FB55F0000DB3FDC /* evaluator.h */,

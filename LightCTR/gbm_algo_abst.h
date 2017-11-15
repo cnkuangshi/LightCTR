@@ -206,7 +206,7 @@ public:
     
     vector<RegTreeNode*> RegTreeRootArr;
     list<LeafNodeStat*> leafNodes, leafNodes_tmp;
-    map<size_t, pair<double, double> > dataSet_Grad;
+    vector<pair<double, double> > dataSet_Grad;
     map<size_t, vector<pair<size_t, double> > > dataSet_feature;
     
     int has_pred_tree;

@@ -28,14 +28,15 @@ public:
     ~Train_RNN_Algo() {
         delete this->inputLayer;
         delete this->attentionLayer;
+        delete this->fcLayer;
         delete this->outputLayer;
     }
     
     void init(size_t hidden_size) {
         inputLayer = new LSTM_Unit<ActivationFunction>(28, hidden_size, batch_size);
         attentionLayer = new Attention_Unit<ActivationFunction>(hidden_size, /*fc_hidden*/20, batch_size);
-        fcLayer = new Fully_Conn_Layer<ActivationFunction>(attentionLayer, hidden_size, 50);
-        outputLayer = new Fully_Conn_Layer<ActivationFunction>(fcLayer, 50, this->multiclass_output_cnt);
+        fcLayer = new Fully_Conn_Layer<ActivationFunction>(attentionLayer, hidden_size, 72);
+        outputLayer = new Fully_Conn_Layer<ActivationFunction>(fcLayer, 72, this->multiclass_output_cnt);
     }
     
     vector<double>* Predict(size_t rid, vector<vector<double> >* const dataRow) {

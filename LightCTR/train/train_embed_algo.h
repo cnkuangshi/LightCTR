@@ -143,9 +143,9 @@ private:
     void InitNegSampleTable() {
         negWeight = new vector<double>[vocab_cnt];
         for (size_t v = 0; v < vocab_cnt; v++) {
-            for (size_t i = 0; i < emb_dimention; i++) {
-                negWeight[v].push_back(0); // negative sampling weight init with 0
-            }
+            negWeight[v].resize(emb_dimention);
+            // negative sampling weight init with 0
+            fill(negWeight[v].begin(), negWeight[v].end(), 0);
         }
         
         int a;
