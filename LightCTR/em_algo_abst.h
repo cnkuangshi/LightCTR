@@ -46,6 +46,9 @@ public:
             }
         }
     }
+    void saveModel(size_t epoch) {
+        
+    }
     
     virtual void init() = 0;
     virtual T** Train_EStep() = 0;
@@ -75,10 +78,10 @@ public:
                   sscanf(pline, "%lf%n", &val, &nchar) >= 1){
                 pline += nchar + 1;
                 assert(!isnan(val));
-                tmp.push_back(val);
+                tmp.emplace_back(val);
                 if (tmp.size() == feature_cnt) {
                     assert(tmp.size() == feature_cnt);
-                    this->dataSet.push_back(tmp);
+                    this->dataSet.emplace_back(tmp);
                     tmp.clear();
                 }
             }

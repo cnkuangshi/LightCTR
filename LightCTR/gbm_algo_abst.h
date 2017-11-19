@@ -94,9 +94,9 @@ public:
     inline RegTreeNode* newTree() {
         node_cnt = 0;
         RegTreeNode* root = newNode(NULL, 1);
-        RegTreeRootArr.push_back(root);
+        RegTreeRootArr.emplace_back(root);
         leafNodes_tmp.clear();
-        leafNodes_tmp.push_back(new LeafNodeStat(root));
+        leafNodes_tmp.emplace_back(new LeafNodeStat(root));
         return root;
     }
     inline RegTreeNode* newNode(RegTreeNode *root, bool bLeft) {
@@ -118,8 +118,8 @@ public:
         }
         node->leafStat = NULL;
         
-        leafNodes_tmp.push_back(new LeafNodeStat(leftNode));
-        leafNodes_tmp.push_back(new LeafNodeStat(rightNode));
+        leafNodes_tmp.emplace_back(new LeafNodeStat(leftNode));
+        leafNodes_tmp.emplace_back(new LeafNodeStat(rightNode));
         return make_pair(leftNode, rightNode);
     }
     
@@ -173,7 +173,7 @@ public:
             if(sscanf(pline, "%d%n", &y, &nchar) >= 1){
                 pline += nchar + 1;
                 y = y < 5 ? 0 : 1;
-                label.push_back(y);
+                label.emplace_back(y);
                 fid = 0;
                 while(pline < line.c_str() + (int)line.length() &&
                       sscanf(pline, "%d%n", &val, &nchar) >= 1){
@@ -185,7 +185,7 @@ public:
                         continue;
                     }
                     tmp[fid] = val;
-                    dataSet_feature[fid].push_back(make_pair(rid, val));
+                    dataSet_feature[fid].emplace_back(make_pair(rid, val));
                 }
                 assert(!tmp.empty());
                 this->feature_cnt = max(this->feature_cnt, fid + 1);
@@ -193,11 +193,15 @@ public:
             if (tmp.empty()) {
                 continue;
             }
-            this->dataSet.push_back(tmp);
+            this->dataSet.emplace_back(tmp);
             rid++;
         }
         this->dataRow_cnt = this->dataSet.size();
         assert(dataRow_cnt > 0 && label.size() == dataRow_cnt);
+    }
+    
+    void saveModel(size_t epoch) {
+        
     }
     
     virtual void Train() = 0;

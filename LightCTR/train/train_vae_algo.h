@@ -155,7 +155,7 @@ public:
                         break;
                     }
                 }
-                dataSet.push_back(tmp);
+                dataSet.emplace_back(tmp);
                 if (dataSet.size() > 200) {
                     break;
                 }

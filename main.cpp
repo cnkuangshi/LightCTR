@@ -12,6 +12,7 @@
 
 #include "LightCTR/fm_algo_abst.h"
 #include "LightCTR/train/train_fm_algo.h"
+#include "LightCTR/train/train_ffm_algo.h"
 #include "LightCTR/predict/fm_predict.h"
 
 #include "LightCTR/gbm_algo_abst.h"
@@ -37,7 +38,7 @@ using namespace std;
 #define TEST_NFM
 
 /* Recommend Configuration
- * FM/NFM batch=50 lr=0.1
+ * FM/FFM/NFM batch=50 lr=0.1
  * VAE batch=10 lr=0.1
  * CNN batch=10 lr=0.03
  * RNN batch=10 lr=0.03
@@ -49,6 +50,7 @@ double GradientUpdater::__global_sparse_rate(0.6);
 double GradientUpdater::__global_lambdaL2(0.001f);
 double GradientUpdater::__global_lambdaL1(1e-5);
 double MomentumUpdater::__global_momentum(0.8);
+double MomentumUpdater::__global_momentum_adam2(0.999);
 
 bool GradientUpdater::__global_bTraining(true);
 
@@ -60,6 +62,20 @@ int main(int argc, const char * argv[]) {
                         "./data/train_sparse.csv",
                         /*epoch*/3,
                         /*factor_cnt*/10);
+    FM_Predict pred(train, "./data/train_sparse.csv", true);
+#elif defined TEST_FFM
+    FM_Algo_Abst *train = new Train_FFM_Algo(
+                                            "./data/train_sparse.csv",
+                                            /*epoch*/1,
+                                            /*factor_cnt*/3,
+                                            /*field*/68);
+    FM_Predict pred(train, "./data/train_sparse.csv", true);
+#elif defined TEST_NFM
+    FM_Algo_Abst *train = new Train_NFM_Algo(
+                                             "./data/train_sparse.csv",
+                                             /*epoch*/3,
+                                             /*factor_cnt*/10,
+                                             /*hidden_layer_size*/10);
     FM_Predict pred(train, "./data/train_sparse.csv", true);
 #elif defined TEST_GBM
     GBM_Algo_Abst *train = new Train_GBM_Algo(
@@ -122,18 +138,11 @@ int main(int argc, const char * argv[]) {
                          /*recurrent_cnt*/28,
                          /*multiclass_output_cnt*/10);
     T = 1;
-#elif defined TEST_NFM
-    FM_Algo_Abst *train = new Train_NFM_Algo(
-                         "./data/train_sparse.csv",
-                         /*epoch*/3,
-                         /*factor_cnt*/10,
-                         /*hidden_layer_size*/10);
-    FM_Predict pred(train, "./data/train_sparse.csv", true);
 #endif
     
     while (T--) {
         train->Train();
-        // Notice whether the algorithm have Predictor
+        // Notice whether the algorithm have Predictor, otherwise Annotate it.
         pred.Predict("");
 #ifdef TEST_EMB
         // Notice, word embedding vector multiply 10 to cluster

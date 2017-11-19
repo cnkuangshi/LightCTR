@@ -19,8 +19,8 @@ class Train_NFM_Algo : public FM_Algo_Abst {
     
 public:
     Train_NFM_Algo(string _dataPath, size_t _epoch_cnt, size_t _factor_cnt,
-                   size_t _hidden_layer_size, size_t _feature_cnt = 0):
-    FM_Algo_Abst(_dataPath, _factor_cnt, _feature_cnt), epoch(_epoch_cnt), hidden_layer_size(_hidden_layer_size) {
+                   size_t _hidden_layer_size):
+    FM_Algo_Abst(_dataPath, _factor_cnt), epoch(_epoch_cnt), hidden_layer_size(_hidden_layer_size) {
         assert(this->feature_cnt != 0);
         threadpool = new ThreadPool(1);
         init();

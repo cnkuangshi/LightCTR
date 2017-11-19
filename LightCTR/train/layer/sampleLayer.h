@@ -100,8 +100,9 @@ public:
             assert(!isinf(*sigmaPtr));
             
             // update Gauss Parameters Loss close to Normal distribution
-            *muPtr += prev_output_act->at(i);
-            *sigmaPtr += exp(inner_scale * prev_output_act->at(i + gauss_cnt)) - 1.0f;
+            *muPtr += GradientUpdater::__global_learning_rate * prev_output_act->at(i);
+            *sigmaPtr += GradientUpdater::__global_learning_rate *
+                         exp(inner_scale * prev_output_act->at(i + gauss_cnt)) - 1.0f;
             
             assert(!isinf(*sigmaPtr));
         }

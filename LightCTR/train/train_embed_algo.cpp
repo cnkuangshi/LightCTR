@@ -12,7 +12,7 @@
 #define FOR_D for (int i = 0; i < emb_dimention; i++)
 
 void Train_Embed_Algo::init() {
-    learning_rate = 0.6f;
+    learning_rate = 0.02f;
     negSample_cnt = 5;
     
     treeArry = new Node[vocab_cnt * 2];
@@ -62,10 +62,10 @@ void Train_Embed_Algo::init() {
             continue;
         }
         p.first = curNode->left;
-        p.second.append("1");
+        p.second.append(move("1"));
         S.push(p);
         p2.first = curNode->right;
-        p2.second.append("0");
+        p2.second.append(move("0"));
         S.push(p2);
     }
 }
@@ -111,7 +111,7 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
     vector<double> ctx_average, emb_delta;
     ctx_average.resize(emb_dimention);
     emb_delta.resize(emb_dimention);
-    double decay_alpha = learning_rate * doc_wordid_vec.size() / vocab_cnt;
+    double decay_alpha = learning_rate;
     
     // each document trains epoch times
     for (size_t ep = 0; ep < epoch; ep++) {
@@ -151,7 +151,6 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
                 FOR_D {
                     preddir += curNode->weight[i] * ctx_average[i];
                 }
-                assert(fabs(preddir) < 100);
                 if(!(preddir > -30 && preddir < 30)) {
                     printf("-- warning hiso %zu-%zu preddir = %lf\n", cur_wid, c, preddir);
                 }
@@ -179,7 +178,6 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
                 FOR_D {
                     preddir += negWeight[wid][i] * ctx_average[i];
                 }
-                assert(fabs(preddir) < 100);
                 if(!(preddir > -30 && preddir < 30)) {
                     printf("-- warning negsa %zu preddir = %lf\n", cur_wid, preddir);
                 }
@@ -191,14 +189,11 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
                 }
             }
             
-            // Asynchronous update word embedding
-            {
-                unique_lock<mutex> glock(this->lock);
-                for (int pos = first; pos < last; pos++) {
-                    size_t wid = doc_wordid_vec[pos];
-                    FOR_D {
-                        word_embedding[wid]->at(i) += emb_delta[i];
-                    }
+            // unsafe multi-thread update word embedding
+            for (int pos = first; pos < last; pos++) {
+                size_t wid = doc_wordid_vec[pos];
+                FOR_D {
+                    word_embedding[wid]->at(i) += emb_delta[i];
                 }
             }
         }

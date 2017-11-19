@@ -65,6 +65,9 @@ public:
     void Train();
     void EmbeddingCluster(shared_ptr<vector<int> >, size_t);
     
+    void saveModel(size_t epoch) {
+        
+    }
 private:
     
     void init();
@@ -112,7 +115,7 @@ private:
             if(sscanf(pline, "%d %s %d", &wid, str, &fre) >= 1){
                 assert(!isnan(wid) && (wid == 0 ^ (wid != 0 && fre <= prefre) == 1));
                 prefre = fre;
-                word_frequency.push_back(fre);
+                word_frequency.emplace_back(fre);
                 vocabTable[string(str)] = wid;
                 vocabString.emplace_back(string(str));
                 threadpool->addTask([&, wid]() {
@@ -121,7 +124,7 @@ private:
                     for (int i = 0; i < emb_dimention; i++) { // random init embedding
                         double r = UniformNumRand() - 0.5f;
                         assert(word_embedding[wid]);
-                        word_embedding[wid]->push_back(r / emb_dimention);
+                        word_embedding[wid]->emplace_back(r / emb_dimention);
                     }
                 });
             }
@@ -193,7 +196,6 @@ private:
     
     size_t epoch;
     ThreadPool *threadpool;
-    mutex lock;
 };
 
 #endif /* train_embed_algo_h */

@@ -19,7 +19,7 @@ void Train_TM_Algo::init() {
             this->latentVar[docid]->reserve(word_cnt);
             FOR(wid, word_cnt) {
                 vector<double>* vec = new vector<double>();
-                this->latentVar[docid]->push_back(vec);
+                this->latentVar[docid]->emplace_back(vec);
                 vec->resize(topic_cnt);
             }
             assert(this->latentVar[docid]->size() == word_cnt);
@@ -40,7 +40,7 @@ void Train_TM_Algo::init() {
                 // if initialized with average 1.0f / topic_cnt, all topics_of_docs will be 0.1
                 double r = 1.0f + static_cast<double>(rand() % 128);
                 sum_tmp += r;
-                topics_of_docs[docid].push_back(r);
+                topics_of_docs[docid].emplace_back(r);
             }
             FOR(tid, topic_cnt) {
                 topics_of_docs[docid][tid] /= sum_tmp;
@@ -60,7 +60,7 @@ void Train_TM_Algo::init() {
                 // if initialized with average 1.0f / word_cnt, all words' topics can't change
                 double r = 1.0f + static_cast<double>(rand() % 128);
                 sum_tmp += r;
-                words_of_topics[tid].push_back(r);
+                words_of_topics[tid].emplace_back(r);
             }
             FOR(wid, word_cnt) {
                 words_of_topics[tid][wid] /= sum_tmp;
@@ -234,7 +234,7 @@ void Train_TM_Algo::printArguments() {
     vector<vector<string>* > topicSet;
     topicSet.reserve(topic_cnt);
     FOR(tid, topic_cnt) {
-        topicSet.push_back(new vector<string>);
+        topicSet.emplace_back(new vector<string>);
         topicSet[tid]->reserve(word_cnt / topic_cnt);
     }
     FOR(wid, word_cnt) {
@@ -255,7 +255,7 @@ void Train_TM_Algo::printArguments() {
         if (whichTopic == -1) {
 //            cout << "word " << vocab[wid] << " not exist" << endl;
         } else {
-            topicSet[whichTopic]->push_back(vocab[wid]);
+            topicSet[whichTopic]->emplace_back(vocab[wid]);
         }
     }
     FOR(tid, topic_cnt) {

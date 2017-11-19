@@ -16,6 +16,9 @@ void Train_NFM_Algo::init() {
     update_g = new double[learnable_params_cnt];
     updater.learnable_params_cnt(learnable_params_cnt);
     
+    sumVX = new double[this->dataRow_cnt * this->factor_cnt];
+    memset(sumVX, 0, sizeof(double) * this->dataRow_cnt * this->factor_cnt);
+    
     printf("Training NFM dropout = %.2f\n", dropout.dropout_rate);
     
     printf("-- Inner FC-1 ");

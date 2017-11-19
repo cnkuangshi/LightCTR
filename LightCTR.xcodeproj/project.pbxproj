@@ -10,6 +10,7 @@
 		E41385731FB6CD9700D3710F /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E41385721FB6CD9600D3710F /* main.cpp */; };
 		E43301131F9636B1004F71B1 /* train_embed_algo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E43301111F9636B1004F71B1 /* train_embed_algo.cpp */; };
 		E44D3B751FB037730018CB03 /* train_nfm_algo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E44D3B731FB037730018CB03 /* train_nfm_algo.cpp */; };
+		E477B8D81FC1244B00B2C038 /* train_ffm_algo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E477B8D61FC1244B00B2C038 /* train_ffm_algo.cpp */; };
 		E4B989FF1F7750AE00B61423 /* fm_predict.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E4B989FD1F7750AE00B61423 /* fm_predict.cpp */; };
 		E4D5D17D1F79E16E00966501 /* train_gbm_algo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E4D5D17B1F79E16E00966501 /* train_gbm_algo.cpp */; };
 		E4D5D1801F7A7AFF00966501 /* gbm_predict.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E4D5D17E1F7A7AFF00966501 /* gbm_predict.cpp */; };
@@ -44,6 +45,8 @@
 		E44D3B741FB037730018CB03 /* train_nfm_algo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = train_nfm_algo.h; path = train/train_nfm_algo.h; sourceTree = "<group>"; };
 		E455A53D1F9D8E4000DD0DD6 /* gradientUpdater.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = gradientUpdater.h; path = util/gradientUpdater.h; sourceTree = "<group>"; };
 		E45D2CEE1FA83DB6006805BA /* lstm_unit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = lstm_unit.h; path = train/unit/lstm_unit.h; sourceTree = "<group>"; };
+		E477B8D61FC1244B00B2C038 /* train_ffm_algo.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = train_ffm_algo.cpp; path = train/train_ffm_algo.cpp; sourceTree = "<group>"; };
+		E477B8D71FC1244B00B2C038 /* train_ffm_algo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = train_ffm_algo.h; path = train/train_ffm_algo.h; sourceTree = "<group>"; };
 		E489A5F21F9ECF3600470707 /* random.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = random.h; path = util/random.h; sourceTree = "<group>"; };
 		E489A5F31F9EFE7A00470707 /* poolingLayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = poolingLayer.h; path = train/layer/poolingLayer.h; sourceTree = "<group>"; };
 		E489A5F41F9F1FEC00470707 /* convLayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = convLayer.h; path = train/layer/convLayer.h; sourceTree = "<group>"; };
@@ -173,6 +176,8 @@
 				E409E9571F999DB400679FF1 /* Layer */,
 				E4F1D80B1F76122C00919A85 /* train_fm_algo.cpp */,
 				E4F1D80C1F76122C00919A85 /* train_fm_algo.h */,
+				E477B8D61FC1244B00B2C038 /* train_ffm_algo.cpp */,
+				E477B8D71FC1244B00B2C038 /* train_ffm_algo.h */,
 				E4D5D17B1F79E16E00966501 /* train_gbm_algo.cpp */,
 				E4D5D17C1F79E16E00966501 /* train_gbm_algo.h */,
 				E4F23BA01F90BCDF00C0269E /* train_gmm_algo.cpp */,
@@ -258,6 +263,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E4D5D17D1F79E16E00966501 /* train_gbm_algo.cpp in Sources */,
+				E477B8D81FC1244B00B2C038 /* train_ffm_algo.cpp in Sources */,
 				E4B989FF1F7750AE00B61423 /* fm_predict.cpp in Sources */,
 				E44D3B751FB037730018CB03 /* train_nfm_algo.cpp in Sources */,
 				E4D8D5AB1F935D3400648D61 /* train_tm_algo.cpp in Sources */,

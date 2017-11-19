@@ -6,7 +6,7 @@ Meanwhile, LightCTR is also an open source project that oriented to code readers
 
 #### 用于群体发现
 群体发现作为点击率预估中用户画像的重要指标之一，LightCTR提供了相关的算法支持。可将离散id特征与连续特征组合输入`LightCTR::GBM`预先找群体，训练得到的每个叶子节点代表一个用户群，再使用`LightCTR::LR`或`LightCTR::MLP`对GBDT建立的低维0/1群体特征做高层分类。
-当id特征过多使输入成为高维稀疏数据，便不再适合树模型，可通过`LightCTR::FM`将每个单个群体映射在低维空间中，向量内积即表示特征交叉的权重。FM相比LR引入一定的非线性，降低了数据稀疏下的过拟合的风险，或更进一步采用`LightCTR::NFM`结合DNN进行高维特征组合，达到更好的效果。
+当id特征过多使输入成为高维稀疏数据，便不再适合树模型，可通过`LightCTR::FM`或`LightCTR::FFM`将每个群体的类别onehot特征映射在低维空间中，向量内积即表示特征交叉的权重。FM相比LR引入一定的非线性，降低了数据稀疏下的过拟合的风险，或更进一步采用`LightCTR::NFM`结合DNN进行高维特征组合，达到更好的效果。
 
 #### 用于行为序列
 用户点击内容序列等用户的行为序列可通过`LightCTR::Embedding`得到行为的低维隐向量表示；隐向量数据经过平滑处理后，按时序输入循环神经网络`LightCTR::LSTM`，从用户行为序列中训练得到基础特征的表示；再基于变分自编码器`LightCTR::VAE`实现特征组合衍生，增强特征的表达能力；最后将特征表达输入`LightCTR::Softmax`分类器，利用样本标签训练生成用户评估，或导入`LightCTR::GMM`进行无监督聚类，作为用户画像的人群特征。
@@ -20,6 +20,7 @@ LightCTR可通过分析用户评论、兴趣得到推荐信息，作为点击率
 ## List of Implemented Algorithms
 
 * Factorization Machine
+* Field-aware Factorization Machine
 * Wide&Deep Neural Factorization Machine
 * Gradient Boosting Tree Model
 * Gaussian Mixture Clustering Model
@@ -31,7 +32,7 @@ LightCTR可通过分析用户评论、兴趣得到推荐信息，作为点击率
 * Variational AutoEncoder
 
 ## Features
-* Optimizer implemented by Mini-Batch GD, Negative sampling, Adagrad, FTRL, RMSprop, etc
+* Optimizer implemented by Mini-Batch GD, Negative sampling, Adagrad, FTRL, RMSprop, Adam, etc
 * Regularization: L1, L2, Dropout, Partially connected
 * Template-customized Activation and Loss function
 * Evaluate methods including F1, AUC
@@ -41,6 +42,7 @@ LightCTR可通过分析用户评论、兴趣得到推荐信息，作为点击率
 * LightCTR depends on C++11 only
 * Change configuration (e.g. Learning Rate) in `main.cpp`
 * Build by Make and Debug by Xcode
+* Current CI Status: [![Build Status](https://travis-ci.org/cnkuangshi/LightCTR.svg?branch=master)](https://travis-ci.org/cnkuangshi/LightCTR)
 
 ## Welcome to Contribute
 * Welcome everyone interested in machine learning or distributed system to contribute code, create issues or pull requests of new features.

@@ -20,8 +20,8 @@ using namespace std;
 class Train_FM_Algo : public FM_Algo_Abst {
 public:
     Train_FM_Algo(string _dataPath, size_t _epoch_cnt,
-                  size_t _factor_cnt, size_t _feature_cnt = 0):
-    FM_Algo_Abst(_dataPath, _factor_cnt, _feature_cnt), epoch_cnt(_epoch_cnt) {
+                  size_t _factor_cnt):
+    FM_Algo_Abst(_dataPath, _factor_cnt), epoch_cnt(_epoch_cnt) {
         assert(this->feature_cnt != 0);
         init();
         threadpool = new ThreadPool(this->proc_cnt);

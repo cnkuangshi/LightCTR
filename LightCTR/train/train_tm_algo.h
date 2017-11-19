@@ -85,7 +85,7 @@ public:
             const char *pline = line.c_str();
             if(sscanf(pline, "%d %s %d", &val, str, &fre) >= 1){
                 assert(!isnan(val));
-                vocab.push_back(string(str));
+                vocab.emplace_back(string(str));
             }
         }
         assert(vocab.size() == word_cnt);

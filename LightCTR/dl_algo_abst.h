@@ -204,7 +204,7 @@ public:
                 } else {
                     assert(y < multiclass_output_cnt);
                 }
-                label.push_back(y);
+                label.emplace_back(y);
                 fid = 0;
                 while(pline < line.c_str() + (int)line.length()
                       && sscanf(pline, "%d%n", &val, &nchar) >= 1){
@@ -219,7 +219,7 @@ public:
                         break;
                     }
                 }
-                dataSet.push_back(tmp);
+                dataSet.emplace_back(tmp);
                 if (dataSet.size() > 500) {
                     break;
                 }
@@ -227,6 +227,10 @@ public:
         }
         this->dataRow_cnt = this->dataSet.size();
         assert(dataRow_cnt > 0 && label.size() == dataRow_cnt);
+    }
+    
+    void saveModel(size_t epoch) {
+        
     }
 protected:
     DL_Algo dl_algo;

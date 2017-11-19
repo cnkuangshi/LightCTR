@@ -36,7 +36,7 @@ public:
 private:
     FM_Algo_Abst* fm;
     size_t test_dataRow_cnt;
-    vector<vector<pair<int, double> > > test_dataSet;
+    vector<vector<FMFeature> > test_dataSet;
     vector<int> test_label;
 };
 

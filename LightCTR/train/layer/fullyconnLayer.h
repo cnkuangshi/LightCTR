@@ -12,7 +12,7 @@
 #include "layer_abst.h"
 #include "../../util/matrix.h"
 
-// Fully Connected Layer only be used in DNN when input is vector<double>
+// Fully Connected Layer
 template <typename ActivationFunction>
 class Fully_Conn_Layer : public Layer_Base {
     

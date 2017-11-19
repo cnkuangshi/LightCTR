@@ -16,6 +16,8 @@ void Train_FM_Algo::init() {
 #else
     learnable_params_cnt = this->feature_cnt;
 #endif
+    sumVX = new double[this->dataRow_cnt * this->factor_cnt];
+    memset(sumVX, 0, sizeof(double) * this->dataRow_cnt * this->factor_cnt);
     
     printf("Training FM dropout = %.2f\n", dropout.dropout_rate);
     

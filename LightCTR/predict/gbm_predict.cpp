@@ -23,7 +23,7 @@ void GBM_Predict::Predict(string savePath) {
         assert(!isnan(gbm_pred));
         double pCTR = activFunc(gbm_pred);
         assert(!isnan(pCTR));
-        ans.push_back(pCTR);
+        ans.emplace_back(pCTR);
     }
     assert(badcase != test_dataRow_cnt);
     if (!test_label.empty()) {
@@ -70,7 +70,7 @@ void GBM_Predict::loadDataRow(string dataPath, bool with_valid_label) {
         if(sscanf(pline, "%d%n", &y, &nchar) >= 1){
             pline += nchar + 1;
             y = y < 5 ? 0 : 1;
-            test_label.push_back(y);
+            test_label.emplace_back(y);
             fid = 0;
             while(pline < line.c_str() + (int)line.length() &&
                   sscanf(pline, "%d%n", &val, &nchar) >= 1){
@@ -88,7 +88,7 @@ void GBM_Predict::loadDataRow(string dataPath, bool with_valid_label) {
         if (tmp.empty()) {
             continue;
         }
-        this->test_dataSet.push_back(tmp);
+        this->test_dataSet.emplace_back(tmp);
         rid++;
     }
     this->test_dataRow_cnt = this->test_dataSet.size();
