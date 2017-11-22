@@ -69,17 +69,23 @@ public:
 
 class Softmax : public Activation {
 public:
+    inline size_t forward_max(vector<double>* input) {
+        return max_element(input->begin(), input->end()) - input->begin();
+    }
     inline void forward(vector<double>* input) {
-        double sum = 0.0f, maxV = -0x5fffffff;
-        for (auto it = input->begin(); it != input->end(); it++) {
-            maxV = max(maxV, *it); // for numerical stability overflow
-        }
-        assert(maxV != -0x5fffffff);
+        double sum = 0.0f;
+        auto maxV = *max_element(input->begin(), input->end());
+        // for numerical stability overflow
         for (auto it = input->begin(); it != input->end(); it++) {
             sum += exp(*it - maxV);
         }
         for (auto it = input->begin(); it != input->end(); it++) {
             *it = exp(*it - maxV) / sum;
+            if (*it == 0) {
+                *it = 1e-12;
+            } else if (*it == 1) {
+                *it = 1.0 - 1e-12;
+            }
         }
     }
     inline void backward(const vector<double>* delta, const vector<double>* foutput, vector<double>* to) {

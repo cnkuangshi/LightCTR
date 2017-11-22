@@ -10,41 +10,74 @@
 #include <iomanip>
 
 void GBM_Predict::Predict(string savePath) {
-    vector<double> ans;
+    static vector<double> ans, tmp;
+    static vector<int> pLabel;
     size_t badcase = 0;
+    tmp.resize(gbm->multiclass);
+    ans.clear();
+    pLabel.clear();
+    
+    assert(gbm->RegTreeRootArr.size() % gbm->multiclass == 0);
+    
     for (size_t rid = 0; rid < this->test_dataRow_cnt; rid++) { // data row
-        double gbm_pred = 0.0f;
-        for (size_t tid = 0; tid < gbm->RegTreeRootArr.size(); tid++) {
-            gbm_pred += gbm->locAtLeafWeight(gbm->RegTreeRootArr[tid], test_dataSet[rid]);
+        fill(tmp.begin(), tmp.end(), 0);
+        for (size_t tid = 0; tid < gbm->RegTreeRootArr.size(); tid+=gbm->multiclass) {
+            for (size_t c = 0; c < gbm->multiclass; c++) {
+                tmp[c] += gbm->locAtLeafWeight(gbm->RegTreeRootArr[tid + c],
+                                               test_dataSet[rid]);
+            }
         }
-        if(gbm_pred < -30 || gbm_pred > 30){
-            badcase ++;
+        for (size_t c = 0; c < gbm->multiclass; c++) {
+            assert(!isnan(tmp[c]));
+            if(tmp[c] < -30 || tmp[c] > 30){
+                badcase ++;
+                break;
+            }
         }
-        assert(!isnan(gbm_pred));
-        double pCTR = activFunc(gbm_pred);
+        double pCTR;
+        if (gbm->multiclass == 1) {
+            pCTR = sigmoid.forward(tmp[0]);
+            pLabel.emplace_back(pCTR > 0.5 ? 1 : 0);
+        } else {
+            softmax.forward(&tmp);
+            size_t idx = softmax.forward_max(&tmp);
+            pCTR = tmp[idx];
+            pLabel.emplace_back(idx);
+        }
+        
         assert(!isnan(pCTR));
         ans.emplace_back(pCTR);
     }
-    assert(badcase != test_dataRow_cnt);
+    if (badcase == test_dataRow_cnt) {
+        puts("Have overfitting");
+    }
+    
     if (!test_label.empty()) {
         assert(ans.size() == test_label.size());
         double loss = 0;
         int correct = 0;
         for (size_t i = 0; i < test_label.size(); i++) {
-            assert(ans[i] > 0 && 1.0 - ans[i] > 0);
-            loss += (int)this->test_label[i] == 1 ? log(ans[i]) : log(1.0 - ans[i]);
+            if (gbm->multiclass == 1) {
+                assert(ans[i] > 0 && ans[i] < 1);
+                loss += (int)this->test_label[i] == 1 ? log(ans[i]) : log(1.0 - ans[i]);
+            } else {
+                assert(ans[i] > 0 && ans[i] <= 1);
+                loss += log(ans[i]);
+            }
+            
             assert(!isnan(loss));
-            if (ans[i] > 0.5 && this->test_label[i] == 1) {
-                correct++;
-            } else if (ans[i] < 0.5 && this->test_label[i] == 0) {
+            if (this->test_label[i] == pLabel[i]) {
                 correct++;
             }
         }
         cout << "total log likelihood = " << -loss << " correct = " << setprecision(5) <<
-                (double)correct / test_dataRow_cnt << " with badcase = " << badcase;
+        (double)correct / test_dataRow_cnt << " with badcase = " << badcase;
         
-        AucEvaluator* auc = new AucEvaluator(&ans, &test_label);
-        printf(" auc = %.4f\n", auc->Auc());
+        if (gbm->multiclass == 1) {
+            AucEvaluator* auc = new AucEvaluator(&ans, &test_label);
+            printf(" auc = %.4f", auc->Auc());
+        }
+        printf("\n");
     }
 }
 
@@ -69,7 +102,11 @@ void GBM_Predict::loadDataRow(string dataPath, bool with_valid_label) {
         const char *pline = line.c_str();
         if(sscanf(pline, "%d%n", &y, &nchar) >= 1){
             pline += nchar + 1;
-            y = y < 5 ? 0 : 1;
+            if (gbm->multiclass > 1) {
+                assert(y < gbm->multiclass);
+            } else {
+                y = y < 5 ? 0 : 1;
+            }
             test_label.emplace_back(y);
             fid = 0;
             while(pline < line.c_str() + (int)line.length() &&

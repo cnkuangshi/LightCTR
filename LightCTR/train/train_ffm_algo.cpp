@@ -77,7 +77,7 @@ void Train_FFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
 }
 
 void Train_FFM_Algo::accumWVGrad(size_t rid, double pred) {
-    double target = label[rid];
+    const double target = label[rid];
     size_t fid, fid2, x, x2, field, field2;
     for (size_t i = 0; i < dataSet[rid].size(); i++) {
         if (dataSet[rid][i].second == 0 || pred - target == 0) {

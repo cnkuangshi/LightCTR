@@ -75,14 +75,15 @@ int main(int argc, const char * argv[]) {
                                              "./data/train_sparse.csv",
                                              /*epoch*/3,
                                              /*factor_cnt*/10,
-                                             /*hidden_layer_size*/10);
+                                             /*hidden_layer_size*/32);
     FM_Predict pred(train, "./data/train_sparse.csv", true);
 #elif defined TEST_GBM
     GBM_Algo_Abst *train = new Train_GBM_Algo(
                           "./data/train_dense.csv",
                           /*epoch*/1,
                           /*maxDepth*/12,
-                          /*minLeafHess*/1);
+                          /*minLeafHess*/1,
+                          /*multiclass*/10);
     GBM_Predict pred(train, "./data/train_dense.csv", true);
 #elif defined TEST_GMM
     EM_Algo_Abst<vector<double> > *train =

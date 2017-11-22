@@ -36,6 +36,9 @@ void Train_FM_Algo::flash() {
 }
 
 void Train_FM_Algo::Train() {
+    
+    GradientUpdater::__global_bTraining = true;
+    
     for (size_t i = 0; i < this->epoch_cnt; i++) {
         
         flash();
@@ -56,6 +59,8 @@ void Train_FM_Algo::Train() {
         
         ApplyGrad();
     }
+    
+    GradientUpdater::__global_bTraining = false;
 }
 
 void Train_FM_Algo::batchGradCompute(size_t pid, size_t rbegin, size_t rend) {
@@ -122,7 +127,7 @@ void Train_FM_Algo::batchGradCompute(size_t pid, size_t rbegin, size_t rend) {
 
 void Train_FM_Algo::accumWVGrad(size_t rid, double pred, vector<double>* update_local) {
     assert(update_local && update_local->size() == learnable_params_cnt);
-    double target = label[rid];
+    const double target = label[rid];
     size_t fid, x;
     for (size_t i = 0; i < dataSet[rid].size(); i++) {
         if (dataSet[rid][i].second == 0) {

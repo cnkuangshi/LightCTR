@@ -13,6 +13,7 @@
 #include "../gbm_algo_abst.h"
 #include <cmath>
 #include "../util/evaluator.h"
+#include "../util/activations.h"
 
 class GBM_Predict {
 public:
@@ -26,19 +27,14 @@ public:
     void Predict(string);
     void loadDataRow(string, bool);
     
-    inline double activFunc(double wx) {
-        if(wx < -30){
-            return 1e-12;
-        } else if(wx > 30){
-            return 1.0 - 1e-12;
-        }
-        return 1.0 / (1.0 + exp(-wx));
-    }
 private:
     GBM_Algo_Abst* gbm;
     size_t test_dataRow_cnt;
     vector<map<size_t, double> > test_dataSet;
     vector<int> test_label;
+    
+    Sigmoid sigmoid;
+    Softmax softmax;
 };
 
 #endif /* gbm_predict_h */

@@ -125,7 +125,7 @@ void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
 }
 
 void Train_NFM_Algo::accumWideGrad(size_t rid, double pred) {
-    double target = label[rid];
+    const double target = label[rid];
     size_t fid, x;
     for (size_t i = 0; i < dataSet[rid].size(); i++) {
         if (dataSet[rid][i].second == 0) {

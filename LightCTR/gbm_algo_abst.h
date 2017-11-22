@@ -80,12 +80,14 @@ protected:
         }
     };
 public:
-    GBM_Algo_Abst(string _dataPath, size_t _maxDepth, size_t _minLeafW) :
-    maxDepth(_maxDepth), minLeafW(_minLeafW) {
+    GBM_Algo_Abst(string _dataPath, size_t _maxDepth,
+                  size_t _minLeafW, size_t _multiclass = 1) :
+    maxDepth(_maxDepth), minLeafW(_minLeafW), multiclass(_multiclass) {
         feature_cnt = 0;
         node_cnt = 0;
         RegTreeRootArr.clear();
         loadDataRow(_dataPath);
+        fscore.resize(feature_cnt);
     }
     virtual ~GBM_Algo_Abst() {
         delete [] dataSet_Pred;
@@ -110,12 +112,11 @@ public:
     }
     
     inline pair<RegTreeNode*, RegTreeNode*> split_node(RegTreeNode *node) {
+        fscore[node->split_feature_index]++; // feature importance degree
+        
         RegTreeNode *leftNode = newNode(node, 1);
         RegTreeNode *rightNode = newNode(node, 0);
-        {
-            auto it = find(leafNodes.begin(), leafNodes.end(), node->leafStat);
-            assert(it != leafNodes.end());
-        }
+        
         node->leafStat = NULL;
         
         leafNodes_tmp.emplace_back(new LeafNodeStat(leftNode));
@@ -165,14 +166,18 @@ public:
             exit(1);
         }
         map<size_t, double> tmp;
-//        getline(fin_, line);
+        
         while(!fin_.eof()){
             getline(fin_, line);
             tmp.clear();
             const char *pline = line.c_str();
             if(sscanf(pline, "%d%n", &y, &nchar) >= 1){
                 pline += nchar + 1;
-                y = y < 5 ? 0 : 1;
+                if (this->multiclass > 1) {
+                    assert(y < this->multiclass);
+                } else {
+                    y = y < 5 ? 0 : 1;
+                }
                 label.emplace_back(y);
                 fid = 0;
                 while(pline < line.c_str() + (int)line.length() &&
@@ -206,9 +211,17 @@ public:
     
     virtual void Train() = 0;
     
+    shared_ptr<vector<int> > feature_score() { // get features importance degree
+        shared_ptr<vector<int> > ans = shared_ptr<vector<int> >(new vector<int>());
+        ans->resize(feature_cnt);
+        ans->assign(fscore.begin(), fscore.end());
+        return ans;
+    }
+    
     size_t node_cnt;
     
     vector<RegTreeNode*> RegTreeRootArr;
+    vector<int> fscore;
     list<LeafNodeStat*> leafNodes, leafNodes_tmp;
     vector<pair<double, double> > dataSet_Grad;
     map<size_t, vector<pair<size_t, double> > > dataSet_feature;
@@ -217,6 +230,7 @@ public:
     double* dataSet_Pred;
     
     size_t maxDepth, minLeafW;
+    size_t multiclass;
     size_t feature_cnt, dataRow_cnt;
     vector<map<size_t, double> > dataSet;
     vector<int> label;

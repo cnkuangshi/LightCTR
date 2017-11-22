@@ -56,7 +56,7 @@ void FM_Predict::Predict(string savePath) {
             }
         }
         
-        double pCTR = activFunc(fm_pred);
+        double pCTR = sigmoid.forward(fm_pred);
         if(fm_pred < -30 || fm_pred > 30){
             badcase ++;
         }

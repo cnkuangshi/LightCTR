@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include "../fm_algo_abst.h"
 #include "../util/evaluator.h"
+#include "../util/activations.h"
 
 class FM_Predict {
 public:
@@ -25,19 +26,13 @@ public:
     void Predict(string);
     void loadDataRow(string, bool);
     
-    inline double activFunc(double wx) {
-        if(wx < -30){
-            return 1e-12;
-        } else if(wx > 30){
-            return 1.0 - 1e-12;
-        }
-        return 1.0 / (1.0 + exp(-wx));
-    }
 private:
     FM_Algo_Abst* fm;
     size_t test_dataRow_cnt;
     vector<vector<FMFeature> > test_dataSet;
     vector<int> test_label;
+    
+    Sigmoid sigmoid;
 };
 
 #endif /* fm_predict_h */

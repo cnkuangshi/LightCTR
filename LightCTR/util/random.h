@@ -12,6 +12,10 @@
 #include <cmath>
 #include <cstdio>
 
+inline void Seed(uint32_t seed) {
+    srand(seed);
+}
+
 inline double UniformNumRand() { // [0, 1)
     return static_cast<double>(rand()) / (static_cast<double>(RAND_MAX) + 1.0);
 }

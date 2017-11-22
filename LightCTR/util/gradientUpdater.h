@@ -45,11 +45,18 @@ public:
     inline void Mask(bool* dropout_mask, size_t len) {
         assert(dropout_mask);
         assert(dropout_rate > 0 && dropout_rate < 1);
+        if (GradientUpdater::__global_bTraining == false) {
+            fill(dropout_mask, dropout_mask + len, true);
+            return;
+        }
         for (size_t i = 0; i < len; i++) {
             dropout_mask[i] = SampleBinary(1.0 - dropout_rate);
         }
     }
     inline double rescale() {
+        if (GradientUpdater::__global_bTraining == false) {
+            return 1.0;
+        }
         return 1.0 / (1.0 - dropout_rate);
     }
     double dropout_rate;
@@ -229,7 +236,7 @@ public:
         delete [] ftrl_z;
     }
     void learnable_params_cnt(size_t cnt) {
-        __adagrad_params_cnt = cnt;
+        __ftrl_params_cnt = cnt;
         ftrl_n = new double[cnt];
         ftrl_sigma = new double[cnt];
         ftrl_z = new double[cnt];
@@ -239,7 +246,7 @@ public:
         memset(ftrl_sigma, 0, sizeof(double) * cnt);
     }
     void update(size_t offset, size_t len, double*& weight, double*& grad) {
-        assert(offset + len <= __adagrad_params_cnt);
+        assert(offset + len <= __ftrl_params_cnt);
         double alpha = 2.0f, lambda1 = 5.0f, beta = 1.0f, lambda2 = 0.0f;
         for (size_t fid = 0; fid < len; fid++) {
             if (grad[fid] == 0) {
@@ -262,7 +269,7 @@ public:
         }
     }
 private:
-    size_t __adagrad_params_cnt;
+    size_t __ftrl_params_cnt;
     double *ftrl_n, *ftrl_sigma, *ftrl_z;
 };
 

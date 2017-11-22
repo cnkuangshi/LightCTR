@@ -120,6 +120,10 @@ public:
         return decode;
     }
     
+    void saveModel(size_t epoch) {
+        
+    }
+    
     void loadDenseDataRow(string dataPath) {
         dataSet.clear();
         

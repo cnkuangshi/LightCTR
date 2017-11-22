@@ -13,6 +13,7 @@
 #include <cmath>
 #include "../common/thread_pool.h"
 #include "../util/random.h"
+#include "../util/activations.h"
 #include "../gbm_algo_abst.h"
 
 class Train_GBM_Algo : public GBM_Algo_Abst {
@@ -45,8 +46,8 @@ class Train_GBM_Algo : public GBM_Algo_Abst {
     };
 public:
     Train_GBM_Algo(string _dataPath, size_t _epoch_cnt, size_t _maxDepth,
-                   size_t _minLeafW):
-    GBM_Algo_Abst(_dataPath, _maxDepth, _minLeafW), epoch_cnt(_epoch_cnt) {
+                   size_t _minLeafW, size_t _multiclass):
+    GBM_Algo_Abst(_dataPath, _maxDepth, _minLeafW, _multiclass), epoch_cnt(_epoch_cnt) {
         proc_cnt = thread::hardware_concurrency();
         init();
         threadpool = new ThreadPool(this->proc_cnt);
@@ -60,9 +61,9 @@ public:
     
     void init();
     void Train();
-    void flash(RegTreeNode *);
-    void findSplitFeature(size_t, size_t, size_t, bool);
-    void findSplitFeature_Wrapper(size_t, size_t, size_t);
+    void flash(RegTreeNode *, size_t);
+    void findSplitFeature(size_t, size_t, size_t, bool, size_t);
+    void findSplitFeature_Wrapper(size_t, size_t, size_t, size_t);
     
     inline void sample() {
         memset(sampleDataSetIndex, 0, sizeof(bool) * this->dataRow_cnt);
@@ -78,15 +79,6 @@ public:
             if(SampleBinary(0.7))
                 sampleFeatureSetIndex[fid] = 1;
         }
-    }
-    
-    inline double activFunc(double wx) {
-        if(wx < -30){
-            return 1e-12;
-        } else if(wx > 30){
-            return 1.0 - 1e-12;
-        }
-        return 1.0 / (1.0 + exp(-wx));
     }
     
     inline double grad(double pred, double label) {
@@ -118,6 +110,9 @@ private:
     bool* sampleFeatureSetIndex;
     RegTreeNode** dataRow_LocAtTree;
     size_t epoch_cnt;
+    
+    Softmax softmax;
+    Sigmoid sigmoid;
     
     double eps_feature_value, lambda, learning_rate;
 };
