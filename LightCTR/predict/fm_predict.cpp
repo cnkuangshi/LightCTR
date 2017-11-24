@@ -16,9 +16,9 @@ void FM_Predict::Predict(string savePath) {
         double fm_pred = 0.0f;
         if (fm->sumVX != NULL) {
             for (size_t i = 0; i < test_dataSet[rid].size(); i++) { // feature
-                size_t fid = test_dataSet[rid][i].first;
+                const size_t fid = test_dataSet[rid][i].first;
                 assert(fid < fm->feature_cnt);
-                double X = test_dataSet[rid][i].second;
+                const double X = test_dataSet[rid][i].second;
                 fm_pred += fm->W[fid] * X;
 #ifdef FM
                 for (size_t fac_itr = 0; fac_itr < fm->factor_cnt; fac_itr++) {
@@ -34,16 +34,16 @@ void FM_Predict::Predict(string savePath) {
 #endif
         } else {
             for (size_t i = 0; i < test_dataSet[rid].size(); i++) {
-                size_t fid = test_dataSet[rid][i].first;
-                double X = test_dataSet[rid][i].second;
-                size_t field = test_dataSet[rid][i].field;
+                const size_t fid = test_dataSet[rid][i].first;
+                const double X = test_dataSet[rid][i].second;
+                const size_t field = test_dataSet[rid][i].field;
                 
                 fm_pred += fm->W[fid] * X;
                 
                 for (size_t j = i + 1; j < test_dataSet[rid].size(); j++) {
-                    size_t fid2 = test_dataSet[rid][i].first;
-                    double X2 = test_dataSet[rid][i].second;
-                    size_t field2 = test_dataSet[rid][i].field;
+                    const size_t fid2 = test_dataSet[rid][j].first;
+                    const double X2 = test_dataSet[rid][j].second;
+                    const size_t field2 = test_dataSet[rid][j].field;
                     
                     double field_pred = 0;
                     for (size_t fac_itr = 0; fac_itr < fm->factor_cnt; fac_itr++) {
@@ -82,7 +82,7 @@ void FM_Predict::Predict(string savePath) {
         cout << "total log likelihood = " << -loss << " correct = " << setprecision(5) <<
                 (double)correct / test_dataRow_cnt << " with badcase = " << badcase;
         
-        AucEvaluator* auc = new AucEvaluator(&ans, &test_label);
+        auc->init(&ans, &test_label);
         printf(" auc = %.4f\n", auc->Auc());
     }
     if (savePath != "") {

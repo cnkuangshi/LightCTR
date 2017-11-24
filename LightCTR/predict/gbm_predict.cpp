@@ -74,7 +74,7 @@ void GBM_Predict::Predict(string savePath) {
         (double)correct / test_dataRow_cnt << " with badcase = " << badcase;
         
         if (gbm->multiclass == 1) {
-            AucEvaluator* auc = new AucEvaluator(&ans, &test_label);
+            auc->init(&ans, &test_label);
             printf(" auc = %.4f", auc->Auc());
         }
         printf("\n");

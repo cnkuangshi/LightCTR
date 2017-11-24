@@ -19,9 +19,10 @@ public:
     FM_Predict(FM_Algo_Abst* p, string _testDataPath, bool with_valid_label) {
         this->fm = p;
         loadDataRow(_testDataPath, with_valid_label);
+        auc = new AucEvaluator();
     }
     ~FM_Predict() {
-        
+        delete auc;
     }
     void Predict(string);
     void loadDataRow(string, bool);
@@ -32,6 +33,7 @@ private:
     vector<vector<FMFeature> > test_dataSet;
     vector<int> test_label;
     
+    AucEvaluator* auc;
     Sigmoid sigmoid;
 };
 

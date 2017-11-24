@@ -77,10 +77,10 @@ void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
             double fm_pred = 0.0f;
             
             for (size_t i = 0; i < dataSet[rid].size(); i++) {
-                size_t fid = dataSet[rid][i].first;
+                const size_t fid = dataSet[rid][i].first;
                 assert(fid < this->feature_cnt);
                 
-                double X = dataSet[rid][i].second;
+                const double X = dataSet[rid][i].second;
                 fm_pred += W[fid] * X * dropout.rescale(); // wide part
                 
                 for (size_t fac_itr = 0; fac_itr < this->factor_cnt; fac_itr++) {
@@ -96,7 +96,7 @@ void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
                 if (!dropout_mask[fac_itr]) { // apply dropout mask
                     continue;
                 }
-                double tmp = *getSumVX(rid, fac_itr);
+                const double tmp = *getSumVX(rid, fac_itr);
                 assert(!isnan(tmp));
                 *fc_input_Matrix->getEle(0, fac_itr) += 0.5 * tmp * tmp * dropout.rescale();
             }
@@ -156,10 +156,10 @@ void Train_NFM_Algo::accumDeepGrad(size_t rid, vector<double>* delta) {
             if (!dropout_mask[fac_itr]) { // apply dropout mask
                 continue;
             }
-            double grad = delta->at(fac_itr) * X;
+            const double grad = delta->at(fac_itr) * X;
             
-            double sum = *getSumVX(rid, fac_itr);
-            double v = *getV(fid, fac_itr);
+            const double sum = *getSumVX(rid, fac_itr);
+            const double v = *getV(fid, fac_itr);
             
             {
                 unique_lock<mutex> glock(this->lock_v);

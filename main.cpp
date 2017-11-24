@@ -13,6 +13,7 @@
 #include "LightCTR/fm_algo_abst.h"
 #include "LightCTR/train/train_fm_algo.h"
 #include "LightCTR/train/train_ffm_algo.h"
+#include "LightCTR/train/train_nfm_algo.h"
 #include "LightCTR/predict/fm_predict.h"
 
 #include "LightCTR/gbm_algo_abst.h"
@@ -30,8 +31,6 @@
 #include "LightCTR/train/train_rnn_algo.h"
 
 #include "LightCTR/train/train_vae_algo.h"
-
-#include "LightCTR/train/train_nfm_algo.h"
 using namespace std;
 
 // Attention to check config in GradientUpdater
@@ -40,7 +39,7 @@ using namespace std;
 /* Recommend Configuration
  * FM/FFM/NFM batch=50 lr=0.1
  * VAE batch=10 lr=0.1
- * CNN batch=10 lr=0.03
+ * CNN batch=10 lr=0.1
  * RNN batch=10 lr=0.03
  */
 
@@ -67,7 +66,7 @@ int main(int argc, const char * argv[]) {
     FM_Algo_Abst *train = new Train_FFM_Algo(
                                             "./data/train_sparse.csv",
                                             /*epoch*/1,
-                                            /*factor_cnt*/3,
+                                            /*factor_cnt*/4,
                                             /*field*/68);
     FM_Predict pred(train, "./data/train_sparse.csv", true);
 #elif defined TEST_NFM
@@ -143,8 +142,11 @@ int main(int argc, const char * argv[]) {
     
     while (T--) {
         train->Train();
+        
+#if (defined TEST_FM) || (defined TEST_FFM) || (defined TEST_NFM) || (defined TEST_GBM)
         // Notice whether the algorithm have Predictor, otherwise Annotate it.
         pred.Predict("");
+#endif
 #ifdef TEST_EMB
         // Notice, word embedding vector multiply 10 to cluster
         EM_Algo_Abst<vector<double> > *cluster =

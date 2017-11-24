@@ -48,12 +48,19 @@ inline static double F1Score(double precision, double recall) {
 
 class AucEvaluator {
 public:
-    AucEvaluator(const vector<double>* pCTR, const vector<int>* label) {
-        assert(pCTR->size() == label->size());
+    AucEvaluator() {
         PosNum = new int[kHashLen + 1];
-        memset(PosNum, 0, sizeof(int) * (kHashLen + 1));
         NegNum = new int[kHashLen + 1];
+    }
+    ~AucEvaluator() {
+        delete [] PosNum;
+        delete [] NegNum;
+    }
+    void init(const vector<double>* pCTR, const vector<int>* label) {
+        assert(pCTR->size() == label->size());
+        memset(PosNum, 0, sizeof(int) * (kHashLen + 1));
         memset(NegNum, 0, sizeof(int) * (kHashLen + 1));
+        
         for (size_t i = 0; i < pCTR->size(); i++) {
             size_t index = pCTR->at(i) * kHashLen;
             if (label->at(i) == 1) { // Positive
@@ -62,10 +69,6 @@ public:
                 NegNum[index]++;
             }
         }
-    }
-    ~AucEvaluator() {
-        delete [] PosNum;
-        delete [] NegNum;
     }
     double Auc() {
         double totPos = 0.0, totNeg = 0.0;

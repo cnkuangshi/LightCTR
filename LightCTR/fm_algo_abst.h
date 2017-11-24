@@ -59,8 +59,9 @@ public:
             memsize = this->feature_cnt * this->field_cnt * this->factor_cnt;
         }
         V = new double[memsize];
+        const double scale = 0.1f / sqrt(this->factor_cnt);
         for (size_t i = 0; i < memsize; i++) {
-            V[i] = GaussRand() * 0.01f; // 0.01 decay
+            V[i] = GaussRand() * scale;
         }
         sumVX = NULL;
         
@@ -145,6 +146,7 @@ public:
     
     double *V, *sumVX;
     inline double* getV(size_t fid, size_t facid) const {
+        assert(this->field_cnt == 0);
         assert(fid * this->factor_cnt + facid < this->feature_cnt * this->factor_cnt);
         return &V[fid * this->factor_cnt + facid];
     }

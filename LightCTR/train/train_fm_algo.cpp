@@ -52,7 +52,8 @@ void Train_FM_Algo::Train() {
             dropout.Mask(dropout_mask, this->factor_cnt);
             
             size_t start_pos = pid * thread_hold_dataRow_cnt;
-            threadpool->addTask(bind(&Train_FM_Algo::batchGradCompute, this, pid, start_pos, min(start_pos + thread_hold_dataRow_cnt, this->dataRow_cnt)));
+            threadpool->addTask(bind(&Train_FM_Algo::batchGradCompute, this, pid, start_pos,
+                                     min(start_pos + thread_hold_dataRow_cnt, this->dataRow_cnt)));
         }
         threadpool->join();
         assert(proc_data_left == 0);
@@ -74,17 +75,17 @@ void Train_FM_Algo::batchGradCompute(size_t pid, size_t rbegin, size_t rend) {
     for (size_t rid = rbegin; rid < rend; rid++) { // data row
         double fm_pred = 0.0f;
         for (size_t i = 0; i < dataSet[rid].size(); i++) {
-            size_t fid = dataSet[rid][i].first;
+            const size_t fid = dataSet[rid][i].first;
             assert(fid < this->feature_cnt);
             
-            double X = dataSet[rid][i].second;
+            const double X = dataSet[rid][i].second;
             fm_pred += W[fid] * X * dropout.rescale();
 #ifdef FM
             for (size_t fac_itr = 0; fac_itr < this->factor_cnt; fac_itr++) {
                 if (!dropout_mask[fac_itr]) { // apply dropout mask
                     continue;
                 }
-                double tmp = *getV(fid, fac_itr) * X;
+                const double tmp = *getV(fid, fac_itr) * X;
                 *getSumVX(rid, fac_itr) += tmp;
                 fm_pred -= 0.5 * tmp * tmp * dropout.rescale();
             }
@@ -95,7 +96,7 @@ void Train_FM_Algo::batchGradCompute(size_t pid, size_t rbegin, size_t rend) {
             if (!dropout_mask[fac_itr]) { // apply dropout mask
                 continue;
             }
-            double tmp = *getSumVX(rid, fac_itr);
+            const double tmp = *getSumVX(rid, fac_itr);
             assert(!isnan(tmp));
             fm_pred += 0.5 * tmp * tmp * dropout.rescale();
         }
@@ -107,16 +108,14 @@ void Train_FM_Algo::batchGradCompute(size_t pid, size_t rbegin, size_t rend) {
     {
         unique_lock<mutex> glock(this->lock);
         for (size_t fid = 0; fid < this->feature_cnt; fid++) {
-            if (update_threadLocal[pid]->at(fid) == 0) {
-                continue;
-            }
-            *update_W(fid) += update_threadLocal[pid]->at(fid) / this->dataRow_cnt;
+            *update_W(fid) += update_threadLocal[pid]->at(fid);
 #ifdef FM
             for (size_t fac_itr = 0; fac_itr < this->factor_cnt; fac_itr++) {
                 if (!dropout_mask[fac_itr]) { // apply dropout mask
                     continue;
                 }
-                *update_V(fid, fac_itr) += update_threadLocal[pid]->at(this->feature_cnt + fid * factor_cnt + fac_itr) / this->dataRow_cnt;
+                *update_V(fid, fac_itr) +=
+                    update_threadLocal[pid]->at(this->feature_cnt + fid * factor_cnt + fac_itr);
             }
 #endif
         }
@@ -145,7 +144,8 @@ void Train_FM_Algo::accumWVGrad(size_t rid, double pred, vector<double>* update_
             }
             double sum = *getSumVX(rid, fac_itr);
             double v = *getV(fid, fac_itr);
-            update_local->at(this->feature_cnt + fid * factor_cnt + fac_itr) += LogisticGradV(gradW, sum, v, x) + L2Reg_ratio * v;
+            update_local->at(this->feature_cnt + fid * factor_cnt + fac_itr)
+                    += LogisticGradV(gradW, sum, v, x) + L2Reg_ratio * v;
         }
 #endif
     }

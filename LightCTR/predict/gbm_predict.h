@@ -20,9 +20,10 @@ public:
     GBM_Predict(GBM_Algo_Abst* p, string _testDataPath, bool with_valid_label) {
         this->gbm = p;
         loadDataRow(_testDataPath, with_valid_label);
+        auc = new AucEvaluator();
     }
     ~GBM_Predict() {
-        
+        delete auc;
     }
     void Predict(string);
     void loadDataRow(string, bool);
@@ -33,6 +34,7 @@ private:
     vector<map<size_t, double> > test_dataSet;
     vector<int> test_label;
     
+    AucEvaluator* auc;
     Sigmoid sigmoid;
     Softmax softmax;
 };
