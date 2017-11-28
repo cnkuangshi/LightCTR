@@ -116,7 +116,7 @@ public:
                 }
             }
             if (bias[filid] == NULL) { // Asynchronous to lazy init
-                unique_lock<mutex> glock(this->lock);
+                unique_lock<SpinLock> glock(this->lock);
                 if (bias[filid] == NULL) { // double check
                     bias[filid] = new Matrix(m_ptr->x_len, m_ptr->y_len);
                     bias[filid]->randomInit();
@@ -182,7 +182,7 @@ public:
         
         // Asynchronous update filter weight and bias to minimize delta
         {
-            unique_lock<mutex> glock(this->lock);
+            unique_lock<SpinLock> glock(this->lock);
             FOR(filid, filter_cnt) {
                 FOR(feamid, this->input_dimention) {
                     if (bConnect(feamid, filid)) {

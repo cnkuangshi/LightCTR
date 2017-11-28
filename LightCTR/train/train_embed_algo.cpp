@@ -100,7 +100,7 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
         if (it == vocabTable.end()) {
             continue;
         }
-        doc_wordid_vec.emplace_back(it->second);
+        doc_wordid_vec.emplace_back(move(it->second));
     }
     if(doc_wordid_vec.size() <= window_size * 2 + 1) {
         return;
@@ -124,8 +124,8 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
                 emb_delta[i] = 0;
             }
             // average of embedding vector in window
-            int first = max(0, word_index - (int)window_size);
-            int last = min(length, word_index + (int)window_size);
+            const int first = max(0, word_index - (int)window_size);
+            const int last = min(length, word_index + (int)window_size);
             for (int pos = first; pos < last; pos++) {
                 if (pos == word_index) {
                     continue;
@@ -143,8 +143,8 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
 //            puts("");
             
             // train hierarchical softmax
-            size_t cur_wid = doc_wordid_vec[word_index];
-            Node* curNode = treeRoot;
+            const size_t cur_wid = doc_wordid_vec[word_index];
+            const Node* curNode = treeRoot;
             for (size_t c = 0; c < word_code[cur_wid].length(); c++) {
                 int realdir = word_code[cur_wid][c] - '0';
                 double preddir = 0.0f;

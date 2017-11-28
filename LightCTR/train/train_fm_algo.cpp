@@ -106,7 +106,7 @@ void Train_FM_Algo::batchGradCompute(size_t pid, size_t rbegin, size_t rend) {
     
     // synchronize to accumulate global gradient update_W and update_V
     {
-        unique_lock<mutex> glock(this->lock);
+        unique_lock<SpinLock> glock(this->lock);
         for (size_t fid = 0; fid < this->feature_cnt; fid++) {
             *update_W(fid) += update_threadLocal[pid]->at(fid);
 #ifdef FM
@@ -135,15 +135,15 @@ void Train_FM_Algo::accumWVGrad(size_t rid, double pred, vector<double>* update_
         fid = dataSet[rid][i].first;
         assert(fid < this->feature_cnt);
         x = dataSet[rid][i].second;
-        double gradW = LogisticGradW(pred, target, x) + L2Reg_ratio * W[fid];
+        const double gradW = LogisticGradW(pred, target, x) + L2Reg_ratio * W[fid];
         update_local->at(fid) += gradW;
 #ifdef FM
         for (size_t fac_itr = 0; fac_itr < this->factor_cnt; fac_itr++) {
             if (!dropout_mask[fac_itr]) { // apply dropout mask
                 continue;
             }
-            double sum = *getSumVX(rid, fac_itr);
-            double v = *getV(fid, fac_itr);
+            const double sum = *getSumVX(rid, fac_itr);
+            const double v = *getV(fid, fac_itr);
             update_local->at(this->feature_cnt + fid * factor_cnt + fac_itr)
                     += LogisticGradV(gradW, sum, v, x) + L2Reg_ratio * v;
         }

@@ -35,6 +35,22 @@ inline void synchronize() {
     isSynchronized.store(true, std::memory_order_release);
 }
 
+class SpinLock {
+public:
+    SpinLock() : flag_{false} {
+    }
+    
+    void lock() {
+        while (flag_.test_and_set(std::memory_order_acquire));
+    }
+    
+    void unlock() {
+        flag_.clear(std::memory_order_release);
+    }
+protected:
+    std::atomic_flag flag_;
+};
+
 class ThreadPool {
 public:
     ThreadPool(size_t);

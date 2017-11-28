@@ -93,7 +93,7 @@ void Train_FFM_Algo::accumWVGrad(size_t rid, double pred) {
         x = dataSet[rid][i].second;
         field = dataSet[rid][i].field;
         {
-            unique_lock<mutex> glock(this->lock_w);
+            unique_lock<SpinLock> glock(this->lock_w);
             *update_W(fid) += loss * x + L2Reg_ratio * W[fid];;
         }
         
@@ -107,7 +107,7 @@ void Train_FFM_Algo::accumWVGrad(size_t rid, double pred) {
             
             x2 *= x;
             {
-                unique_lock<mutex> glock(this->lock_v);
+                unique_lock<SpinLock> glock(this->lock_v);
                 for (size_t fac_itr = 0; fac_itr < this->factor_cnt; fac_itr++) {
                     const double v1 = *getV_field(fid, field2, fac_itr);
                     const double v2 = *getV_field(fid2, field, fac_itr);

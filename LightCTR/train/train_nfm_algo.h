@@ -48,7 +48,8 @@ private:
         return &update_g[fid];
     }
     inline double* update_V(size_t fid, size_t facid) {
-        assert(this->feature_cnt + fid * this->factor_cnt + facid < this->feature_cnt * (this->factor_cnt + 1));
+        assert(this->feature_cnt + fid * this->factor_cnt + facid <
+               this->feature_cnt * (this->factor_cnt + 1));
         return &update_g[this->feature_cnt + fid * this->factor_cnt + facid];
     }
     void ApplyGrad();
@@ -59,7 +60,7 @@ private:
     ThreadLocal<vector<Matrix*>*> tl_wrapper;
     
     ThreadPool *threadpool;
-    mutex lock_w, lock_v;
+    SpinLock lock_w, lock_v;
 };
 
 #endif /* train_nfm_algo_h */

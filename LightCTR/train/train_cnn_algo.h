@@ -33,12 +33,17 @@ public:
     void init(size_t hidden_size) {
         // Net structure of 28x28: 5x5 12 pool 6 3x3 4 3x3 2 flatten fc-100
         this->inputLayer = new Conv_Layer<ActivationFunction>(NULL, 1, 6, CNN_Config{5, 0, 2});
-        Max_Pooling_Layer<Identity>* poolLayer = new Max_Pooling_Layer<Identity>(this->inputLayer, 6, Pool_Config{2});
-        Conv_Layer<ActivationFunction>* hidden1 = new Conv_Layer<ActivationFunction>(poolLayer, 6, 16, CNN_Config{3, 0, 1});
-        Conv_Layer<ActivationFunction>* hidden2 = new Conv_Layer<ActivationFunction>(hidden1, 16, 20, CNN_Config{3, 0, 1});
+        Max_Pooling_Layer<Identity>* poolLayer =
+            new Max_Pooling_Layer<Identity>(this->inputLayer, 6, Pool_Config{2});
+        Conv_Layer<ActivationFunction>* hidden1 =
+            new Conv_Layer<ActivationFunction>(poolLayer, 6, 16, CNN_Config{3, 0, 1});
+        Conv_Layer<ActivationFunction>* hidden2 =
+            new Conv_Layer<ActivationFunction>(hidden1, 16, 20, CNN_Config{3, 0, 1});
         Adapter_Layer<Identity>* adapter = new Adapter_Layer<Identity>(hidden2, 2);
-        Fully_Conn_Layer<ActivationFunction>* fcLayer = new Fully_Conn_Layer<ActivationFunction>(adapter, 20 * 2 * 2, hidden_size);
-        this->outputLayer = new Fully_Conn_Layer<ActivationFunction>(fcLayer, hidden_size, this->multiclass_output_cnt);
+        Fully_Conn_Layer<ActivationFunction>* fcLayer =
+            new Fully_Conn_Layer<ActivationFunction>(adapter, 20 * 2 * 2, hidden_size);
+        this->outputLayer =
+            new Fully_Conn_Layer<ActivationFunction>(fcLayer, hidden_size, this->multiclass_output_cnt);
     }
     
     vector<double>* Predict(size_t rid, vector<vector<double> >* const dataRow) {

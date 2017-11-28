@@ -127,7 +127,7 @@ public:
                 std::atomic<int> correct(0);
                 for (size_t rid = 0; rid < dataRow_cnt; rid++) {
                     auto task = [&, rid]() {
-                        vector<double> *pred = Predict(rid, &dataSet);
+                        const vector<double> *pred = Predict(rid, &dataSet);
                         
                         outputActivFun.forward(pred);
                         

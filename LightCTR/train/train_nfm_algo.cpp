@@ -87,7 +87,7 @@ void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
                     if (!dropout_mask[fac_itr]) { // apply dropout mask
                         continue;
                     }
-                    double tmp = *getV(fid, fac_itr) * X;
+                    const double tmp = *getV(fid, fac_itr) * X;
                     *getSumVX(rid, fac_itr) += tmp;
                     *fc_input_Matrix->getEle(0, fac_itr) -= 0.5 * tmp * tmp * dropout.rescale();
                 }
@@ -103,7 +103,7 @@ void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
             
             // deep part
             wrapper->at(0) = fc_input_Matrix;
-            vector<double> *fc_pred = this->inputLayer->forward(wrapper);
+            const vector<double> *fc_pred = this->inputLayer->forward(wrapper);
             assert(fc_pred && fc_pred->size() == 1);
 
             fm_pred += fc_pred->at(0);
@@ -136,7 +136,7 @@ void Train_NFM_Algo::accumWideGrad(size_t rid, double pred) {
         x = dataSet[rid][i].second;
         
         {
-            unique_lock<mutex> glock(this->lock_w);
+            unique_lock<SpinLock> glock(this->lock_w);
             *update_W(fid) += LogisticGradW(pred, target, x) + L2Reg_ratio * W[fid];;
         }
     }
@@ -162,7 +162,7 @@ void Train_NFM_Algo::accumDeepGrad(size_t rid, vector<double>* delta) {
             const double v = *getV(fid, fac_itr);
             
             {
-                unique_lock<mutex> glock(this->lock_v);
+                unique_lock<SpinLock> glock(this->lock_v);
                 *update_V(fid, fac_itr) += 0.1 * LogisticGradV(grad, sum, v, X) + L2Reg_ratio * v;
             }
         }

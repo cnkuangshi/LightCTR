@@ -119,7 +119,8 @@ void Train_GBM_Algo::Train() {
                 swap(this->leafNodes, this->leafNodes_tmp);
                 this->leafNodes_tmp.clear();
                 
-                size_t feature_thread_hold = (this->dataSet_feature.size() + this->proc_cnt - 1) / this->proc_cnt;
+                size_t feature_thread_hold = (this->dataSet_feature.size()
+                                              + this->proc_cnt - 1) / this->proc_cnt;
                 
                 // multithread to find different feature's split point
                 this->proc_left = (int)this->feature_cnt * 2;
@@ -127,7 +128,11 @@ void Train_GBM_Algo::Train() {
                 threadpool->init();
                 for (size_t j = 0; j < this->proc_cnt; j++) {
                     size_t start_pos = j * feature_thread_hold;
-                    threadpool->addTask(bind(&Train_GBM_Algo::findSplitFeature_Wrapper, this, start_pos, min(start_pos + feature_thread_hold, this->dataSet_feature.size()), j, inClass));
+                    threadpool->addTask(bind(&Train_GBM_Algo::findSplitFeature_Wrapper,
+                                             this, start_pos,
+                                             min(start_pos + feature_thread_hold,
+                                                 this->dataSet_feature.size()),
+                                             j, inClass));
                 }
                 threadpool->join();
                 assert(proc_left == 0);
@@ -140,7 +145,8 @@ void Train_GBM_Algo::Train() {
                     size_t node_id = (*it)->treeNode->node_index;
                     assert(node_id >= 0);
                     for (size_t pid = 0; pid < this->proc_cnt; pid++) {
-                        SplitNodeStat_Thread *stat = &splitNodeStat_thread[pid * ((1<<this->maxDepth) - 1) + node_id];
+                        SplitNodeStat_Thread *stat =
+                            &splitNodeStat_thread[pid * ((1<<this->maxDepth) - 1) + node_id];
                         if ((*it)->needUpdate(stat->gain, stat->split_feature_index)) {
                             // best split feature&threshold update to leafNodes->RegTreeNode
                             (*it)->treeNode->split_feature_index = stat->split_feature_index;
@@ -154,7 +160,8 @@ void Train_GBM_Algo::Train() {
                     }
                     // update dataRow_LocAtTree
                     if ((*it)->gain == 0 || depth == this->maxDepth) {
-                        // weight less than minLeafW or get max depth, ture tree node into un-active leaf
+                        // weight less than minLeafW or get max depth,
+                        // ture tree node into un-active leaf
                         turn_leaf((*it)->treeNode);
                         double w = weight((*it)->sumGrad, (*it)->sumHess);
                         (*it)->treeNode->leafStat->weight = w;
@@ -177,7 +184,9 @@ void Train_GBM_Algo::Train() {
                 }
 //                for (auto it = leafNodes.begin(); it != leafNodes.end(); it++) {
 //                    auto node = (*it)->treeNode;
-//                    printf("--- Node %zu have %zu rows using threshold %lf %d active=%d\n", node->node_index, (*it)->data_cnt, node->split_threshold, node->split_feature_index, node->leafStat == NULL ? 1 : 0);
+//                    printf("--- Node %zu have %zu rows using threshold %lf %d active=%d\n",
+//                           node->node_index, (*it)->data_cnt, node->split_threshold,
+//                           node->split_feature_index, node->leafStat == NULL ? 1 : 0);
 //                }
                 if (this->leafNodes_tmp.empty()) {
                     // none point to split, break
@@ -229,7 +238,8 @@ void Train_GBM_Algo::findSplitFeature(size_t rbegin, size_t rend,
         auto begin = dataRow_in_fea.begin();
         auto end = dataRow_in_fea.end();
         
-        // calc all data which contain the feature, whether data can be best split point in its three node
+        // calc all data which contain the feature,
+        // whether data can be best split point in its three node
         for (auto it = begin; it != end; it++) {
             size_t rid = it->first;
             if (!sampleDataSetIndex[rid]) {
@@ -243,13 +253,16 @@ void Train_GBM_Algo::findSplitFeature(size_t rbegin, size_t rend,
             
             size_t node_id = node->node_index;
             assert(node_id >= 0);
-            SplitNodeStat_Thread *stat = &splitNodeStat_thread[pid * ((1<<this->maxDepth) - 1) + node_id];
+            SplitNodeStat_Thread *stat =
+                &splitNodeStat_thread[pid * ((1<<this->maxDepth) - 1) + node_id];
             double value = it->second;
             
             if (stat->sumHess == 0) {
                 // first data for one node, pass
-                assert(((stat->split_feature_index == -1) ^ (stat->split_feature_index != -1 && stat->gain != 0)) == 1);
-                assert(stat->sumHess == 0 && stat->sumGrad == 0 && stat->last_value_toCheck == 1e-12);
+                assert(((stat->split_feature_index == -1) ^
+                        (stat->split_feature_index != -1 && stat->gain != 0)) == 1);
+                assert(stat->sumHess == 0 && stat->sumGrad == 0 &&
+                       stat->last_value_toCheck == 1e-12);
             } else {
                 if (fabs(value - stat->last_value_toCheck) > eps_feature_value) {
                     assert(stat->sumHess >= 0);
@@ -257,8 +270,10 @@ void Train_GBM_Algo::findSplitFeature(size_t rbegin, size_t rend,
                         LeafNodeStat* globalLeafStat = node->leafStat;
                         assert(globalLeafStat != NULL);
                         double leftPartGain = gain(stat->sumGrad, stat->sumHess);
-                        double rightPartGain = gain(globalLeafStat->sumGrad - stat->sumGrad, globalLeafStat->sumHess - stat->sumHess);
-                        double splitGain = leftPartGain + rightPartGain - gain(globalLeafStat->sumGrad, globalLeafStat->sumHess);
+                        double rightPartGain = gain(globalLeafStat->sumGrad - stat->sumGrad,
+                                                    globalLeafStat->sumHess - stat->sumHess);
+                        double splitGain = leftPartGain + rightPartGain
+                                        - gain(globalLeafStat->sumGrad, globalLeafStat->sumHess);
                         
                         if (stat->needUpdate(splitGain, fid)) {
                             stat->split_feature_index = (int)fid;
@@ -276,17 +291,22 @@ void Train_GBM_Algo::findSplitFeature(size_t rbegin, size_t rend,
             assert(node->leafStat->sumHess + 1e-10 >= stat->sumHess);
             stat->last_value_toCheck = value;
         }
-        // calculate gain when all NAN dataRow goto one direction and all data contain the feature goto another direction, at the same time some LeafNodes' splitGain equal 0 because all data don't contain the feature
+        // calculate gain when all NAN dataRow goto one direction
+        // and all data contain the feature goto another direction,
+        // at the same time some LeafNodes' splitGain equal 0
+        // because all data don't contain the feature
         for (auto it = leafNodes.begin(); it != leafNodes.end(); it++) {
             size_t node_id = (*it)->treeNode->node_index;
             assert(node_id >= 0);
-            SplitNodeStat_Thread *stat = &splitNodeStat_thread[pid * ((1<<this->maxDepth) - 1) + node_id];
+            SplitNodeStat_Thread *stat =
+                &splitNodeStat_thread[pid * ((1<<this->maxDepth) - 1) + node_id];
             if (stat->gain == 0) { // the leafNode don't split by this feature
                 stat->clear();
                 continue;
             }
             double leftPartGain = gain(stat->sumGrad, stat->sumHess);
-            double rightPartGain = gain((*it)->sumGrad - stat->sumGrad, (*it)->sumHess - stat->sumHess);
+            double rightPartGain = gain((*it)->sumGrad - stat->sumGrad,
+                                        (*it)->sumHess - stat->sumHess);
             double splitGain = leftPartGain + rightPartGain - gain((*it)->sumGrad, (*it)->sumHess);
             
             if (stat->needUpdate(splitGain, fid)) {
@@ -302,7 +322,7 @@ void Train_GBM_Algo::findSplitFeature(size_t rbegin, size_t rend,
         }
     }
     {
-        unique_lock<mutex> glock(this->lock);
+        unique_lock<SpinLock> glock(this->lock);
         assert(this->proc_left > 0);
         proc_left -= (rend - rbegin);
     }

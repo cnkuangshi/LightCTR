@@ -1,6 +1,6 @@
 ![Alt text -w135](./LightCTR_LOGO.png)
 ## LightCTR Overview
-LightCTR is a light-weight framework that combines mainstream algorithms of Click-Through-Rate Based Machine Learning and Deep Learning. The library is suitable for sparse data and designed for Stand-alone Multi-threaded Model Training.
+LightCTR is a lightweight framework that combines mainstream algorithms of Click-Through-Rate prediction Based Machine Learning and Deep Learning. The library is suitable for sparse data and designed for Stand-alone Multi-threaded Model Training.
 
 Meanwhile, LightCTR is also an open source project that oriented to code readers. The clear execute logic will be of significance to leaners on Machine-Learning-related field.
 
@@ -36,7 +36,7 @@ LightCTR可通过分析用户评论、兴趣得到推荐信息，作为点击率
 * Regularization: L1, L2, Dropout, Partially connected
 * Template-customized Activation and Loss function
 * Evaluate methods including F1, AUC
-* Multi-threaded training and Vectorized compiling
+* Lock-free Multi-threaded training and Vectorized compiling
 
 ## Quick Start
 * LightCTR depends on C++11 only

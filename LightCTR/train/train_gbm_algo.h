@@ -101,7 +101,7 @@ public:
     
 private:
     ThreadPool *threadpool;
-    mutex lock;
+    SpinLock lock;
     size_t proc_cnt;
     int proc_left;
     SplitNodeStat_Thread* splitNodeStat_thread;

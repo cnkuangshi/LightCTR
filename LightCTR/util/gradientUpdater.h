@@ -247,7 +247,7 @@ public:
     }
     void update(size_t offset, size_t len, double*& weight, double*& grad) {
         assert(offset + len <= __ftrl_params_cnt);
-        double alpha = 2.0f, lambda1 = 5.0f, beta = 1.0f, lambda2 = 0.0f;
+        double alpha = 0.15f, lambda1 = 1.0f, beta = 1.0f, lambda2 = 1.0f;
         for (size_t fid = 0; fid < len; fid++) {
             if (grad[fid] == 0) {
                 continue;

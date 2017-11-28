@@ -39,18 +39,15 @@ public:
             }
         }
         
-//        cout << "- Forward Flatten data:";
         FOR(i, prevLOutput->size()) {
             size_t offset = i * prevLOutput->at(i)->x_len * prevLOutput->at(i)->y_len;
             // Flatten data row
             FOR(x, prevLOutput->at(i)->x_len) {
                 FOR(y, prevLOutput->at(i)->y_len) {
                     *output_act->getEle(0, offset + x * prevLOutput->at(i)->y_len + y) = *prevLOutput->at(i)->getEle(x, y);
-//                    cout << " " << *output_act->getEle(0, offset + x * prevLOutput->at(i)->y_len + y);
                 }
             }
         }
-//        cout << endl << endl;
         
         // init threadlocal wrapper
         vector<Matrix*>*& wrapper = *tl_wrapper;
@@ -69,7 +66,6 @@ public:
         vector<Matrix*>*& input_delta = *tl_input_delta;
         assert(input_delta);
         
-//        cout << "-- Backward Flatten data:";
         FOR(i, this->input_dimention) {
             auto m_ptr = input_delta->at(i);
             assert(m_ptr);
@@ -77,11 +73,9 @@ public:
             FOR(x, m_ptr->x_len) {
                 FOR(y, m_ptr->y_len) {
                     *m_ptr->getEle(x, y) = outputDelta->at(offset + x * m_ptr->y_len + y);
-//                    cout << " " << *m_ptr->getEle(x, y);
                 }
             }
         }
-//        cout << endl << endl;
         this->prevLayer->backward(input_delta);
     }
     

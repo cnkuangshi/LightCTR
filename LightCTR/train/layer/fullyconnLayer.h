@@ -159,16 +159,18 @@ public:
         
         // Asynchronous update weight and bias to minimize delta
         {
-            unique_lock<mutex> glock(this->lock);
+            unique_lock<SpinLock> glock(this->lock);
             FOR(j, this->output_dimention) {
                 FOR(i, this->input_dimention) {
                     if (this->bInputLayer) {
                         vector<double>*& input = *tl_input;
                         assert(input);
-                        GradientUpdater::update(getWeightDelta(i, j), outputDelta->at(j) * input->at(i));
+                        GradientUpdater::update(getWeightDelta(i, j),
+                                                outputDelta->at(j) * input->at(i));
                     } else {
                         assert(prev_output_act != NULL);
-                        GradientUpdater::update(getWeightDelta(i, j), outputDelta->at(j) * prev_output_act->at(i));
+                        GradientUpdater::update(getWeightDelta(i, j),
+                                                outputDelta->at(j) * prev_output_act->at(i));
                     }
                 }
                 GradientUpdater::update(&biasDelta[j], outputDelta->at(j));
@@ -192,7 +194,8 @@ public:
     
     void applyBatchGradient() {
         updater.update(0, this->output_dimention, bias, biasDelta);
-        updater.update(this->output_dimention, this->output_dimention * this->input_dimention, weight, weightDelta);
+        updater.update(this->output_dimention, this->output_dimention * this->input_dimention,
+                       weight, weightDelta);
         
         if (this->nextLayer) {
             this->nextLayer->applyBatchGradient();
@@ -203,11 +206,13 @@ public:
     
 protected:
     inline double* getWeight(size_t in_d, size_t out_d) const {
-        assert(in_d * this->output_dimention + out_d < this->input_dimention * this->output_dimention);
+        assert(in_d * this->output_dimention + out_d <
+               this->input_dimention * this->output_dimention);
         return &weight[in_d * this->output_dimention + out_d];
     }
     inline double* getWeightDelta(size_t in_d, size_t out_d) const {
-        assert(in_d * this->output_dimention + out_d < this->input_dimention * this->output_dimention);
+        assert(in_d * this->output_dimention + out_d <
+               this->input_dimention * this->output_dimention);
         return &weightDelta[in_d * this->output_dimention + out_d];
     }
     

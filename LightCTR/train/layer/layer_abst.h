@@ -63,7 +63,7 @@ public:
     
     bool bInputLayer;
     
-    mutex lock;
+    SpinLock lock;
 };
 
 #endif /* layer_abst_h */

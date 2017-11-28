@@ -283,7 +283,7 @@ public:
     
 private:
     void accumGrad(Matrix* base, Matrix* delta, Matrix* grad = NULL) {
-        unique_lock<mutex> glock(this->lock);
+        unique_lock<SpinLock> glock(this->lock);
         assert(delta);
         if (grad) {
             if (base->x_len == dimension) { // w DxH

@@ -40,12 +40,14 @@ public:
     void init(size_t hidden_size, size_t gauss_cnt) {
         // Find expectation nomal distribution
         this->encodeLayer = new Fully_Conn_Layer<ActivationFunction>(NULL, feature_cnt, hidden_size);
-        Fully_Conn_Layer<Identity>* hidden1 = new Fully_Conn_Layer<Identity>(encodeLayer, hidden_size, gauss_cnt * 2);
+        Fully_Conn_Layer<Identity>* hidden1 =
+            new Fully_Conn_Layer<Identity>(encodeLayer, hidden_size, gauss_cnt * 2);
         // sample
         sampleLayer = new Sample_Layer<Identity>(hidden1, gauss_cnt * 2);
         decodeLayer = new Fully_Conn_Layer<ActivationFunction>(sampleLayer, gauss_cnt, hidden_size);
         // tuning parameters to Maximize Likelihood
-        this->outputLayer = new Fully_Conn_Layer<ActivationFunction>(decodeLayer, hidden_size, feature_cnt);
+        this->outputLayer =
+            new Fully_Conn_Layer<ActivationFunction>(decodeLayer, hidden_size, feature_cnt);
     }
     
     void Train() {

@@ -58,7 +58,7 @@ private:
     AdagradUpdater_Num updater;
     
     ThreadPool *threadpool;
-    mutex lock_w, lock_v;
+    SpinLock lock_w, lock_v;
 };
 
 #endif /* train_ffm_algo_h */

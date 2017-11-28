@@ -35,7 +35,7 @@ public:
     
 private:
     ThreadPool *threadpool;
-    mutex lock;
+    SpinLock lock;
     int proc_data_left;
     size_t epoch_cnt;
     
