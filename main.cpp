@@ -45,6 +45,7 @@ using namespace std;
 
 size_t GradientUpdater::__global_minibatch_size(50);
 double GradientUpdater::__global_learning_rate(0.1);
+double GradientUpdater::__global_ema_rate(0.99);
 double GradientUpdater::__global_sparse_rate(0.6);
 double GradientUpdater::__global_lambdaL2(0.001f);
 double GradientUpdater::__global_lambdaL1(1e-5);

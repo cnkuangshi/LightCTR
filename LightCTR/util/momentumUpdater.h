@@ -187,7 +187,7 @@ public:
     void update(size_t offset, size_t len, T& weight, T& grad) {
         assert(offset + len <= __adam_params_cnt);
         
-        iter++;
+        iter++; // get warming up
         double correction = sqrt(1 - pow(__global_momentum_adam2, iter))
                             / (1 - pow(__global_momentum, iter));
         
@@ -199,7 +199,7 @@ public:
                 __adam_accum[__adam_params_cnt + offset + i] =
                     __adam_accum[__adam_params_cnt + offset + i] * __global_momentum
                     + (1.0 - __global_momentum) * g * g;
-                
+                // accumulate like RMSProp
                 tmp = __adam_accum[offset + i]
                      / (sqrt(__adam_accum[__adam_params_cnt + offset + i]) + 1e-12);
                 

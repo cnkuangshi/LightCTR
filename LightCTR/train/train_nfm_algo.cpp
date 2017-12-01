@@ -22,7 +22,8 @@ void Train_NFM_Algo::init() {
     printf("Training NFM dropout = %.2f\n", dropout.dropout_rate);
     
     printf("-- Inner FC-1 ");
-    this->inputLayer = new Fully_Conn_Layer<Sigmoid>(NULL, this->factor_cnt, this->hidden_layer_size);
+    this->inputLayer = new Fully_Conn_Layer<Sigmoid>(NULL, this->factor_cnt,
+                                                     this->hidden_layer_size);
     this->inputLayer->needInputDelta = true;
     printf("-- Inner FC-2 ");
     this->outputLayer = new Fully_Conn_Layer<Sigmoid>(inputLayer, this->hidden_layer_size, 1);

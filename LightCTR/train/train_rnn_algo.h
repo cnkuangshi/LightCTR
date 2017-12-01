@@ -15,7 +15,8 @@
 using namespace std;
 
 template <typename LossFunction, typename ActivationFunction, typename OutputActivationFunction>
-class Train_RNN_Algo : public DL_Algo_Abst<LossFunction, ActivationFunction, OutputActivationFunction> {
+class Train_RNN_Algo : public DL_Algo_Abst<LossFunction, ActivationFunction,
+                              OutputActivationFunction> {
 public:
     Train_RNN_Algo(string dataPath, size_t _epoch, size_t _feature_cnt,
                    size_t _hidden_size, size_t _recurrent_cnt, size_t _multiclass_output_cnt = 1):

@@ -35,7 +35,8 @@ public:
             input_delta = new vector<Matrix*>();
             input_delta->resize(this->input_dimention);
             FOR(i, this->input_dimention) {
-                input_delta->at(i) = new Matrix(prevLOutput->at(0)->x_len, prevLOutput->at(0)->y_len);
+                input_delta->at(i) =
+                        new Matrix(prevLOutput->at(0)->x_len, prevLOutput->at(0)->y_len);
             }
         }
         
@@ -44,7 +45,8 @@ public:
             // Flatten data row
             FOR(x, prevLOutput->at(i)->x_len) {
                 FOR(y, prevLOutput->at(i)->y_len) {
-                    *output_act->getEle(0, offset + x * prevLOutput->at(i)->y_len + y) = *prevLOutput->at(i)->getEle(x, y);
+                    *output_act->getEle(0, offset + x * prevLOutput->at(i)->y_len + y) =
+                            *prevLOutput->at(i)->getEle(x, y);
                 }
             }
         }

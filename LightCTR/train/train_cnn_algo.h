@@ -16,7 +16,8 @@
 using namespace std;
 
 template <typename LossFunction, typename ActivationFunction, typename OutputActivationFunction>
-class Train_CNN_Algo : public DL_Algo_Abst<LossFunction, ActivationFunction, OutputActivationFunction> {
+class Train_CNN_Algo : public DL_Algo_Abst<LossFunction,
+                              ActivationFunction, OutputActivationFunction> {
 public:
     Train_CNN_Algo(string dataPath, size_t _epoch, size_t _feature_cnt,
                    size_t _hidden_size, size_t _multiclass_output_cnt = 1):
@@ -43,7 +44,8 @@ public:
         Fully_Conn_Layer<ActivationFunction>* fcLayer =
             new Fully_Conn_Layer<ActivationFunction>(adapter, 20 * 2 * 2, hidden_size);
         this->outputLayer =
-            new Fully_Conn_Layer<ActivationFunction>(fcLayer, hidden_size, this->multiclass_output_cnt);
+            new Fully_Conn_Layer<ActivationFunction>(fcLayer, hidden_size,
+                                                     this->multiclass_output_cnt);
     }
     
     vector<double>* Predict(size_t rid, vector<vector<double> >* const dataRow) {

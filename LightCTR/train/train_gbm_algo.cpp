@@ -220,6 +220,7 @@ void Train_GBM_Algo::findSplitFeature_Wrapper(size_t rbegin, size_t rend,
     findSplitFeature(rbegin, rend, pid, 0, inClass);
     // from max right to min left, default put NAN data into left
     findSplitFeature(rbegin, rend, pid, 1, inClass);
+    // TODO split by histogram
 }
 
 void Train_GBM_Algo::findSplitFeature(size_t rbegin, size_t rend,

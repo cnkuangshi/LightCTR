@@ -33,6 +33,7 @@ public:
     }
     static size_t __global_minibatch_size;
     static double __global_learning_rate;
+    static double __global_ema_rate;
     static double __global_sparse_rate;
     static double __global_lambdaL2, __global_lambdaL1;
     
@@ -178,7 +179,7 @@ public:
                 __rms_accum[offset + i] = new Matrix(tmp->x_len, tmp->y_len);
                 __rms_accum[offset + i]->zeroInit();
             }
-            __rms_accum[offset + i]->add(tmp, 0.5, 0.5);
+            __rms_accum[offset + i]->add(tmp, 1.0 - __global_ema_rate, __global_ema_rate);
             
             tmp = __rms_accum[offset + i]->copy(tmp);
             tmp->add(1e-12);
@@ -214,7 +215,10 @@ public:
         for (size_t i = 0; i < len; i++) {
             double g = grad[i] / __global_minibatch_size, tmp;
             if (g != 0) {
-                __rms_accum[offset + i] = __rms_accum[offset + i] * 0.5 + 0.5 * g * g;
+                // ema_rate closer to 1, EMA can smooth more elements (1-q^n)/(1-q)
+                __rms_accum[offset + i] =
+                    __rms_accum[offset + i] * __global_ema_rate +
+                    (1.0 - __global_ema_rate) * g * g;
                 tmp = 1.0 / (__rms_accum[offset + i] + 1e-12);
                 g *= sqrt(tmp);
                 
@@ -247,28 +251,28 @@ public:
     }
     void update(size_t offset, size_t len, double*& weight, double*& grad) {
         assert(offset + len <= __ftrl_params_cnt);
-        double alpha = 0.15f, lambda1 = 1.0f, beta = 1.0f, lambda2 = 1.0f;
         for (size_t fid = 0; fid < len; fid++) {
             if (grad[fid] == 0) {
                 continue;
             }
-            double g2 = grad[fid] * grad[fid];
+            const double g2 = grad[fid] * grad[fid];
             ftrl_sigma[fid] = (sqrt(ftrl_n[fid] + g2) - sqrt(ftrl_n[fid])) / alpha;
             ftrl_z[fid] += grad[fid] - ftrl_sigma[fid] * weight[fid];
             ftrl_n[fid] += g2;
             if(fabs(ftrl_z[fid]) <= lambda1) {
                 weight[fid] = 0.0f;
             } else {
-                double tmpr = 0.0f;
-                if(ftrl_z[fid] >= 0)
-                    tmpr = ftrl_z[fid] - lambda1;
+                double tmpr = ftrl_z[fid];
+                if(tmpr >= 0)
+                    tmpr -= lambda1;
                 else
-                    tmpr = ftrl_z[fid] + lambda1;
+                    tmpr += lambda1;
                 weight[fid] = - tmpr / ((beta + sqrt(ftrl_n[fid])) / alpha + lambda2);
             }
         }
     }
 private:
+    const double alpha = 0.15f, lambda1 = 1.0f, beta = 1.0f, lambda2 = 1.0f;
     size_t __ftrl_params_cnt;
     double *ftrl_n, *ftrl_sigma, *ftrl_z;
 };

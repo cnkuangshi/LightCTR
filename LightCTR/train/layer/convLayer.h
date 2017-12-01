@@ -105,10 +105,14 @@ public:
             FOR(feamid, this->input_dimention) {
                 if (bConnect(feamid, filid)) {
                     if (m_ptr == NULL) {
-                        prevLOutput->at(feamid)->convolution(m_ptr, filterArr[filid], config.padding, config.stride);
+                        prevLOutput->at(feamid)->convolution(m_ptr,
+                                                             filterArr[filid],
+                                                             config.padding, config.stride);
                         assert(m_ptr);
                     } else {
-                        prevLOutput->at(feamid)->convolution(cache, filterArr[filid], config.padding, config.stride);
+                        prevLOutput->at(feamid)->convolution(cache,
+                                                             filterArr[filid],
+                                                             config.padding, config.stride);
                         assert(cache);
                         m_ptr->add(cache);
                     }
@@ -161,17 +165,20 @@ public:
                     if (bConnect(i, j)) {
                         // delta Z_(L) conv rot180 W_(L) * di-acti( Z_(L-1) )
                         if (m_ptr == NULL) {
-                            outputDelta->at(j)->deconvolution_Delta(m_ptr, filterArr[j], config.padding, config.stride);
+                            outputDelta->at(j)->deconvolution_Delta(m_ptr, filterArr[j],
+                                                                    config.padding, config.stride);
                             assert(m_ptr);
                         } else {
-                            outputDelta->at(j)->deconvolution_Delta(cache_bp, filterArr[j], config.padding, config.stride);
+                            outputDelta->at(j)->deconvolution_Delta(cache_bp, filterArr[j],
+                                                                    config.padding, config.stride);
                             assert(cache_bp);
                             m_ptr->add(cache_bp);
                         }
                     }
                 }
                 m_ptr->operate([&, i](vector<double>* matrix) {
-                    this->prevLayer->getActiveFun().backward(matrix, this->prevLayer->output()->at(i)->pointer(), matrix);
+                    this->prevLayer->getActiveFun().backward(matrix,
+                            this->prevLayer->output()->at(i)->pointer(), matrix);
                 });
                 input_delta->at(i) = m_ptr;
             }
@@ -190,10 +197,13 @@ public:
                         if (this->bInputLayer) {
                             vector<Matrix*>*& input = *tl_input;
                             assert(input);
-                            outputDelta->at(filid)->deconvolution_Filter(filterDelta[filid], input->at(feamid), config.padding, config.stride);
+                            outputDelta->at(filid)->deconvolution_Filter(filterDelta[filid],
+                                    input->at(feamid), config.padding, config.stride);
                         } else {
                             assert(prev_output_act != NULL);
-                            outputDelta->at(filid)->deconvolution_Filter(filterDelta[filid], this->prevLayer->output()->at(feamid), config.padding, config.stride);
+                            outputDelta->at(filid)->deconvolution_Filter(filterDelta[filid],
+                                    this->prevLayer->output()->at(feamid),
+                                    config.padding, config.stride);
                         }
                     }
                 }
