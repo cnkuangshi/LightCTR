@@ -15,6 +15,7 @@
 #include "../util/activations.h"
 #include "../util/gradientUpdater.h"
 #include "../common/thread_pool.h"
+#include "../common/lock.h"
 using namespace std;
 
 // Field-aware FM
@@ -25,7 +26,7 @@ public:
                    size_t _factor_cnt, size_t _field_cnt):
     FM_Algo_Abst(_dataPath, _factor_cnt, _field_cnt), epoch(_epoch_cnt) {
         assert(this->feature_cnt != 0);
-        threadpool = new ThreadPool(1);
+        threadpool = new ThreadPool(this->proc_cnt);
         init();
     }
     

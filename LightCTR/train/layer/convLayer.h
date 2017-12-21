@@ -131,7 +131,7 @@ public:
             m_ptr->add(bias[filid]);
             
             // apply Activation Function
-            m_ptr->operate([&](vector<double>* matrix) {
+            m_ptr->operate([this](vector<double>* matrix) {
                 assert(matrix);
                 this->getActiveFun().forward(matrix);
             });

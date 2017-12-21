@@ -19,10 +19,6 @@
 #include <atomic>
 #include "assert.h"
 
-#define CAS32(ptr, val_old, val_new)({ char ret; __asm__ __volatile__("lock; cmpxchgl %2,%0; setz %1": "+m"(*ptr), "=q"(ret): "r"(val_new),"a"(val_old): "memory"); ret;})
-#define wmb() __asm__ __volatile__("sfence":::"memory")
-#define rmb() __asm__ __volatile__("lfence":::"memory")
-
 static std::atomic<bool> isSynchronized(true);
 
 inline void setNotSynchronized() {
@@ -34,22 +30,6 @@ inline void synchronize() {
     }
     isSynchronized.store(true, std::memory_order_release);
 }
-
-class SpinLock {
-public:
-    SpinLock() : flag_{false} {
-    }
-    
-    void lock() {
-        while (flag_.test_and_set(std::memory_order_acquire));
-    }
-    
-    void unlock() {
-        flag_.clear(std::memory_order_release);
-    }
-protected:
-    std::atomic_flag flag_;
-};
 
 class ThreadPool {
 public:
@@ -153,7 +133,7 @@ public:
     }
     
     // get thread local object, T expect to be a pointer
-    T* get(bool createLocal = true) {
+    inline T* get(bool createLocal = true) {
         T* p = (T*)pthread_getspecific(threadSpecificKey_);
         if (!p && createLocal) {
             p = new T();
@@ -164,7 +144,7 @@ public:
     }
     
     // overwrite threadlocal object and destructed last one
-    void set(T* p) {
+    inline void set(T* p) {
         if (T* q = get(false)) {
             dataDestructor(q);
         }

@@ -12,9 +12,11 @@
 #include <cstdio>
 #include <mutex>
 #include "../../common/thread_pool.h"
+#include "../../common/lock.h"
 #include "../../util/activations.h"
 #include "../../util/matrix.h"
 #include "../../util/gradientUpdater.h"
+#include "../../util/momentumUpdater.h"
 #include "assert.h"
 
 #define FOR(i,n) for(size_t i = 0;i < n;i++)

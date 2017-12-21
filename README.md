@@ -1,6 +1,6 @@
 ![Alt text -w135](./LightCTR_LOGO.png)
 ## LightCTR Overview
-LightCTR is a lightweight framework that combines mainstream algorithms of Click-Through-Rate prediction Based Machine Learning and Deep Learning. The library is suitable for sparse data and designed for Stand-alone Multi-threaded Model Training.
+LightCTR is a lightweight and scalable framework that combines mainstream algorithms of Click-Through-Rate prediction Based Machine Learning, Deep Learning and Philosophy of Parameter Server. The library is suitable for sparse data and designed for Large-scale Distributed Model Training.
 
 Meanwhile, LightCTR is also an open source project that oriented to code readers. The clear execute logic will be of significance to leaners on Machine-Learning-related field.
 
@@ -16,6 +16,9 @@ LightCTR可通过分析用户评论、兴趣得到推荐信息，作为点击率
 
 #### 分层模型融合
 为了兼顾点击率预估的性能与效果，可使用不同模型逐层预测，如第一层采用在线学习、并引入稀疏性解的简单模型`LightCTR::FTRL_LR`，第二层采用`LightCTR::MLP`、`LightCTR::NFM`等复杂模型进行精细预测。
+
+#### 多机多线程并行计算
+基于参数服务器与异步梯度下降理论，LightCTR支持可扩展性的模型参数集群训练。集群分为Master, ParamServer与Worker三种角色，一个集群有一个Master负责集群启动与运行状态的维护，大规模模型参数以DHT散布在多个参数服务器上，与多个负责模型梯度运算的Worker协同，每轮训练都先从ParamServer拉取(Pull)一个样本Batch的参数，运算得到的参数梯度推送(Push)到ParamServer进行梯度汇总与参数更新。LightCTR分布式集群采取心跳监控、消息重传等容错方式。
 
 ## List of Implemented Algorithms
 
@@ -36,12 +39,14 @@ LightCTR可通过分析用户评论、兴趣得到推荐信息，作为点击率
 * Regularization: L1, L2, Dropout, Partially connected
 * Template-customized Activation and Loss function
 * Evaluate methods including F1, AUC
-* Lock-free Multi-threaded training and Vectorized compiling
+* Support distributed model training based on Parameter Server and Async-SGD
+* Shared parameters Key-Value pairs store in physical nodes by DHT
+* Lock-free Stand-alone Multi-threaded training and Vectorized compiling
 
 ## Quick Start
-* LightCTR depends on C++11 only
-* Change configuration (e.g. Learning Rate) in `main.cpp`
-* Build by Make and Debug by Xcode
+* LightCTR depends on C++11 and ZeroMQ only
+* Change configuration (e.g. Learning Rate, Data source) in `main.cpp`
+* run `./build.sh` to start training task
 * Current CI Status: [![Build Status](https://travis-ci.org/cnkuangshi/LightCTR.svg?branch=master)](https://travis-ci.org/cnkuangshi/LightCTR)
 
 ## Welcome to Contribute

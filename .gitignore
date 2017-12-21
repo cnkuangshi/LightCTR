@@ -1,5 +1,5 @@
 *.o
-*.a
 *.out
 *.dylib
-LightCTR.xcodeproj/xcuserdata
+LightCTR.xcodeproj
+LightCTR/third/zeromq-4.2.2

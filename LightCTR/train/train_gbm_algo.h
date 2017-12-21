@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <cmath>
 #include "../common/thread_pool.h"
+#include "../common/lock.h"
 #include "../util/random.h"
 #include "../util/activations.h"
 #include "../gbm_algo_abst.h"

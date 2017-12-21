@@ -10,6 +10,11 @@
 #include "LightCTR/common/time.h"
 #include "LightCTR/common/system.h"
 
+#include "LightCTR/distribut/master.h"
+#include "LightCTR/distribut/paramserver.h"
+#include "LightCTR/distribut/worker.h"
+#include "LightCTR/distributed_algo_abst.h"
+
 #include "LightCTR/fm_algo_abst.h"
 #include "LightCTR/train/train_fm_algo.h"
 #include "LightCTR/train/train_ffm_algo.h"
@@ -37,6 +42,7 @@ using namespace std;
 #define TEST_NFM
 
 /* Recommend Configuration
+ * Distributed LR lr=0.1
  * FM/FFM/NFM batch=50 lr=0.1
  * VAE batch=10 lr=0.1
  * CNN batch=10 lr=0.1
@@ -55,6 +61,18 @@ double MomentumUpdater::__global_momentum_adam2(0.999);
 bool GradientUpdater::__global_bTraining(true);
 
 int main(int argc, const char * argv[]) {
+    
+#ifdef MASTER
+    Master();
+#elif defined PS
+    ParamServer<Key, Value>();
+#elif defined WORKER
+    Distributed_Algo_Abst *train = new Distributed_Algo_Abst(
+                                 "./data/train_sparse",
+                                 /*epoch*/20);
+//    train->UnitTest();
+    train->Train();
+#else
     int T = 200;
     
 #ifdef TEST_FM
@@ -165,6 +183,8 @@ int main(int argc, const char * argv[]) {
     }
     train->saveModel(0);
     delete train;
+#endif
+    puts("Exit 0");
     return 0;
 }
 

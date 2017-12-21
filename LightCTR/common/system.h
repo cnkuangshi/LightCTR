@@ -23,6 +23,35 @@
 #define unlikely(x)  __builtin_expect(!!(x), 0)
 #endif
 
+inline int getEnv(const char *env_var, int defalt) {
+    auto p = getenv(env_var);
+    if (!p) {
+        return defalt;
+    }
+    return atoi(p);
+}
+
+inline const char * getEnv(const char *env_var, const char *defalt) {
+    auto p = getenv(env_var);
+    if (!p) {
+        return defalt;
+    }
+    return p;
+}
+
+template <class FUNC, class... ARGS>
+auto ignore_signal_call(FUNC func, ARGS &&... args) ->
+typename std::result_of<FUNC(ARGS...)>::type {
+    for (;;) {
+        auto err = func(args...);
+        if (err < 0 && errno == EINTR) {
+            puts("Ignored EINTR Signal, retry");
+            continue;
+        }
+        return err;
+    }
+}
+
 double SystemMemoryUsage() {
     FILE* fp = fopen("/proc/meminfo", "r");
     assert(fp);

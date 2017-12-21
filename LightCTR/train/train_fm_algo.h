@@ -15,6 +15,7 @@
 #include "../util/activations.h"
 #include "../util/gradientUpdater.h"
 #include "../common/thread_pool.h"
+#include "../common/lock.h"
 using namespace std;
 
 class Train_FM_Algo : public FM_Algo_Abst {
