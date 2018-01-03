@@ -9,6 +9,8 @@
 #ifndef evaluator_h
 #define evaluator_h
 
+#include <string.h>
+
 struct EvalInfo {
     // true positives, judge label=1 rightly
     double TP;

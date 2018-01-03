@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <cmath>
+#include <string.h>
 #include "../common/thread_pool.h"
 #include "../common/lock.h"
 #include "../util/random.h"
