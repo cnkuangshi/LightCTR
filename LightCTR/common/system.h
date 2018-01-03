@@ -14,6 +14,7 @@
 #include <fstream>
 #include <vector>
 #include <cstdlib>
+#include <string.h>
 #include "assert.h"
 
 #ifndef likely

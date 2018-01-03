@@ -9,6 +9,7 @@
 #ifndef activation_h
 #define activation_h
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
 #include "assert.h"

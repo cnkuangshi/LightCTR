@@ -9,6 +9,7 @@
 #ifndef gradientUpdater_h
 #define gradientUpdater_h
 
+#include <string.h>
 #include "matrix.h"
 
 class GradientUpdater {

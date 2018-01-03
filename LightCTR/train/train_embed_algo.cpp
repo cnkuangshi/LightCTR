@@ -7,6 +7,7 @@
 //
 
 #include "train_embed_algo.h"
+#include <string.h>
 #include <stack>
 
 #define FOR_D for (int i = 0; i < emb_dimention; i++)

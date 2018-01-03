@@ -7,6 +7,7 @@
 //
 
 #include "train_gmm_algo.h"
+#include <string.h>
 #include "../util/random.h"
 
 #define FOR(i,n) for(size_t i = 0;i < n;i++)
