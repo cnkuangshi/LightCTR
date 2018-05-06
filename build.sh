@@ -1,6 +1,6 @@
 #!/bin/sh
 if [ $# -lt 3 ]; then
-    echo "usage: $0 ps_num worker_num master_ip_port"
+    echo "usage: $0 [ps_num] [worker_num] [master_ip_port tcp://127.0.0.1:17832]"
     exit -1;
 fi
 
@@ -15,7 +15,13 @@ make ps &
 make worker &
 
 wait
-echo "Build Success."
+echo
+echo
+echo "[Build Success]"
+echo "Please copy different BIN file to corresponding machine, run Master first"
+echo
+echo "[or] Press any key to run clunster on standalone mode"
+read -n 1
 
 ./LightCTR_BIN_Master &
 

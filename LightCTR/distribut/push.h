@@ -62,6 +62,9 @@ private:
         
         for (auto it = grads.begin(); it != grads.end(); it++) {
             assert(it->second.checkValid());
+            if (!it->second.checkPreferredValue()) {
+                continue;
+            }
             const size_t to_id = BEGIN_ID_OF_PS +
                                  gConsistentHash.getNode(it->first);
             if (push_map.count(to_id) == 0) {

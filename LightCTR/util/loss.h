@@ -65,4 +65,32 @@ public:
     }
 };
 
+template <typename T, typename L>
+class Logistic_Softmax : public Loss<T, L> {
+public:
+    T loss(const vector<T>* pred, const vector<L>* label) const {
+        assert(pred->size() == label->size());
+        T sum = 0.0f;
+        for (size_t i = 0; i < pred->size(); i++) {
+            if (label->at(i) == 1) {
+                sum += log(pred->at(i));
+            }
+        }
+        assert(!isnan(sum));
+        return sum;
+    }
+    void gradient(const vector<T>* pred, const vector<L>* label, vector<T>* gradient) {
+        assert(pred->size() == label->size());
+        assert(gradient->size() == label->size());
+        
+        for (size_t i = 0; i < pred->size(); i++) {
+            if (label->at(i) == 1) {
+                gradient->at(i) = 1.0f - pred->at(i);
+            } else {
+                gradient->at(i) = - pred->at(i);
+            }
+        }
+    }
+};
+
 #endif /* loss_h */

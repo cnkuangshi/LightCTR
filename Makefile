@@ -1,11 +1,11 @@
 export CC  = gcc
 export CXX = g++
-export CFLAGS = -std=c++11 -Wall -O3 -msse2 -Wno-unknown-pragmas -Wno-reorder -Wno-null-conversion
+export CFLAGS = -std=c++11 -Wall -O3 -D__AVX -mavx -mssse3 -Wno-unknown-pragmas -Wno-reorder -Wno-null-conversion
 
 BIN = LightCTR_BIN
 ZMQ_INC = ./LightCTR/third/zeromq/include
 ZMQ_LIB = ./LightCTR/third/zeromq/lib/libzmq.a
-OBJ = 
+OBJ =
 .PHONY: clean all
 
 all: $(BIN) $(OBJ)
@@ -19,7 +19,7 @@ master : $(DISTRIBUT)
 ps : $(DISTRIBUT)
 worker : $(DISTRIBUT)
 
-$(BIN) : 
+$(BIN) :
 	$(CXX) $(CFLAGS) -Xlinker $(ZMQ_LIB) $(LDFLAGS) -o $@ $(filter %.cpp %.o %.c, $^)
 
 master :
@@ -31,7 +31,7 @@ ps :
 worker :
 	$(CXX) $(CFLAGS) -Xlinker $(ZMQ_LIB) $(LDFLAGS) -o LightCTR_BIN_Worker $(filter %.cpp %.o %.c, $^) -D WORKER
 
-$(OBJ) : 
+$(OBJ) :
 	$(CXX) -c $(CFLAGS) -o $@ $(firstword $(filter %.cpp %.c, $^) )
 
 install:

@@ -27,6 +27,9 @@ struct Value {
     Value() {
         w = 0.0f;
     }
+    Value(const Value &x) {
+        w = x.w;
+    }
     Value(double _w): w(_w) {
     }
     Value& operator+ (const Value &x) {
@@ -41,6 +44,10 @@ struct Value {
         w *= x.w;
         return *this;
     }
+    Value& operator* (double x) {
+        w *= x;
+        return *this;
+    }
     Value& operator/ (const Value &x) {
         w /= x.w;
         return *this;
@@ -53,21 +60,31 @@ struct Value {
         w = x.w;
         return *this;
     }
+    Value& operator=(Value &&x) {
+        w = x.w;
+        return *this;
+    }
     void initParam() {
         w = 0.0f; // init by zero or GaussRand()
     }
     bool checkValid() const {
         return !isnan(w) && !isinf(w);
     }
-    Value sqrt() const {
-        assert(w > 0);
-        return Value(::sqrt(w));
+    bool checkPreferredValue() const {
+        // ignore obsolete feature
+        return abs(w) > 1e-12 && abs(w) < 15;
+    }
+    void sqrt(Value& newValue) const { // return new instance
+        assert(w >= 0);
+        newValue.w = ::sqrt(w + 1e-12);
     }
     string toString() const {
         stringstream ss;
         ss << w;
         return ss.str();
     }
+    Value(Value &&) = delete;
+//    Value &operator=(Value &&) = delete;
 };
 
 class Distributed_Algo_Abst {
@@ -150,6 +167,7 @@ public:
                 assert(fid < this->feature_cnt);
                 
                 if (pull_map->count(fid) == 0) { // keys need unique
+                    // obsolete feature will be default 0
                     pull_map->insert(make_pair(fid, Value()));
                 }
             }
@@ -199,13 +217,14 @@ public:
                 const double X = dataSet[rid][i].second;
                 
                 const double gradW = loss * X + L2Reg_ratio * param.w;
+                assert(gradW < 100);
                 
                 auto it = push_map->find(fid);
                 if (it == push_map->end()) {
                     push_map->insert(make_pair(fid, Value(gradW)));
                 } else {
                     Value grad(gradW);
-                    it->second = it->second + grad;
+                    it->second + grad;
                     assert(it->second.checkValid());
                 }
             }

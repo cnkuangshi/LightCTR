@@ -87,6 +87,17 @@ public:
         }
     }
     
+    inline bool checkConvergence(const Matrix* const another) {
+        assert(size() == another->size());
+        for (auto it = matrix->begin(), it2 = another->pointer()->begin();
+             it != matrix->end(); it++, it2++) {
+            if (fabs(*it - *it2) > 1e-4) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
     template<typename Func>
     inline void operate(Func f) {
         f(this->matrix);
@@ -108,17 +119,26 @@ public:
     }
     
     inline Matrix* transpose() {
-        assert(x_len == 1 || y_len == 1);
-        swap(x_len, y_len);
+        if (x_len == 1 || y_len == 1) {
+            swap(x_len, y_len);
+        } else {
+            Matrix* newM = new Matrix(y_len, x_len);
+            for (size_t i = 0; i < y_len; i++) {
+                for (size_t j = 0; j < x_len; j++) {
+                    *newM->getEle(i, j) = *getEle(i, j);
+                }
+            }
+            matrix->clear();
+            matrix = newM->pointer();
+            swap(x_len, y_len);
+        }
         return this;
     }
     
     inline Matrix* inverse() {
-        for (size_t i = 0; i < x_len; i++) {
-            for (size_t j = 0; j < y_len; j++) {
-                assert(*getEle(i, j) != 0);
-                *getEle(i, j) = 1.0 / *getEle(i, j);
-            }
+        for (auto it = matrix->begin(); it != matrix->end(); it++) {
+            assert(*it != 0);
+            *it = 1.0 / *it;
         }
         return this;
     }
@@ -146,10 +166,8 @@ public:
         return this;
     }
     inline Matrix* add(double fac) {
-        for (size_t i = 0; i < x_len; i++) {
-            for (size_t j = 0; j < y_len; j++) {
-                *getEle(i, j) += fac;
-            }
+        for (auto it = matrix->begin(); it != matrix->end(); it++) {
+            *it += fac;
         }
         return this;
     }
@@ -165,28 +183,22 @@ public:
         return this;
     }
     inline Matrix* subtract(double delta) {
-        for (size_t i = 0; i < x_len; i++) {
-            for (size_t j = 0; j < y_len; j++) {
-                *getEle(i, j) -= delta;
-            }
+        for (auto it = matrix->begin(); it != matrix->end(); it++) {
+            *it -= delta;
         }
         return this;
     }
     
     inline Matrix* scale(double scale_fac) {
-        for (size_t i = 0; i < x_len; i++) {
-            for (size_t j = 0; j < y_len; j++) {
-                *getEle(i, j) *= scale_fac;
-            }
+        for (auto it = matrix->begin(); it != matrix->end(); it++) {
+            *it *= scale_fac;
         }
         return this;
     }
     
     inline Matrix* pow(double fac) {
-        for (size_t i = 0; i < x_len; i++) {
-            for (size_t j = 0; j < y_len; j++) {
-                *getEle(i, j) = ::pow(*getEle(i, j), fac);
-            }
+        for (auto it = matrix->begin(); it != matrix->end(); it++) {
+            *it = ::pow(*it, fac);
         }
         return this;
     }

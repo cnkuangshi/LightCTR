@@ -410,7 +410,7 @@ private:
                 callbackMap.erase(it); // handler used once
             }
         }
-        callback_pool->addTask([this, response, callback]() {
+        callback_pool->addTask([response, callback]() {
             // copy callback and pointer
             if (callback) {
                 callback(response); // callback don't need thread-safe

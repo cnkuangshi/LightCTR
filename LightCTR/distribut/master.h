@@ -27,6 +27,9 @@ public:
         registered_ps_cnt = 0;
         registered_worker_cnt = BEGIN_ID_OF_WORKER;
         
+        printf("[Master] waiting for %d ps and %d worker\n",
+               __global_cluster_ps_cnt, __global_cluster_worker_cnt);
+        
         regist_handshake_handler();
         regist_shutdown_handler();
         

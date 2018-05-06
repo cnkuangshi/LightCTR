@@ -11,6 +11,8 @@
 
 #include <cmath>
 #include <cstdio>
+#include <vector>
+#include "significance.h"
 
 inline void Seed(uint32_t seed) {
     srand(seed);
@@ -22,6 +24,10 @@ inline double UniformNumRand() { // [0, 1)
 
 inline double UniformNumRand2() { // (0, 1)
     return (static_cast<double>(rand()) + 1.0) / (static_cast<double>(RAND_MAX) + 2.0);
+}
+
+inline size_t Random_index(size_t n) {
+    return rand() % n;
 }
 
 template<typename T>
@@ -75,6 +81,37 @@ inline std::pair<double, double> GaussRand2D() {
 
 inline bool SampleBinary(double p) {
     return UniformNumRand() < p;
+}
+
+inline size_t subSampleSize(double sampleAlpha = 0.05, double sampleErrorBound = 0.05) {
+    // indicate confidence level and error bound to determine a suitable sample size
+    double z = ReverseAlpha(sampleAlpha / 2);
+    size_t sampleSize = (size_t)((z * z / 4.0f) / (sampleErrorBound * sampleErrorBound));
+    // double minProb = 9.0f / (9.0f + sampleSize);
+    // double maxProb = 1.0f * sampleSize / (9.0 + sampleSize);
+    // sigma = sqrt(prob * (1 - prob) / sampleSize)
+    // max(delta / sigma) determine the significance of distribution difference
+    return sampleSize;
+}
+
+inline void shuffleSelectK(std::vector<int>* rankResult, int n, int k) {
+    // when n equal to k mean shuffle, otherwise sample should adjust k
+    assert(n / 2 >= k);
+    if (rankResult->size() != k) {
+        rankResult->clear();
+        rankResult->resize(k);
+    }
+    std::vector<int>* array = new std::vector<int>(n);
+    array = new std::vector<int>(n);
+    array->resize(n);
+    for (int i = 0; i < n; i++) {
+        array->at(i) = i;
+    }
+    for (int i = 0; i < k; i++) {
+        int index = (int)(UniformNumRand() * (n - i));
+        rankResult->at(i) = array->at(index);
+        array[index] = array[n - 1 - i];
+    }
 }
 
 #endif /* random_h */

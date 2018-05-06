@@ -84,8 +84,9 @@ private:
                             std::shared_ptr<PackageDescript> resp_package) {
                 std::pair<TKey, TValue> data_pair;
                 
-                assert(resp_package->content.size() == msg_cnt * sizeof(data_pair));
-                for (size_t i = 0; i < msg_cnt; i++) {
+                assert(resp_package->content.size() <= msg_cnt * sizeof(data_pair)
+                       && resp_package->content.size() % sizeof(data_pair) == 0);
+                while(!resp_package->content.readEOF()) {
                     resp_package->content >> data_pair; // recv by pair
                     assert(data_pair.second.checkValid());
                     
