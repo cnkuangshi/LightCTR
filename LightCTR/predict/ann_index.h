@@ -96,7 +96,7 @@ public:
             buildTree(forest[i], &forest[i]->at(0), indices);
             assert(forest[i]->at(0).bRoot());
             assert(forest[i]->back().bLeaf());
-            printf("%lu\n", forest[i]->size());
+            printf("%zu-th Tree has %lu nodes\n", i, forest[i]->size());
         }
     }
     

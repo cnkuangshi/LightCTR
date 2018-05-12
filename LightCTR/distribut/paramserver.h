@@ -181,7 +181,7 @@ private:
                     it->second.data - (reserveGrad * GradientUpdater::__global_learning_rate);
                     it->second.shadow_copies[worker_id] = it->second.data;
                 } else if (updaterType == UpdaterType::DCASGDA) {
-                    // delayed compensation asynchronous SGD
+                    // delayed compensation asynchronous SGD adaptive
                     const double dcasgd_lambda = 0.1;
                     const double momentum_rate = 0.95;
                     TValue grad = data_pair.second / GradientUpdater::__global_minibatch_size;

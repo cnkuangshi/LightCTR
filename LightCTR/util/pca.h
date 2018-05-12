@@ -15,6 +15,7 @@
 class PCA {
 public:
     PCA(float _learning_rate, int _maxIters, int _neuronsNum, int _featureSize) {
+        trainingData = NULL;
         learning_rate = _learning_rate;
         maxIters = _maxIters;
         neuronsNum = _neuronsNum;
@@ -26,7 +27,12 @@ public:
         weights->randomInit();
     }
     
-    void train(Matrix* trainingData) {
+    void loadMatrix(Matrix* _trainingData) {
+        trainingData = _trainingData;
+    }
+    
+    void Train() {
+        assert(trainingData != NULL);
         // PCA trained by Generalized Hebbian Neuron
         for (int epoch = 0; epoch < maxIters; epoch++)
         {
@@ -39,7 +45,7 @@ public:
                     for (int fid = 0; fid < featureSize; fid++) {
                         // update each weight
                         float sumTerm = getSum(row, nid, fid);
-                        *weights->getEle(fid, nid) -= learning_rate * *output->getEle(row, nid)
+                        *weights->getEle(fid, nid) += learning_rate * *output->getEle(row, nid)
                                     * (*trainingData->getEle(row, fid) - sumTerm);
                     }
                 }
@@ -75,17 +81,24 @@ public:
         return output;
     }
     
+    void saveModel(size_t epoch) {
+    }
+    
 private:
     float getSum(int row, int nid, int fid) {
         float sum = 0;
-        for (int i = 0; i <= nid; i++)
+        for (int i = 0; i <= nid; i++) {
+            assert(!isnan(*output->getEle(row, i)));
             sum += *output->getEle(row, i) * *weightsTmp->getEle(fid, i);
+        }
         return sum;
     }
     
     float learning_rate;
     int maxIters;
     int neuronsNum, featureSize;
+    
+    Matrix* trainingData;
     
     Matrix* weights = NULL;
     Matrix* weightsTmp = NULL;

@@ -23,6 +23,11 @@ inline double Erf(double x) {
     return -result;
 }
 
+inline double LogCDF(double x, double alpha = 10) {
+    const double scaler = (alpha == 10) ? 1 : log(alpha);
+    return (x * log(fabs(x)) - x) / scaler;
+}
+
 // calculate the standard cumulative distribution function F(x) = P(Z less or equal than x),
 // where Z follows a standard normal distribution.
 inline double StandardCDF(double x) {
@@ -30,16 +35,17 @@ inline double StandardCDF(double x) {
     return (1.0 + Erf(x / SquareRootOfTwo)) / 2;
 }
 
-// given a confidence level we calculate the Z such that P(Z greater than alpha) = alpha
-inline double ReverseAlpha(double alpha) {
-    double p = 1.0 - alpha;
-    // for a standard normal distribution, the probability that x is smaller than lower or x is larger than upper is almost zero.
-    // we can set a larger value but already has no gain.
+inline double CustomCDF(double x, double u, double sigma) {
+    x = x - u;
+    return 0.5 + 0.5 * Erf(x / sigma / 1.414213562373095);
+}
+
+inline double ReverseCDF(double p, double mu, double sigma) {
     double lower = -5.0, upper = 5.0, middle;
     while(1) {
         middle = (lower + upper) / 2;
-        double estimate = StandardCDF(middle);
-        if (abs(estimate - p) < 0.00000001)
+        double estimate = CustomCDF(middle, mu, sigma);
+        if (fabs(estimate - p) < 1e-7)
             break;
         // because standard CDF is monotonic, thus we use binary search
         if (estimate > p) {
@@ -51,12 +57,16 @@ inline double ReverseAlpha(double alpha) {
     return middle;
 }
 
+// given a confidence level we calculate the Z such that P(Z greater than alpha) = alpha
+inline double ReverseAlpha(double alpha) {
+    assert(alpha > 0 && alpha < 1);
+    return ReverseCDF(1.0f - alpha, 0, 1);
+}
+
 // calculate the statistical significance for a gaussian distribution
 // the observed x value, its mean value and standard deviation
 inline double GaussianSignificance(double x, double u, double sigma) {
-    double x1 = abs(x - u);
-    // 1.414213562373095 is sqrt(2)
-    double cdf = 0.5 + 0.5 * Erf(x1 / sigma / 1.414213562373095);
+    double cdf = CustomCDF(x, u, sigma);
     return 2 * cdf - 1;
 }
 

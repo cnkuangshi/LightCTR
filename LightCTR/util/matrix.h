@@ -61,7 +61,7 @@ public:
     }
     
     inline const vector<double>::iterator getEle(size_t x, size_t y) const {
-        assert(x * y_len + y < size());
+        assert(x * y_len + y < size() && x < x_len);
         return matrix->begin() + x * y_len + y;
     }
     
@@ -80,10 +80,8 @@ public:
         std::fill(matrix->begin(), matrix->end(), 0.0f);
     }
     inline void randomInit() {
-        for (size_t i = 0; i < x_len; i++) {
-            for (size_t j = 0; j < y_len; j++) {
-                *getEle(i, j) = GaussRand();
-            }
+        for (auto it = matrix->begin(); it != matrix->end(); it++) {
+            *it = GaussRand();
         }
     }
     
@@ -91,6 +89,7 @@ public:
         assert(size() == another->size());
         for (auto it = matrix->begin(), it2 = another->pointer()->begin();
              it != matrix->end(); it++, it2++) {
+            assert(!isnan(*it) && !isnan(*it2));
             if (fabs(*it - *it2) > 1e-4) {
                 return false;
             }
@@ -158,10 +157,9 @@ public:
     inline Matrix* add(const Matrix* const another, double scale = 1.0, double self_scale = 1.0) {
         assert(x_len == another->x_len);
         assert(y_len == another->y_len);
-        for (size_t i = 0; i < x_len; i++) {
-            for (size_t j = 0; j < y_len; j++) {
-                *getEle(i, j) = self_scale * *getEle(i, j) + scale * *another->getEle(i, j);
-            }
+        for (auto it = matrix->begin(), it2 = another->pointer()->begin();
+             it != matrix->end(); it++, it2++) {
+            *it = self_scale * *it + scale * *it2;
         }
         return this;
     }
@@ -175,10 +173,9 @@ public:
     inline Matrix* subtract(const Matrix* const another, double scale = 1.0) {
         assert(x_len == another->x_len);
         assert(y_len == another->y_len);
-        for (size_t i = 0; i < x_len; i++) {
-            for (size_t j = 0; j < y_len; j++) {
-                *getEle(i, j) -= scale * *another->getEle(i, j);
-            }
+        for (auto it = matrix->begin(), it2 = another->pointer()->begin();
+             it != matrix->end(); it++, it2++) {
+            *it -= scale * *it2;
         }
         return this;
     }
@@ -206,12 +203,11 @@ public:
     inline Matrix* dotProduct(const Matrix* const another) {
         assert(x_len == another->x_len);
         assert(y_len == another->y_len);
-        for (size_t i = 0; i < x_len; i++) {
-            for (size_t j = 0; j < y_len; j++) {
-                if (*another->getEle(i, j) != 0) {
-                    *getEle(i, j) *= *another->getEle(i, j);
-                    assert(!isinf(*getEle(i, j)));
-                }
+        for (auto it = matrix->begin(), it2 = another->pointer()->begin();
+             it != matrix->end(); it++, it2++) {
+            if (*it2 != 0) {
+                *it *= *it2;
+                assert(!isinf(*it));
             }
         }
         return this;
