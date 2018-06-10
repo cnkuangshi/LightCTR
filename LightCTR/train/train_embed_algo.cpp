@@ -9,12 +9,13 @@
 #include "train_embed_algo.h"
 #include <string.h>
 #include <stack>
+#include "../util/product_quantizer.h"
 
 #define FOR_D for (int i = 0; i < emb_dimention; i++)
 
 void Train_Embed_Algo::init() {
     learning_rate = 0.02f;
-    negSample_cnt = 5;
+    negSample_cnt = 12;
     
     treeArry = new Node[vocab_cnt * 2];
     size_t treeNode_cnt = 0;
@@ -84,6 +85,15 @@ void Train_Embed_Algo::Train() {
     }
     threadpool->join();
     cout << "All " << docid << " docs are trained completely" << endl;
+    
+    // Normalization
+    for (size_t wid = 0; wid < vocab_cnt; wid++) {
+        auto norm = avx_L2Norm(&word_embedding[wid * emb_dimention], emb_dimention);
+        FOR_D {
+            word_embedding[wid * emb_dimention + i] /= norm;
+        }
+    }
+    
     saveModel();
 }
 
@@ -101,7 +111,15 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
         if (it == vocabTable.end()) {
             continue;
         }
-        doc_wordid_vec.emplace_back(move(it->second));
+        if (subsampling > 0) { // subsample high frequent words
+            float freq = word_frequency[vocabTable[word]];
+            float prob = (sqrt(freq / (subsampling * total_words_cnt)) + 1) *
+                        (subsampling * total_words_cnt) / freq;
+            
+            if (UniformNumRand() > prob)
+                continue;
+        }
+        doc_wordid_vec.emplace_back(it->second);
     }
     if(doc_wordid_vec.size() <= window_size * 2 + 1) {
         return;
@@ -109,22 +127,23 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
     // N-Gram CBOW continuous bag of word
     // TODO skip-gram impl
     // cbow hsoftmax and negative discriminant
-    vector<double> ctx_average, emb_delta;
-    ctx_average.resize(emb_dimention);
+    vector<double> ctx_sum, emb_delta;
+    ctx_sum.resize(emb_dimention);
     emb_delta.resize(emb_dimention);
     double decay_alpha = learning_rate;
     
     // each document trains epoch times
     for (size_t ep = 0; ep < epoch; ep++) {
-        decay_alpha *= 0.9f;
+        decay_alpha *= 0.96f;
+        decay_alpha = max(decay_alpha, 0.0001);
         
         int length = (int)doc_wordid_vec.size();
         for (int word_index = 0; word_index < length; word_index++) {
             FOR_D {
-                ctx_average[i] = 0;
+                ctx_sum[i] = 0;
                 emb_delta[i] = 0;
             }
-            // average of embedding vector in window
+            // sum of embedding vector in window
             const int first = max(0, word_index - (int)window_size);
             const int last = min(length, word_index + (int)window_size);
             for (int pos = first; pos < last; pos++) {
@@ -133,15 +152,9 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
                 }
                 size_t wid = doc_wordid_vec[pos];
                 FOR_D {
-                    ctx_average[i] += word_embedding[wid]->at(i);
+                    ctx_sum[i] += word_embedding[wid * emb_dimention + i];
                 }
             }
-//            printf("context average vector :");
-//            FOR_D {
-//                ctx_average[i] /= last - first;
-//                printf(" %lf", ctx_average[i]);
-//            }
-//            puts("");
             
             // train hierarchical softmax
             const size_t cur_wid = doc_wordid_vec[word_index];
@@ -150,16 +163,17 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
                 int realdir = word_code[cur_wid][c] - '0';
                 double preddir = 0.0f;
                 FOR_D {
-                    preddir += curNode->weight[i] * ctx_average[i];
+                    preddir += curNode->weight[i] * ctx_sum[i];
                 }
                 if(!(preddir > -30 && preddir < 30)) {
                     printf("-- warning hiso %zu-%zu preddir = %lf\n", cur_wid, c, preddir);
                 }
                 preddir = sigmoid.forward(preddir);
-                double gradient = decay_alpha * (realdir - preddir); // LR gradient to max Loglikelihood
+                // LR gradient to max Loglikelihood
+                double gradient = decay_alpha * (realdir - preddir);
                 FOR_D {
                     emb_delta[i] += gradient * curNode->weight[i];
-                    curNode->weight[i] += gradient * ctx_average[i];
+                    curNode->weight[i] += gradient * ctx_sum[i];
                 }
             }
             
@@ -177,16 +191,17 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
                 }
                 double preddir = 0.0f;
                 FOR_D {
-                    preddir += negWeight[wid][i] * ctx_average[i];
+                    preddir += negWeight[wid][i] * ctx_sum[i];
                 }
                 if(!(preddir > -30 && preddir < 30)) {
                     printf("-- warning negsa %zu preddir = %lf\n", cur_wid, preddir);
                 }
                 preddir = sigmoid.forward(preddir);
-                double gradient = decay_alpha * (label - preddir); // LR gradient to max Loglikelihood
+                // LR gradient to max Loglikelihood
+                double gradient = decay_alpha * (label - preddir);
                 FOR_D {
                     emb_delta[i] += gradient * negWeight[wid][i];
-                    negWeight[wid][i] += gradient * ctx_average[i];
+                    negWeight[wid][i] += gradient * ctx_sum[i];
                 }
             }
             
@@ -194,13 +209,33 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
             for (int pos = first; pos < last; pos++) {
                 size_t wid = doc_wordid_vec[pos];
                 FOR_D {
-                    word_embedding[wid]->at(i) += emb_delta[i];
+                    word_embedding[wid * emb_dimention + i] += emb_delta[i];
                 }
             }
         }
     }
     cout << "Train docid " << docid << " has " << doc_wordid_vec.size()
                       << " words" << " alpha = " << decay_alpha << endl;
+}
+
+void Train_Embed_Algo::Quantization(size_t part_cnt, uint8_t cluster_cnt) {
+    Product_quantizer<float, uint8_t> *pq =
+        new Product_quantizer<float, uint8_t>(emb_dimention, part_cnt, cluster_cnt);
+    auto quantizated_codes = pq->train(word_embedding.data(), vocab_cnt);
+    
+    ofstream md("./output/quantized_embedding.txt");
+    if(!md.is_open()){
+        cout<<"save model open file error" << endl;
+        exit(1);
+    }
+    for (size_t wid = 0; wid < vocab_cnt; wid++) {
+        for (int i = 0; i < part_cnt; i++) {
+            md << static_cast<int>(quantizated_codes[i][wid]) << " ";
+        }
+        md << endl;
+    }
+    md << endl;
+    md.close();
 }
 
 void Train_Embed_Algo::EmbeddingCluster(shared_ptr<vector<int> > clustered, size_t cluster_cnt) {
@@ -236,7 +271,7 @@ void Train_Embed_Algo::saveModel() {
     }
     for (size_t wid = 0; wid < vocab_cnt; wid++) {
         FOR_D {
-            md << word_embedding[wid]->at(i) << " ";
+            md << word_embedding[wid * emb_dimention + i] << " ";
         }
         md << endl;
     }

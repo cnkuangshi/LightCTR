@@ -39,6 +39,7 @@
 #include "LightCTR/train/train_vae_algo.h"
 
 #include "LightCTR/util/quantile_compress.h"
+#include "LightCTR/util/product_quantizer.h"
 #include "LightCTR/predict/ann_index.h"
 using namespace std;
 
@@ -171,9 +172,9 @@ int main(int argc, const char * argv[]) {
     annIndex->query(input, 50, result);
     
     // test QuantileCompress
-    char code[100];
+    uint8_t code[100];
     float unzip[100];
-    QuantileCompress<float> compress(QuantileType::NORMAL_DISTRIBUT, -1, 1);
+    QuantileCompress<float, uint8_t> compress(QuantileType::NORMAL_DISTRIBUT, -1, 1);
     compress.compress(query_input, 100, code);
     compress.extract(code, 100, unzip);
     for (int i = 0; i < 10; i++) {
@@ -198,6 +199,7 @@ int main(int argc, const char * argv[]) {
         pred.Predict("");
 #endif
 #ifdef TEST_EMB
+//        train->loadPretrainFile("./output/word_embedding.txt");
         // Notice, word embedding vector multiply 10 to cluster
         EM_Algo_Abst<vector<double> > *cluster =
         new Train_GMM_Algo(
@@ -206,6 +208,7 @@ int main(int argc, const char * argv[]) {
                         50,
                         100,
                         /*scale*/10);
+        train->Quantization(/*part_cnt*/20, /*cluster_cnt*/64);
         cluster->Train();
         shared_ptr<vector<int> > ans = cluster->Predict();
         train->EmbeddingCluster(ans, 50);

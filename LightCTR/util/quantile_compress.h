@@ -20,9 +20,8 @@ enum QuantileType {
     CUSTOM_DISTRIBUT
 };
 
-template <typename RealT>
+template <typename RealT, typename CompressT>
 class QuantileCompress {
-    typedef char CompressT;
 public:
     QuantileCompress(QuantileType _quantileType, RealT _min, RealT _max,
                      RealT _mu = 0, RealT _sigma = 1) :
@@ -40,7 +39,7 @@ public:
         std::transform(input, input + len,
                        output,
                        std::bind(
-                                 &QuantileCompress<RealT>::encoding,
+                                 &QuantileCompress<RealT, CompressT>::encoding,
                                  this,
                                  std::placeholders::_1
                                  )
@@ -50,7 +49,7 @@ public:
         std::transform(input, input + len,
                        output,
                        std::bind(
-                                 &QuantileCompress<RealT>::decoding,
+                                 &QuantileCompress<RealT, CompressT>::decoding,
                                  this,
                                  std::placeholders::_1
                                  )

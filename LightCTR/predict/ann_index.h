@@ -13,7 +13,7 @@
 #include "../util/random.h"
 #include "assert.h"
 #include <queue>
-#include "../common/system.h"
+#include "../common/avx.h"
 
 class ANNIndex {
     typedef vector<float> Point;
