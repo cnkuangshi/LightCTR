@@ -13,6 +13,8 @@
 #include <pmmintrin.h>
 #include <xmmintrin.h>
 
+#include "float16.h"
+
 // AVX Support
 inline float hsum256_ps_avx(__m256 v) {
     const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(v, 1), _mm256_castps256_ps128(v));
@@ -77,6 +79,37 @@ inline float avx_L2Distance(const float* x, const float *y, size_t f) {
         y++;
     }
     return result;
+}
+
+inline void Float16_sum(void* invec1, void* invec2, void* outvec, int len) {
+    auto* in1 = (float16_t*)invec1;
+    auto* in2 = (float16_t*)invec2;
+    auto* out = (float16_t*)outvec;
+    
+#if __AVX__ && __F16C__
+    if (is_avx_and_f16c()) {
+        for (int i = 0; i < (len / 8) * 8; i += 8) {
+            // convert in1 & in2 to m256
+            __m256 in_m256 = _mm256_cvtph_ps(_mm_loadu_si128((__m128i*)(in1 + i)));
+            __m256 inout_m256 =
+            _mm256_cvtph_ps(_mm_loadu_si128((__m128i*)(in2 + i)));
+            
+            // add them together to new_inout_m256
+            __m256 new_inout_m256 = _mm256_add_ps(in_m256, inout_m256);
+            
+            // convert back and store in out
+            __m128i new_inout_m128i = _mm256_cvtps_ph(new_inout_m256, 0);
+            _mm_storeu_si128((__m128i*)(out + i), new_inout_m128i);
+        }
+    }
+#endif
+    
+    for (int i = 0; i < len; ++i) {
+        auto x = Float16(in1 + i);
+        auto y = Float16(in2 + i);
+        auto res = Float16(x.float32_value() + y.float32_value());
+        *(out + i) = res.float16_value();
+    }
 }
 
 #endif /* avx_h */
