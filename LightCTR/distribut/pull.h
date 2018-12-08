@@ -111,8 +111,8 @@ private:
     
     std::atomic<size_t> pull_seq{0};
     
-    Delivery&& gDelivery;
-    ConsistentHash&& gConsistentHash;
+    Delivery& gDelivery;
+    ConsistentHash& gConsistentHash;
 };
 
 #endif /* pull_h */

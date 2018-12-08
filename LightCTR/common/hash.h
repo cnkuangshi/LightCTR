@@ -13,7 +13,7 @@
 
 #define BIG_CONSTANT(x) (x##LLU)
 
-inline unsigned int murMurHash(std::string&& key) {
+inline unsigned int murMurHash(const std::string& key) {
     int len = (int)key.length();
     const unsigned int m = 0x5bd1e995;
     const int r = 24;

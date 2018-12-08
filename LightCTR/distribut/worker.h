@@ -92,7 +92,7 @@ private:
     bool status_serving{false};
     Barrier serving_barrier;
     
-    Delivery&& gDelivery;
-    ConsistentHash&& gConsistentHash;
+    Delivery& gDelivery;
+    ConsistentHash& gConsistentHash;
 };
 #endif /* worker_h */

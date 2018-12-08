@@ -19,8 +19,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sys/shm.h>
 
 #include "assert.h"
+#include "lock.h"
 
 #ifndef likely
 #define likely(x)  __builtin_expect(!!(x), 1)
@@ -111,6 +113,23 @@ bool mmapLoad(const char* filename) {
                   0, size, PROT_READ, MAP_SHARED, _fd, 0);
 #endif
     return true;
+}
+
+char* getShmAddr(int key, size_t size, int flag = 0666|IPC_CREAT) {
+    assert(key != 0);
+    
+    int shmId = shmget(key, size, flag);
+    if (shmId < 0) {
+        // ipcs -m
+        // sysctl -w kern.sysv.shmmax to adjust shm max memory size
+        printf("%d %s\n", errno, strerror(errno));
+    }
+    assert(shmId >= 0);
+    
+    char* shmAddr = (char *)shmat(shmId, NULL, 0);
+    assert(shmAddr != (char *)-1);
+    
+    return shmAddr;
 }
 
 #endif /* system_h */

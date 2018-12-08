@@ -120,38 +120,13 @@ struct Addr {
 
 class Delivery {
 public:
-    Delivery() {
-        zmq_ctx = zmq_ctx_new();
-        init();
-    }
-    explicit Delivery(void *_zmq_ctx) {
-        zmq_ctx = _zmq_ctx;
-        init();
-    }
-    
-    ~Delivery() {
-        assert(!serving); // should call shutdown first
-        handle_pool->join();
-        callback_pool->join();
-        
-        if (listen_socket) {
-            assert(0 == zmq_close(listen_socket));
-            listen_socket = NULL;
-        }
-        for (auto &route : router_socket) {
-            assert(0 == zmq_close(route.second));
-        }
-        assert(0 == zmq_ctx_destroy(zmq_ctx));
-    }
-    Delivery &operator=(const Delivery &) = delete;
-    
-    static Delivery&& Instance() { // singleton
+    static Delivery& Instance() { // singleton
         static std::once_flag once;
         static Delivery delivery;
         std::call_once(once, [] {
             delivery.start_loop();
         });
-        return std::move(delivery);
+        return delivery;
     }
     
     void regist_router(size_t node_id, Addr& addr) {
@@ -292,6 +267,34 @@ public:
     }
 
 private:
+    Delivery() {
+        zmq_ctx = zmq_ctx_new();
+        init();
+    }
+    explicit Delivery(void *_zmq_ctx) {
+        zmq_ctx = _zmq_ctx;
+        init();
+    }
+    
+    ~Delivery() {
+        assert(!serving); // should call shutdown first
+        handle_pool->join();
+        callback_pool->join();
+        
+        if (listen_socket) {
+            assert(0 == zmq_close(listen_socket));
+            listen_socket = NULL;
+        }
+        for (auto &route : router_socket) {
+            assert(0 == zmq_close(route.second));
+        }
+        assert(0 == zmq_ctx_destroy(zmq_ctx));
+    }
+    Delivery(const Delivery&) = delete;
+    Delivery(Delivery&&) = delete;
+    Delivery &operator=(const Delivery &) = delete;
+    Delivery &operator=(Delivery &&) = delete;
+    
     void init() {
         // first regist master addr and regist cur node to master
         // master addr should be config

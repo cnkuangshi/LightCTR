@@ -15,8 +15,19 @@
 #include "assert.h"
 
 #define CAS32(ptr, val_old, val_new)({ char ret; __asm__ __volatile__("lock; cmpxchgl %2,%0; setz %1": "+m"(*ptr), "=q"(ret): "r"(val_new),"a"(val_old): "memory"); ret;})
+
+inline bool atomic_compare_and_swap(float* ptr, const float &oldval, const float &newval) {
+    return __sync_bool_compare_and_swap(reinterpret_cast<uint32_t*>(ptr),
+                                        *reinterpret_cast<const uint32_t*>(&oldval),
+                                        *reinterpret_cast<const uint32_t*>(&newval));
+};
+
+// fence in write
 #define wmb() __asm__ __volatile__("sfence":::"memory")
+// fence in read
 #define rmb() __asm__ __volatile__("lfence":::"memory")
+// fence in write and read
+#define rwmb() __asm__ __volatile__("mfence":::"memory")
 
 class SpinLock {
 public:

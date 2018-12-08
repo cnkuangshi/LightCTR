@@ -17,8 +17,13 @@
 // Make data shardings ditributed in PS clusters by DHT
 class ConsistentHash {
 public:
-    ConsistentHash() {
-        
+    static ConsistentHash& Instance() { // singleton
+        static std::once_flag once;
+        static ConsistentHash consist;
+        std::call_once(once, [] {
+            consist.init(__global_cluster_ps_cnt);
+        });
+        return consist;
     }
     
     void init(uint32_t _node_cnt) {
@@ -31,15 +36,6 @@ public:
                 server_nodes[partition] = i;
             }
         }
-    }
-    
-    static ConsistentHash&& Instance() { // singleton
-        static std::once_flag once;
-        static ConsistentHash consist;
-        std::call_once(once, [] {
-            consist.init(__global_cluster_ps_cnt);
-        });
-        return std::move(consist);
     }
     
     template <typename TKey>
@@ -55,6 +51,14 @@ public:
     }
     
 private:
+    ConsistentHash() {
+        
+    }
+    ConsistentHash(const ConsistentHash&) = delete;
+    ConsistentHash(ConsistentHash&&) = delete;
+    ConsistentHash &operator=(const ConsistentHash &) = delete;
+    ConsistentHash &operator=(ConsistentHash &&) = delete;
+    
     uint32_t node_cnt;
     const uint32_t virtual_node_cnt{5}; // num of Replicas
     

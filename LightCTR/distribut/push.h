@@ -96,8 +96,8 @@ private:
     
     std::atomic<size_t> push_seq{0};
     
-    Delivery&& gDelivery;
-    ConsistentHash&& gConsistentHash;
+    Delivery& gDelivery;
+    ConsistentHash& gConsistentHash;
 };
 
 #endif /* push_h */

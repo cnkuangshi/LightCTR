@@ -267,7 +267,7 @@ private:
     bool status_serving{false};
     Barrier serving_barrier;
     Barrier terminate_barrier;
-    Delivery&& gDelivery;
+    Delivery& gDelivery;
 };
 
 #endif /* paramserver_h */

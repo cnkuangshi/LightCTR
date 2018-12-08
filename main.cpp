@@ -11,6 +11,7 @@
 #include "LightCTR/common/system.h"
 #include "LightCTR/common/float16.h"
 #include "LightCTR/util/pca.h"
+#include "LightCTR/util/shm_hashtable.h"
 
 #include "LightCTR/distribut/master.h"
 #include "LightCTR/distribut/paramserver.h"

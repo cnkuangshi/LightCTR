@@ -224,7 +224,7 @@ private:
     Barrier* train_end_barrier;
     Barrier* terminate_barrier;
     
-    Delivery&& gDelivery;
+    Delivery& gDelivery;
 };
 
 #endif /* master_h */
