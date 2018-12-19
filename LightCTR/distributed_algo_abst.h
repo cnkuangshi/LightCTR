@@ -91,16 +91,20 @@ class Distributed_Algo_Abst {
 public:
     Distributed_Algo_Abst(string _dataPath, size_t _epoch_cnt):
     epoch(_epoch_cnt) {
-        worker = new Worker<Key, Value>();
         threadpool = new ThreadPool(thread::hardware_concurrency());
         
-        size_t cur_node_id = worker->Rank();
+        size_t cur_node_id = worker.Rank();
         stringstream ss;
         ss << _dataPath << "_" << cur_node_id << ".csv";
         loadDataRow(ss.str());
         
         L2Reg_ratio = 0.001f;
         batch_size = GradientUpdater::__global_minibatch_size;
+    }
+    
+    ~Distributed_Algo_Abst() {
+        delete threadpool;
+        threadpool = NULL;
     }
     
     void Train() {
@@ -113,16 +117,15 @@ public:
             
             size_t minibatch_epoch = (this->dataRow_cnt + this->batch_size - 1) / this->batch_size;
             
-            threadpool->init();
             for (size_t p = 0; p < minibatch_epoch; p++) {
                 size_t start_pos = p * batch_size;
                 
                 threadpool->addTask(bind(&Distributed_Algo_Abst::batchGradCompute,
-                                         this, start_pos,
+                                         this, i + 1, start_pos,
                                          min(start_pos + batch_size, this->dataRow_cnt),
                                          false));
             }
-            threadpool->join();
+            threadpool->wait();
             
             printf("[Worker Train] epoch = %zu loss = %lf\n", i, -train_loss);
             loss_curve.emplace_back(-train_loss);
@@ -137,14 +140,14 @@ public:
         puts("Train Task Complete");
         GradientUpdater::__global_bTraining = false;
         
-        worker->shutdown([this]() {
+        worker.shutdown([this]() {
             terminate_barrier.unblock();
         });
         terminate_barrier.block();
     }
     
     // Async-SGD
-    void batchGradCompute(size_t rbegin, size_t rend, bool predicting) {
+    void batchGradCompute(size_t epoch, size_t rbegin, size_t rend, bool predicting) {
         // init threadlocal var
         unordered_map<Key, Value>*& pull_map = *tl_pull_map;
         if (pull_map == NULL) {
@@ -174,7 +177,11 @@ public:
         }
         
         // Pull lastest batch parameters from PS
-        worker->pull_op.sync(*pull_map);
+        if (pull_map->size() > 0)
+            worker.pull_op.sync(*pull_map);
+        
+        size_t local_accuracy = 0;
+        double local_loss = 0;
         
         for (size_t rid = rbegin; rid < rend; rid++) { // data row
             double pred = 0.0f;
@@ -190,16 +197,13 @@ public:
             }
             
             double pCTR = sigmoid.forward(pred);
-            {
-                unique_lock<SpinLock> glock(loss_lock);
-                train_loss += (int)this->label[rid] == 1 ?
-                            log(pCTR) : log(1.0 - pCTR);
-                assert(!isnan(train_loss));
-                if (pCTR >= 0.5 && this->label[rid] == 1) {
-                    accuracy++;
-                } else if (pCTR < 0.5 && this->label[rid] == 0) {
-                    accuracy++;
-                }
+            local_loss += (int)this->label[rid] == 1 ?
+                                    log(pCTR) : log(1.0 - pCTR);
+            assert(!isnan(local_loss));
+            if (pCTR >= 0.5 && this->label[rid] == 1) {
+                local_accuracy++;
+            } else if (pCTR < 0.5 && this->label[rid] == 0) {
+                local_accuracy++;
             }
             
             if (predicting) {
@@ -230,29 +234,17 @@ public:
             }
         }
         
+        {
+            unique_lock<mutex> glock(loss_lock);
+            train_loss += local_loss;
+            accuracy += local_accuracy;
+        }
+        
         // Push grads to PS
-        worker->push_op.sync(*push_map);
+        if (push_map->size() > 0)
+            worker.push_op.sync(*push_map, epoch);
     }
     
-    void UnitTest() {
-        static unordered_map<Key, Value> MAP;
-        MAP.clear();
-        
-        int param_cnt = 50;
-        for (int i = 0; i < param_cnt; i++) {
-            assert(MAP.insert(make_pair(i, Value())).second);
-        }
-        
-        int T = 50;
-        while (T--) {
-            worker->pull_op.sync(MAP);
-            assert(MAP.size() == param_cnt);
-            worker->push_op.sync(MAP);
-        }
-        
-        puts("UnitTest Complete");
-        terminate_barrier.block();
-    }
 private:
     void loadDataRow(string dataPath) {
         dataSet.clear();
@@ -278,7 +270,7 @@ private:
                 while(pline < line.c_str() + (int)line.length() &&
                       sscanf(pline, "%zu:%zu:%lf%n", &fieldid, &fid, &val, &nchar) >= 2){
                     pline += nchar + 1;
-                    tmp.emplace_back(*new FMFeature(fid, val, fieldid));
+                    tmp.emplace_back(FMFeature(fid, val, fieldid));
                     this->feature_cnt = max(this->feature_cnt, fid + 1);
                 }
             }
@@ -303,11 +295,11 @@ private:
     ThreadLocal<unordered_map<Key, Value>*> tl_pull_map;
     ThreadLocal<unordered_map<Key, Value>*> tl_push_map;
     
-    Worker<Key, Value>* worker;
+    Worker<Key, Value> worker;
     
-    SpinLock loss_lock;
+    mutex loss_lock;
     double train_loss = 0;
-    size_t accuracy = 0;
+    size_t accuracy{0};
     Sigmoid sigmoid;
     
     size_t epoch;

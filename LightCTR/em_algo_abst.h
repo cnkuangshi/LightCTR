@@ -81,7 +81,7 @@ public:
                 tmp.emplace_back(val);
                 if (tmp.size() == feature_cnt) {
                     assert(tmp.size() == feature_cnt);
-                    this->dataSet.emplace_back(tmp);
+                    this->dataSet.emplace_back(move(tmp));
                     tmp.clear();
                 }
             }

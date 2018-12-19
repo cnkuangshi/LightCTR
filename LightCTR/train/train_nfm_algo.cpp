@@ -56,7 +56,6 @@ void Train_NFM_Algo::Train() {
 }
 
 void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
-    threadpool->init();
     for (size_t rid = rbegin; rid < rend; rid++) { // data row
         threadpool->addTask([&, rid]() {
             // init threadlocal var
@@ -122,7 +121,7 @@ void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
             accumDeepGrad(rid, delta->pointer());
         });
     }
-    threadpool->join();
+    threadpool->wait();
 }
 
 void Train_NFM_Algo::accumWideGrad(size_t rid, double pred) {

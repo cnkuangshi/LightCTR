@@ -29,6 +29,12 @@ public:
         threadpool = new ThreadPool(this->proc_cnt);
         init();
     }
+    Train_FFM_Algo() = delete;
+    
+    ~Train_FFM_Algo() {
+        delete threadpool;
+        threadpool = NULL;
+    }
     
     void init();
     void Train();

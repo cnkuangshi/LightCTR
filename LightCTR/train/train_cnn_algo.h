@@ -26,6 +26,7 @@ public:
         this->dl_algo = CNN;
         this->init(_hidden_size);
     }
+    Train_CNN_Algo() = delete;
     ~Train_CNN_Algo() {
         delete this->inputLayer;
         delete this->outputLayer;

@@ -198,7 +198,7 @@ public:
             if (tmp.empty()) {
                 continue;
             }
-            this->dataSet.emplace_back(tmp);
+            this->dataSet.emplace_back(move(tmp));
             rid++;
         }
         this->dataRow_cnt = this->dataSet.size();

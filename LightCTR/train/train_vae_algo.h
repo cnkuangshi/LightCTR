@@ -30,6 +30,8 @@ public:
         loadDenseDataRow(dataPath);
         init(hidden_size, _gauss_cnt);
     }
+    Train_VAE_Algo() = delete;
+    
     ~Train_VAE_Algo() {
         delete encodeLayer;
         delete decodeLayer;

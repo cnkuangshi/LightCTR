@@ -56,11 +56,15 @@ public:
         init();
         InitNegSampleTable();
     }
+    Train_Embed_Algo() = delete;
+    
     ~Train_Embed_Algo() {
         delete [] treeArry;
         delete [] negSampleTable;
         delete [] negWeight;
         word_embedding.clear();
+        delete threadpool;
+        threadpool = NULL;
     }
     
     void Train();
@@ -157,7 +161,7 @@ private:
                 break;
             }
         }
-        threadpool->join();
+        threadpool->wait();
         assert(word_frequency.size() == vocab_cnt);
     }
     void loadTextFile(ifstream* _textStream) {

@@ -16,7 +16,7 @@ public:
         _buffer = new char[_capacity];
         _cursor = _end = _buffer;
     }
-    Buffer(char* buf, size_t len) {
+    Buffer(const void* buf, size_t len) {
         assert(_capacity > 0 && buf && len >= 0);
         _capacity = len;
         _buffer = new char[_capacity];

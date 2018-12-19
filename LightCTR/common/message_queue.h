@@ -12,6 +12,33 @@
 #include <list>
 #include <condition_variable>
 #include "lock.h"
+#include "time.h"
+
+enum SendType {
+    Immediately = 0,
+    After,
+    Period,
+    Invalid
+};
+
+struct MessageEventWrapper {
+    SendType send_type;
+    time_t after_or_period_time_ms;
+    time_t time_record;
+    std::function<void(MessageEventWrapper&)> handler;
+    
+    MessageEventWrapper(SendType _send_type,
+                        time_t _time,
+                        std::function<void(MessageEventWrapper&)> _handler) :
+                    send_type(_send_type), after_or_period_time_ms(_time), handler(_handler) {
+        updateTime();
+    }
+    
+    void updateTime() {
+        update_tv();
+        time_record = get_now_ms();
+    }
+};
 
 template<typename T>
 class MessageQueue {
@@ -27,7 +54,7 @@ public:
         return queue_.front();
     }
     
-    inline void push(T& new_value) {
+    inline void push(const T& new_value) {
         {
             std::unique_lock<std::mutex> lk(mu_);
             queue_.emplace_back(T(new_value)); // do copy
@@ -45,7 +72,7 @@ public:
         element_cnt--;
     }
     
-    inline bool pop_if(T& compare, T* value) {
+    inline bool pop_if(const T& compare, T* value) {
         std::unique_lock<std::mutex> lk(mu_);
         cond_.wait(lk, [this]{
             return !queue_.empty();
@@ -59,7 +86,20 @@ public:
         return 0;
     }
     
-    inline int erase(T& value) {
+    inline int modify(const T& value, T* addr) {
+        std::unique_lock<std::mutex> lk(mu_);
+        if (queue_.empty()) {
+            return 0;
+        }
+        auto it = find(queue_.begin(), queue_.end(), value);
+        if (it == queue_.end()) {
+            return -1;
+        }
+        addr = &(*it);
+        return 1;
+    }
+    
+    inline int erase(const T& value) {
         std::unique_lock<std::mutex> lk(mu_);
         if (queue_.empty()) {
             return 0;
@@ -77,11 +117,77 @@ public:
         return element_cnt;
     }
     
-private:
+protected:
     std::mutex mu_;
     size_t element_cnt = 0;
     std::list<T> queue_;
     std::condition_variable cond_;
+};
+
+class MessageQueueRunloop : public MessageQueue<MessageEventWrapper> {
+public:
+    MessageQueueRunloop() : runloop_thread(std::thread(&MessageQueueRunloop::runloop, this)){
+    }
+    
+    ~MessageQueueRunloop() {
+        breakflag = true;
+        wait_cond_.notify_all();
+        
+        runloop_thread.join();
+    }
+    
+private:
+    void runloop() {
+        for(;;) {
+            std::unique_lock<std::mutex> lk(mu_);
+            if (breakflag) {
+                return;
+            }
+            
+            time_t wait_time = 10 * 1000;
+            
+            for (auto it = queue_.begin(); it != queue_.end(); it++) {
+                if (it->send_type == SendType::Invalid) {
+                    queue_.erase(it);
+                    wait_time = 0;
+                    break;
+                } else if (it->send_type == SendType::Immediately) {
+                    it->handler(*it);
+                    queue_.erase(it);
+                    wait_time = 0;
+                    break;
+                } else if (it->send_type == SendType::After) {
+                    time_t cost = gettickspan(it->time_record);
+                    if (cost >= it->after_or_period_time_ms) {
+                        it->handler(*it);
+                        queue_.erase(it);
+                        wait_time = 0;
+                        break;
+                    } else {
+                        wait_time = std::min(wait_time, it->after_or_period_time_ms - cost);
+                    }
+                } else if (it->send_type == SendType::Period) {
+                    time_t cost = gettickspan(it->time_record);
+                    if (cost >= it->after_or_period_time_ms) {
+                        it->handler(*it);
+                        it->updateTime();
+                        wait_time = 0;
+                        break;
+                    } else {
+                        wait_time = std::min(wait_time, it->after_or_period_time_ms - cost);
+                    }
+                }
+            }
+            assert(wait_time >= 0);
+            if (wait_time > 0) {
+                wait_cond_.wait_for(lk, std::chrono::milliseconds(wait_time));
+            }
+        }
+    }
+private:
+    std::thread runloop_thread;
+    bool breakflag{false};
+    std::condition_variable wait_cond_;
 };
 
 #endif /* threadsafe_queue_h */

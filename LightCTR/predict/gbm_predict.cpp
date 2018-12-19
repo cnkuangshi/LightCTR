@@ -125,7 +125,7 @@ void GBM_Predict::loadDataRow(string dataPath, bool with_valid_label) {
         if (tmp.empty()) {
             continue;
         }
-        this->test_dataSet.emplace_back(tmp);
+        this->test_dataSet.emplace_back(move(tmp));
         rid++;
     }
     this->test_dataRow_cnt = this->test_dataSet.size();

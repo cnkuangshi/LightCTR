@@ -30,6 +30,8 @@ public:
         init();
         loadVocab(_vocabFile);
     }
+    Train_TM_Algo() = delete;
+    
     ~Train_TM_Algo() {
 #ifdef PLSA
         FOR(docid, doc_cnt) {

@@ -86,6 +86,7 @@ public:
         
         printf("LSTM Unit\n");
     }
+    LSTM_Unit() = delete;
     
     ~LSTM_Unit() {
         DEL_MATRIX(fg);

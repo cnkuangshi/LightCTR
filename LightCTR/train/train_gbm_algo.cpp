@@ -125,7 +125,6 @@ void Train_GBM_Algo::Train() {
                 // multithread to find different feature's split point
                 this->proc_left = (int)this->feature_cnt * 2;
                 
-                threadpool->init();
                 for (size_t j = 0; j < this->proc_cnt; j++) {
                     size_t start_pos = j * feature_thread_hold;
                     threadpool->addTask(bind(&Train_GBM_Algo::findSplitFeature_Wrapper,
@@ -134,7 +133,7 @@ void Train_GBM_Algo::Train() {
                                                  this->dataSet_feature.size()),
                                              j, inClass));
                 }
-                threadpool->join();
+                threadpool->wait();
                 assert(proc_left == 0);
                 
                 // global to gather leafNodes' best split point of all threads

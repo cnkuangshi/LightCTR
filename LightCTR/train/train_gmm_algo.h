@@ -40,12 +40,16 @@ public:
         threadpool = new ThreadPool(thread::hardware_concurrency());
         init();
     }
+    Train_GMM_Algo() = delete;
+    
     ~Train_GMM_Algo() {
         for (size_t i = 0; i < cluster_cnt; i++) {
             delete [] gaussModels[i].mu;
         }
         delete [] gaussModels;
         delete [] latentVar;
+        delete threadpool;
+        threadpool = NULL;
     }
 
     void init();

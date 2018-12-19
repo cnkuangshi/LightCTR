@@ -29,6 +29,8 @@ public:
         printf("-- Attention Inner FC-2 ");
         transformFunc_bp = new Fully_Conn_Layer<Sigmoid>(transformFunc, _hidden_size, 1);
     }
+    Attention_Unit() = delete;
+    
     ~Attention_Unit() {
         delete transformFunc_bp;
         delete transformFunc;

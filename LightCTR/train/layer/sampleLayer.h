@@ -31,6 +31,7 @@ public:
         
         printf("Sample Layer\n");
     }
+    Sample_Layer() = delete;
     ~Sample_Layer() {
         delete noise;
     }

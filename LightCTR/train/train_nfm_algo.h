@@ -26,10 +26,18 @@ public:
         init();
     }
     
+    ~Train_NFM_Algo() {
+        delete [] update_g;
+        delete threadpool;
+        threadpool = NULL;
+    }
+    
     void init();
     void Train();
     
 private:
+    Train_NFM_Algo() = delete;
+    
     size_t epoch;
     size_t batch_size;
     

@@ -26,6 +26,8 @@ public:
         this->dl_algo = RNN;
         this->init(_hidden_size);
     }
+    Train_RNN_Algo() = delete;
+                                  
     ~Train_RNN_Algo() {
         delete this->inputLayer;
         delete this->attentionLayer;

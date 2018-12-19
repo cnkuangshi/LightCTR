@@ -54,6 +54,8 @@ public:
         init();
         threadpool = new ThreadPool(this->proc_cnt);
     }
+    Train_GBM_Algo() = delete;
+    
     ~Train_GBM_Algo() {
         delete [] sampleDataSetIndex;
         delete [] sampleFeatureSetIndex;

@@ -38,10 +38,24 @@ public:
         init();
         printf("Convolution Layer\n");
     }
+    Conv_Layer() = delete;
+    
     ~Conv_Layer() {
+        FOR(i, filter_cnt) {
+            delete filterArr[i];
+        }
         filterArr.clear();
+        FOR(i, this->output_dimention) {
+            delete bias[i];
+        }
         bias.clear();
+        FOR(i, filter_cnt) {
+            delete filterDelta[i];
+        }
         filterDelta.clear();
+        FOR(i, filter_cnt) {
+            delete biasDelta[i];
+        }
         biasDelta.clear();
     }
     

@@ -73,7 +73,6 @@ void Train_Embed_Algo::init() {
 }
 
 void Train_Embed_Algo::Train() {
-    threadpool->init();
     size_t docid = 0;
     string line;
     while(!textStream.eof()){
@@ -83,7 +82,7 @@ void Train_Embed_Algo::Train() {
             threadpool->addTask(bind(&Train_Embed_Algo::TrainDocument, this, docid++, offset));
         }
     }
-    threadpool->join();
+    threadpool->wait();
     cout << "All " << docid << " docs are trained completely" << endl;
     
     // Normalization
@@ -261,6 +260,10 @@ void Train_Embed_Algo::EmbeddingCluster(shared_ptr<vector<int> > clustered, size
         md << endl;
     }
     md.close();
+    for (size_t c = 0; c < cluster_cnt; c++) {
+        topicSet[c]->clear();
+    }
+    topicSet.clear();
 }
 
 void Train_Embed_Algo::saveModel() {

@@ -23,7 +23,7 @@
 typedef uint64_t Cycle;
 typedef double Second;
 
-extern struct timeval __g_now_tv;
+struct timeval __g_now_tv;
 extern Cycle beginning_, ending_;
 extern Second beginning_seconds_, ending_seconds_;
 extern bool running_;
@@ -38,6 +38,15 @@ inline int64_t __must_inline__ get_now_ms() {
 
 inline time_t __must_inline__ get_now_s(void) {
     return __g_now_tv.tv_sec;
+}
+
+inline time_t __must_inline__ gettickspan(uint64_t old_tick = get_now_ms()) {
+    update_tv();
+    auto cur_tick = get_now_ms();
+    if (old_tick > cur_tick) {
+        return 0;
+    }
+    return cur_tick - old_tick;
 }
 
 inline uint64_t timestamp() {

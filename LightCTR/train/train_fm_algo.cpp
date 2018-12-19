@@ -46,7 +46,6 @@ void Train_FM_Algo::Train() {
         
         size_t thread_hold_dataRow_cnt = (this->dataRow_cnt + this->proc_cnt - 1) / this->proc_cnt;
         
-        threadpool->init();
         for (size_t pid = 0; pid < this->proc_cnt; pid++) {
             // re-sample dropout
             dropout.Mask(dropout_mask, this->factor_cnt);
@@ -55,7 +54,7 @@ void Train_FM_Algo::Train() {
             threadpool->addTask(bind(&Train_FM_Algo::batchGradCompute, this, pid, start_pos,
                                      min(start_pos + thread_hold_dataRow_cnt, this->dataRow_cnt)));
         }
-        threadpool->join();
+        threadpool->wait();
         assert(proc_data_left == 0);
         
         ApplyGrad();

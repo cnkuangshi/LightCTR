@@ -22,11 +22,14 @@ public:
         init();
         printf("Fully Connected Layer\n");
     }
+    Fully_Conn_Layer() = delete;
+    
     ~Fully_Conn_Layer() {
         delete [] weight;
         delete [] bias;
         delete [] weightDelta;
         delete [] biasDelta;
+        delete [] dropout_mask;
     }
     
     void init() {

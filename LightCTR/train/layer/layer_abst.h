@@ -37,6 +37,7 @@ public:
             printf("Init Input %zux%zu ", _input_dimention, _output_dimention);
         }
     }
+    Layer_Base() = delete;
     virtual ~Layer_Base() {
     }
     

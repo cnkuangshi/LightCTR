@@ -43,7 +43,6 @@ void Train_FFM_Algo::Train() {
 }
 
 void Train_FFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
-    threadpool->init();
     for (size_t rid = rbegin; rid < rend; rid++) { // data row
         threadpool->addTask([&, rid]() {
             double fm_pred = 0.0f, fm_pred_field = 0.0f;
@@ -76,7 +75,7 @@ void Train_FFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
             accumWVGrad(rid, sigmoid.forward(fm_pred + fm_pred_field));
         });
     }
-    threadpool->join();
+    threadpool->wait();
 }
 
 void Train_FFM_Algo::accumWVGrad(size_t rid, double pred) {

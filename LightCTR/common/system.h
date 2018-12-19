@@ -32,7 +32,7 @@
 #endif
 
 inline int getEnv(const char *env_var, int defalt) {
-    auto p = getenv(env_var);
+    auto p = std::getenv(env_var);
     if (!p) {
         return defalt;
     }
@@ -40,7 +40,7 @@ inline int getEnv(const char *env_var, int defalt) {
 }
 
 inline const char * getEnv(const char *env_var, const char *defalt) {
-    auto p = getenv(env_var);
+    auto p = std::getenv(env_var);
     if (!p) {
         return defalt;
     }
@@ -97,7 +97,7 @@ double SystemMemoryUsage() {
     return usedMem;
 }
 
-bool mmapLoad(const char* filename) {
+bool mmapLoad(const char* filename, void** mmapPtr) {
     int _fd = open(filename, O_RDONLY, (int)0400);
     if (_fd == -1) {
         _fd = 0;
@@ -112,6 +112,11 @@ bool mmapLoad(const char* filename) {
     _nodes = mmap(
                   0, size, PROT_READ, MAP_SHARED, _fd, 0);
 #endif
+    close(_fd);
+    if (_nodes == MAP_FAILED) {
+        return false;
+    }
+    *mmapPtr = _nodes;
     return true;
 }
 

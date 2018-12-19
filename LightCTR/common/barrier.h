@@ -22,10 +22,15 @@ public:
         flag_ = count;
     }
     
+    inline void reset(int count = 1) {
+        std::unique_lock<std::mutex> glock(lock_);
+        flag_ = count;
+    }
+    
     inline void block() {
         std::unique_lock<std::mutex> glock(lock_);
         cond_.wait(glock, [this] {
-            return flag_ == 0;
+            return flag_ <= 0;
         });
     }
     

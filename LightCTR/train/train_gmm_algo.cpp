@@ -79,7 +79,6 @@ vector<double>** Train_GMM_Algo::Train_EStep() {
 }
 
 double Train_GMM_Algo::Train_MStep(vector<double>** latentVar) {
-    threadpool->init();
     FOR(gasid, cluster_cnt) {
         threadpool->addTask([&, gasid]() {
             double newWeight = 0;
@@ -94,9 +93,8 @@ double Train_GMM_Algo::Train_MStep(vector<double>** latentVar) {
             memset(gaussModels[gasid].sigma, 0, sizeof(double) * feature_cnt);
         });
     }
-    threadpool->join();
+    threadpool->wait();
     
-    threadpool->init();
     FOR(gasid, cluster_cnt) {
         threadpool->addTask([&, gasid]() {
             // update new gauss mu
@@ -122,7 +120,7 @@ double Train_GMM_Algo::Train_MStep(vector<double>** latentVar) {
             }
         });
     }
-    threadpool->join();
+    threadpool->wait();
     
     // compute log likelihood ELOB
     double sumLogPDF = 0.0f;

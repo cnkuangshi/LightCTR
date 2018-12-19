@@ -100,6 +100,13 @@ public:
         }
     }
     
+    ~ANNIndex() {
+        for (auto it = forest.begin(); it != forest.end(); it++) {
+            (*it)->clear();
+        }
+        forest.clear();
+    }
+    
     void query(const Point& input, size_t beamSearchK, vector<size_t>& result_indices) {
         assert(beamSearchK > leaf_min_points);
         

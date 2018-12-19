@@ -1,10 +1,13 @@
 os: osx
 language: cpp
 
-script: make
+script:
+make
+make master
+make ps
+make worker
 
 notifications:
   email:
     on_success: change
     on_failure: always
-

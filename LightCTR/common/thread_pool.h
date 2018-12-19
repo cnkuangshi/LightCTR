@@ -36,34 +36,34 @@ public:
     ThreadPool(size_t);
     ~ThreadPool();
     
-    void init();
     
     template<class F, class... Args>
     auto addTask(F&& f, Args&&... args) 
         -> std::future<typename std::result_of<F(Args...)>::type>;
     
-    void join();
+    void wait();
     
 private:
+    void init();
+    void join();
+    
     size_t threads;
     std::vector<std::thread> workers;
     std::queue<std::function<void()> > tasks;
     
     std::mutex queue_mutex;
     std::condition_variable condition;
-    bool stop;
+    std::atomic<bool> stop{false};
 };
 
-inline ThreadPool::ThreadPool(size_t _threads): threads(_threads), stop(false) {
+inline ThreadPool::ThreadPool(size_t _threads): threads(_threads) {
     init();
 }
 
 inline void ThreadPool::init() {
     if (!workers.empty()) {
-        printf("ThreadPool is running\n");
         return;
     }
-    stop = false;
     for(size_t i = 0;i < threads; i++) {
         workers.emplace_back([this] {
             for(;;) {
@@ -79,6 +79,7 @@ inline void ThreadPool::init() {
                     this->tasks.pop();
                 }
                 task();
+                condition.notify_all();
             }
         });
     }
@@ -105,12 +106,19 @@ auto ThreadPool::addTask(F&& f, Args&&... args)
     return ret;
 }
 
+inline void ThreadPool::wait() {
+    std::unique_lock<std::mutex> lock(queue_mutex);
+    this->condition.wait(lock, [this] { // wait for the last task complete
+        return this->stop || this->tasks.empty();
+    });
+}
+
 inline void ThreadPool::join() {
     {
         std::unique_lock<std::mutex> lock(queue_mutex);
         stop = true;
     }
-    condition.notify_all();
+    condition.notify_all(); // notify to stop
     for (auto &worker : workers) {
         worker.join();
     }

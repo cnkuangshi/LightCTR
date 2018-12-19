@@ -25,7 +25,8 @@ enum MsgType {
     REQUEST_PUSH,
     REQUEST_PULL,
     HEARTBEAT,
-    RESERVED
+    RESERVED,
+    UNKNOWN
 };
 
 class Package;
@@ -33,6 +34,7 @@ class Buffer;
 class PackageDescript;
 
 typedef std::function<void(std::shared_ptr<PackageDescript>)> response_callback_t;
+typedef std::function<void(std::shared_ptr<PackageDescript>)> sync_barrier_callback_t;
 
 class ZMQ_Message {
 public:
@@ -79,16 +81,20 @@ private:
     zmq_msg_t _zmg;
 };
 
+
 class PackageDescript {
 public:
     // fill by handler
     MsgType msgType;
+    size_t epoch_version;
     
     // fill when send
     size_t node_id;
     size_t message_id;
     
     response_callback_t callback;
+    sync_barrier_callback_t sync_callback = NULL;
+    
     Buffer content;
     
     time_t send_time; // record for timeout monitor
@@ -97,20 +103,26 @@ public:
     ~PackageDescript() {
         
     }
-    explicit PackageDescript(MsgType _msgType) : msgType(_msgType) {
+    explicit PackageDescript(MsgType _msgType, size_t _epoch_version = 0)
+        : msgType(_msgType), epoch_version(_epoch_version) {
         message_id = 0;
         send_time = 0;
         node_id = to_node_id = -1;
+        if (msgType == REQUEST_PUSH) {
+            assert(epoch_version > 0);
+        }
     }
     PackageDescript &operator=(const PackageDescript &) = delete;
     PackageDescript &operator=(PackageDescript &&other) {
         if (this != &other) {
             msgType = other.msgType;
+            epoch_version = other.epoch_version;
             node_id = other.node_id;
             message_id = other.message_id;
             send_time = other.send_time;
             to_node_id = other.to_node_id;
             callback = std::move(other.callback);
+            sync_callback = std::move(other.sync_callback);
             other.callback = NULL;
             content = std::move(other.content);
         }
@@ -118,20 +130,24 @@ public:
     }
     PackageDescript(const PackageDescript& other) { // copy only by constructor
         msgType = other.msgType;
+        epoch_version = other.epoch_version;
         node_id = other.node_id;
         message_id = other.message_id;
         send_time = other.send_time;
         to_node_id = other.to_node_id;
         callback = other.callback;
+        sync_callback = std::move(other.sync_callback);
         content = Buffer(other.content.buffer(), other.content.size());
     }
     PackageDescript(PackageDescript &&other) {
         msgType = other.msgType;
+        epoch_version = other.epoch_version;
         node_id = other.node_id;
         message_id = other.message_id;
         send_time = other.send_time;
         to_node_id = other.to_node_id;
         callback = std::move(other.callback);
+        sync_callback = std::move(other.sync_callback);
         other.callback = NULL;
         content = std::move(other.content);
     }
@@ -144,7 +160,7 @@ public:
     }
 };
 
-const size_t _Head_size = sizeof(MsgType) + 2 * sizeof(size_t);
+const size_t _Head_size = sizeof(MsgType) + 3 * sizeof(size_t);
 
 class Package {
 public:
@@ -156,7 +172,7 @@ public:
     }
     
     void Descript(std::shared_ptr<PackageDescript>& pDesc) {
-        pDesc = std::make_shared<PackageDescript>(PackageDescript(RESERVED));
+        pDesc = std::make_shared<PackageDescript>(PackageDescript(UNKNOWN));
         assert(pDesc);
         assert(head.size() == _Head_size);
         memcpy(pDesc.get(), head.buffer(), _Head_size);

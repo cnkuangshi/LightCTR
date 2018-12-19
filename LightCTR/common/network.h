@@ -13,6 +13,7 @@
 #include "system.h"
 #include "thread_pool.h"
 #include "lock.h"
+#include "barrier.h"
 #include "message.h"
 #include "message_queue.h"
 #include "assert.h"
@@ -129,11 +130,7 @@ public:
         return delivery;
     }
     
-    void regist_router(size_t node_id, Addr& addr) {
-        if (0 != router_socket.count(node_id)) {
-            printf("[Router] %zu is Re-registering\n", node_id);
-        }
-        
+    void regist_router(size_t node_id, Addr&& addr) {
         void* socket = zmq_socket(zmq_ctx, ZMQ_PUSH);
         assert(socket);
         int res = 0, retry_conn = 3;
@@ -146,56 +143,72 @@ public:
         }
         assert(0 == res);
         
-        router_addr.emplace(node_id, std::move(addr));
-        router_lock.emplace(node_id, std::shared_ptr<SpinLock>(new SpinLock()));
-        router_socket.emplace(node_id, socket);
+        std::unique_lock<SpinLock> glock(router_lock);
+        if (0 != router_socket.count(node_id)) {
+            printf("[Router] %zu is Re-registering\n", node_id);
+            router_addr[node_id] = std::forward<Addr>(addr);
+            router_socket[node_id] = socket;
+        } else {
+            router_addr.emplace(node_id, std::forward<Addr>(addr));
+            router_socket.emplace(node_id, socket);
+        }
         
         printf("[Router] Add node_id = %zu addr = %s\n",
                node_id, addr.toString().c_str());
     }
     
-    const Addr&& get_router(size_t node_id) {
+    const Addr& get_router(size_t node_id) {
         if (node_id == cur_node_id) {
-            return std::move(listen_addr);
+            return listen_addr;
         }
+        std::unique_lock<SpinLock> glock(router_lock);
         assert(router_addr.count(node_id) != 0);
-        return std::move(router_addr[node_id]);
+        return router_addr[node_id];
     }
     
-    void delete_router(size_t node_id) {
+    bool delete_router(size_t node_id) {
+        std::unique_lock<SpinLock> glock(router_lock);
         if(0 == router_socket.count(node_id)) {
-            return;
+            return false;
         }
         assert(0 == zmq_close(router_socket[node_id]));
         router_addr.erase(node_id);
-//        router_lock.erase(node_id);
         router_socket.erase(node_id);
         printf("[Router] Delete node_id = %zu\n", node_id);
+        return true;
     }
     
     void regist_handler(MsgType type, request_handler_t &&handler) {
         std::unique_lock<SpinLock> lock(handlerMap_lock);
-        assert(handlerMap.count(type) == 0);
-        handlerMap.emplace(type, std::move(handler));
+        if (handlerMap.count(type) == 0) {
+            handlerMap.emplace(type, std::forward<request_handler_t>(handler));
+        } else {
+            handlerMap[type] = handler;
+        }
     }
     
-    void send_sync(PackageDescript&& pDesc, size_t to_id) {
+    void send_async(PackageDescript& pDesc, size_t to_id) {
         pDesc.node_id = cur_node_id;
         pDesc.to_node_id = to_id;
         pDesc.send_time = time(NULL);
         
         if (pDesc.msgType != RESPONSE) {
+            // new msg_id will skip RESPONSE
             pDesc.message_id = msg_seq++;
             
-            if (sending_queue && pDesc.msgType != HEARTBEAT) {
-                // new msg_id and resend_queue will skip RESPONSE and HEARTBEAT
-                sending_queue->push(pDesc); // save Duplicated package into queue
-                printf("[QUEUE] save package msg_id = %zu msg_remain = %zu\n",
-                       pDesc.message_id, sending_queue->size());
+            if (pDesc.msgType != HEARTBEAT) {
+                // new resend_queue will skip HEARTBEAT and RESPONSE
+                // Never resend RESPONSE
+                if(time(NULL) - pDesc.send_time <= 20) {
+                    sending_queue.push(pDesc); // save Duplicated package into queue
+                    printf("[QUEUE] save package msg_id = %zu msg_remain = %zu\n",
+                           pDesc.message_id, sending_queue.size());
+                }
             }
         }
-        
-        if(pDesc.callback) {
+        if (pDesc.sync_callback) {
+            callbackMap.emplace(pDesc.message_id, std::move(pDesc.sync_callback));
+        } else if(pDesc.callback) {
             std::unique_lock<SpinLock> lock(callbackMap_lock);
             assert(callbackMap.count(pDesc.message_id) == 0);
             callbackMap.emplace(pDesc.message_id, std::move(pDesc.callback));
@@ -209,9 +222,8 @@ public:
         
         const size_t pkg_size = snd_package.head.size();
         {
-            assert(1 == router_lock.count(to_id));
             // turn package sequence of channel into serial communication
-            std::unique_lock<SpinLock> glock(*router_lock[to_id]);
+            std::unique_lock<SpinLock> glock(router_lock);
             auto it = router_socket.find(to_id);
             if (it == router_socket.end()) {
                 return; // double check whether node serving
@@ -223,8 +235,20 @@ public:
         }
     }
     
+    void send_sync(PackageDescript& pDesc, size_t to_id) {
+        assert(pDesc.msgType != RESPONSE);
+        Barrier barrier;
+        pDesc.sync_callback = [&pDesc, &barrier](std::shared_ptr<PackageDescript> ptr) {
+            if (pDesc.callback)
+                pDesc.callback(ptr);
+            barrier.unblock();
+        };
+        send_async(pDesc, to_id);
+        barrier.block();
+    }
+    
     void start_loop() {
-#if (defined PS) || (defined WORKER)
+#if (defined PS) || (defined WORKER) || (defined WORKER_RING)
         assert(0 == listen_bind());
 #else
         int res = zmq_bind(listen_socket, __global_Master_IP_Port.c_str());
@@ -244,7 +268,15 @@ public:
         }
         serving = false;
         
+        RTT_timeout_monitor->join();
+        puts("[Network] stop RTT timeout monitor");
+        handle_pool->wait();
+        puts("[Network] stop handlers");
+        callback_pool->wait();
+        puts("[Network] stop message callback");
+        
         // break event loop
+        puts("[Network] prepare to break event loop");
         void* socket = zmq_socket(zmq_ctx, ZMQ_PUSH);
         assert(socket);
         assert(0 == zmq_connect(socket, listen_addr.toString().c_str()));
@@ -252,8 +284,10 @@ public:
             assert(0 == zmq_msg_send(&ZMQ_Message().zmg(), socket, 0));
         }
         
-        io_pool->join();
-        puts("[Network] shutdown");
+        io_pool->wait();
+        puts("[Network] stop IO Eventloop");
+        
+        puts("[Network] shutdown complete");
     }
     
     inline size_t node_id() const {
@@ -262,7 +296,7 @@ public:
     void set_node_id(size_t node_id) {
         cur_node_id = node_id;
     }
-    inline const Addr& local_addr() {
+    inline const Addr& local_addr() const {
         return listen_addr;
     }
 
@@ -277,9 +311,13 @@ private:
     }
     
     ~Delivery() {
-        assert(!serving); // should call shutdown first
-        handle_pool->join();
-        callback_pool->join();
+        shutdown();
+        delete handle_pool;
+        handle_pool = NULL;
+        delete callback_pool;
+        callback_pool = NULL;
+        delete RTT_timeout_monitor;
+        RTT_timeout_monitor = NULL;
         
         if (listen_socket) {
             assert(0 == zmq_close(listen_socket));
@@ -298,9 +336,9 @@ private:
     void init() {
         // first regist master addr and regist cur node to master
         // master addr should be config
-#if (defined PS) || (defined WORKER)
+#if (defined PS) || (defined WORKER) || (defined WORKER_RING)
         Addr master_addr(__global_Master_IP_Port.c_str());
-        regist_router(0, master_addr); // reserve 0 for master
+        regist_router(0, std::move(master_addr)); // reserve 0 for master
 #endif
         
         cur_node_id = 0; // init with 1 for ps and BEGIN_ID_OF_WORKER for worker
@@ -315,7 +353,6 @@ private:
         // TODO whether improve degree of parallelism
         
         // monitor timeout to get response and retry to request
-        sending_queue = new MessageQueue<PackageDescript>();
         RTT_timeout_monitor = new std::thread(&Delivery::timeoutResender, this);
     }
     
@@ -345,6 +382,9 @@ private:
                 // long wait use mutex
                 std::unique_lock<std::mutex> lock(listen_mutex);
                 int res = zmq_msg_recv(&recv_package.head.zmg(), listen_socket, 0);
+                if (res < 0 && !serving) {
+                    break;
+                }
                 assert(res >= 0);
                 if (res == 0) { // shutdown message
                     break;
@@ -386,8 +426,9 @@ private:
                 handler(request, resp_desc); // fill response msg
             }
             const size_t to_id = request->node_id;
+            resp_desc.to_node_id = to_id;
             printf("[RESPONSE]");
-            send_sync(std::move(resp_desc), to_id); // send response
+            send_async(resp_desc, to_id); // send response
         });
     }
     
@@ -396,12 +437,10 @@ private:
         printf("[RESPONSE] msg_id = %zu msgType = %d\n",
                response->message_id, response->msgType);
         
-        if (sending_queue) {
-            int res = sending_queue->erase(*response);
-            if (res == 1) {
-                printf("[QUEUE] ACK req msg_id = %zu msg_remain = %zu\n",
-                       response->message_id, sending_queue->size());
-            }
+        int res = sending_queue.erase(*response);
+        if (res == 1) {
+            printf("[QUEUE] ACK req msg_id = %zu msg_remain = %zu\n",
+                   response->message_id, sending_queue.size());
         }
         
         response_callback_t callback;
@@ -422,34 +461,33 @@ private:
     }
     
     void timeoutResender() {
-        const time_t timeout = 10;
+        const time_t timeout = 5;
         while(serving) {
-            if (!sending_queue) {
-                return;
-            }
-            const PackageDescript& pkg = sending_queue->front();
+            const PackageDescript& pkg = sending_queue.front();
             const size_t pkg_msgid = pkg.message_id;
             const size_t pkg_to_nodeid = pkg.to_node_id;
             assert(pkg.send_time > 0);
             
             time_t cur_time = time(NULL);
-            if (pkg.send_time + timeout > cur_time) {
+            if (pkg.send_time + timeout >= cur_time) {
                 const time_t interval = pkg.send_time + timeout - cur_time;
-                assert(interval > 0);
+                assert(interval >= 0);
                 std::this_thread::sleep_for(std::chrono::seconds(interval));
             }
-            PackageDescript resend_pkg(RESERVED);
+            if (!serving)
+                break;
+            PackageDescript resend_pkg(UNKNOWN);
             resend_pkg.message_id = pkg_msgid;
             resend_pkg.to_node_id = pkg_to_nodeid;
-            if (sending_queue->pop_if(resend_pkg, &resend_pkg)) {
+            if (sending_queue.pop_if(resend_pkg, &resend_pkg)) {
                 // detect timeout, do resend
                 printf("[Re-Send]");
-                send_sync(std::move(resend_pkg), resend_pkg.to_node_id);
+                send_async(resend_pkg, resend_pkg.to_node_id);
             }
         }
     }
     
-    bool serving = true;
+    std::atomic<bool> serving{true};
     ThreadPool *io_pool, *handle_pool, *callback_pool;
     
     void *zmq_ctx;
@@ -470,10 +508,10 @@ private:
     
     std::map<size_t, void *> router_socket;
     std::map<size_t, Addr> router_addr;
-    std::map<size_t, std::shared_ptr<SpinLock> > router_lock;
+    SpinLock router_lock;
     
     std::thread* RTT_timeout_monitor;
-    MessageQueue<PackageDescript>* sending_queue;
+    MessageQueue<PackageDescript> sending_queue;
 };
 
 #endif /* network_h */

@@ -70,7 +70,7 @@ private:
                 pull_map[to_id] = std::vector<TKey>();
                 candidate_ps++;
             }
-            pull_map[to_id].emplace_back(it->first);
+            pull_map[to_id].emplace_back(std::move(it->first));
         }
         
         for (auto &item : pull_map) {
@@ -101,7 +101,7 @@ private:
                     callback();
                 }
             };
-            gDelivery.send_sync(std::move(desc), to_id);
+            gDelivery.send_async(desc, to_id);
         }
         
         printf("[WORKER Pull] %zu Keys Sended\n", keys.size());

@@ -38,6 +38,10 @@ public:
         return update(static_cast<size_t>(murMurHash(key)), value);
     }
     
+    const T& getValue(const std::string& key) const {
+        return getValue(static_cast<size_t>(murMurHash(key)));
+    }
+    
     bool update(size_t key, const T& value) {
         return insert(key, value);
     }
@@ -47,6 +51,17 @@ public:
         assert(key > 0);
         int res = insertOrUpdate(key, value, 0);
         return (res == 0 ? true : false);
+    }
+    
+    const T& getValue(size_t key) const {
+        for (int i = 0; i < hash_times; i++) {
+            size_t inner_offset = key % primes[i];
+            ShmHashNode* addr = (ShmHashNode*)g_pShmAddr + prime_offset[i] + inner_offset;
+            if (addr->key == key) {
+                return addr->value;
+            }
+        }
+        return NULL;
     }
     
 private:

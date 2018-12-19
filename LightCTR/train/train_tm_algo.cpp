@@ -25,11 +25,10 @@ void Train_TM_Algo::init() {
             assert(this->latentVar[docid]->size() == word_cnt);
         });
     }
-    threadpool->join();
+    threadpool->wait();
     topics_of_docs = new vector<double>[doc_cnt];
     latent_word_sum = new vector<double>[doc_cnt];
     
-    threadpool->init();
     FOR(docid, doc_cnt) {
         threadpool->addTask([&, docid]() {
             latent_word_sum[docid].resize(topic_cnt);
@@ -67,7 +66,7 @@ void Train_TM_Algo::init() {
             }
         });
     }
-    threadpool->join();
+    threadpool->wait();
     
     latent_word_doc_sum.resize(topic_cnt);
     wordCnt_of_doc.resize(doc_cnt);
@@ -81,7 +80,6 @@ void Train_TM_Algo::init() {
 }
 
 vector<vector<double>* >** Train_TM_Algo::Train_EStep() {
-    threadpool->init();
     FOR(docid, doc_cnt) {
         threadpool->addTask([&, docid]() {
             FOR(wid, word_cnt) {
@@ -103,10 +101,9 @@ vector<vector<double>* >** Train_TM_Algo::Train_EStep() {
             }
         });
     }
-    threadpool->join();
+    threadpool->wait();
     
     // cache for M-Step
-    threadpool->init();
     FOR(wid, word_cnt) {
         threadpool->addTask([&, wid]() {
             FOR(tid, topic_cnt) {
@@ -154,12 +151,11 @@ vector<vector<double>* >** Train_TM_Algo::Train_EStep() {
             latent_word_doc_sum[tid] = sum_tmp;
         });
     }
-    threadpool->join();
+    threadpool->wait();
     return latentVar;
 }
 
 double Train_TM_Algo::Train_MStep(vector<vector<double>* >**) {
-    threadpool->init();
     FOR(docid, doc_cnt) {
         threadpool->addTask([&, docid]() {
             double tmp;
@@ -182,7 +178,7 @@ double Train_TM_Algo::Train_MStep(vector<vector<double>* >**) {
             }
         });
     }
-    threadpool->join();
+    threadpool->wait();
     
     // check
     FOR(tid, topic_cnt) {

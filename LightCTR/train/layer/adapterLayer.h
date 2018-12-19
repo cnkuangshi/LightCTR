@@ -22,6 +22,8 @@ public:
         
         printf("Adapter Layer\n");
     }
+    Adapter_Layer() = delete;
+    
     ~Adapter_Layer() {
     }
     

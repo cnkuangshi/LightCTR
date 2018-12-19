@@ -27,8 +27,12 @@ public:
         init();
         threadpool = new ThreadPool(this->proc_cnt);
     }
+    Train_FM_Algo() = delete;
+    
     ~Train_FM_Algo() {
         delete [] update_g;
+        delete threadpool;
+        threadpool = NULL;
     }
     
     void init();

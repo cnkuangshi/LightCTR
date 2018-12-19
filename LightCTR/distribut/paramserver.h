@@ -14,6 +14,7 @@
 #include "../common/lock.h"
 #include <unordered_map>
 #include "../util/gradientUpdater.h"
+#include "dist_machine_abst.h"
 
 enum UpdaterType {
     SGD = 0,
@@ -75,7 +76,7 @@ private:
             gDelivery.set_node_id(node_id);
             assert(gDelivery.node_id() >= BEGIN_ID_OF_PS);
         };
-        gDelivery.send_sync(std::move(desc), 0);
+        gDelivery.send_async(desc, 0);
     }
     
     void regist_ack_handler() {
@@ -86,7 +87,7 @@ private:
             while (!request->content.readEOF()) { // read keys needed by worker
                 Addr w_addr(request->content);
                 printf("[PS] add worker_id = %zu router\n", w_id);
-                gDelivery.regist_router(w_id++, w_addr);
+                gDelivery.regist_router(w_id++, std::move(w_addr));
             }
             serving_barrier.unblock();
         };
@@ -148,6 +149,16 @@ private:
             printf("[PS PUSH] recv %zu pairs\n", request->content.size() / sizeof(data_pair));
             
             rwlock.wlock();
+            
+            if (last_epoch_version - request->epoch_version > 10) {
+                last_epoch_version = std::max(last_epoch_version, request->epoch_version);
+                printf("[PS PUSH] last version %zu but recv %zu",
+                       last_epoch_version, request->epoch_version);
+                rwlock.unlock();
+                return;
+            }
+            
+            last_epoch_version = std::max(last_epoch_version, request->epoch_version);
             
             size_t saved_cnt = 0, skip_cnt = 0;
             while (!request->content.readEOF()) {
@@ -262,6 +273,7 @@ private:
     
     std::unordered_map<TKey, ValueWrapper> paramShardTable;
     RWLock rwlock;
+    size_t last_epoch_version{0};
     
     UpdaterType updaterType;
     bool status_serving{false};

@@ -24,27 +24,30 @@ public:
              gConsistentHash(ConsistentHash::Instance()) {
     }
     
-    void sync(const std::unordered_map<TKey, TValue> &grads) {
+    void sync(const std::unordered_map<TKey, TValue> &grads, size_t epoch) {
+        assert(epoch > 0);
         Barrier barrier;
         size_t candidate_ps = 0;
-        sendToPS(grads, candidate_ps, [this, &barrier, &candidate_ps]() {
+        sendToPS(grads, candidate_ps, epoch,
+                 [this, &barrier, epoch, &candidate_ps]() {
             candidate_ps--;
             assert(candidate_ps >= 0);
             if (candidate_ps == 0) {
-                printf("[WORKER Push] ----- %zu complete -----\n", push_seq++);
+                printf("[WORKER Push] ----- %zu-%zu complete -----\n", epoch, push_seq++);
                 barrier.unblock();
             }
         });
         barrier.block();
     }
     
-    void async(const std::unordered_map<TKey, TValue> &grads) {
+    void async(const std::unordered_map<TKey, TValue> &grads, size_t epoch) {
+        assert(epoch > 0);
         size_t candidate_ps = 0;
-        sendToPS(grads, [this, &candidate_ps]() {
+        sendToPS(grads, epoch, [this, epoch, &candidate_ps]() {
             candidate_ps--;
             assert(candidate_ps >= 0);
             if (candidate_ps == 0) {
-                printf("[WORKER Push] ----- %zu complete -----\n", push_seq++);
+                printf("[WORKER Push] ----- %zu-%zu complete -----\n", epoch, push_seq++);
             }
         });
     }
@@ -52,6 +55,7 @@ public:
 private:
     void sendToPS(const std::unordered_map<TKey, TValue> &grads,
                   size_t& candidate_ps,
+                  size_t epoch,
                   std::function<void()> callback) {
         auto& push_map_ptr = *tl_map;
         if (push_map_ptr == NULL) {
@@ -71,12 +75,12 @@ private:
                 push_map[to_id] = std::vector<std::pair<TKey, TValue> >();
                 candidate_ps++;
             }
-            push_map[to_id].emplace_back(*it);
+            push_map[to_id].emplace_back(std::move(*it));
         }
         
         for (auto &item : push_map) {
             const size_t to_id = item.first;
-            PackageDescript desc(REQUEST_PUSH);
+            PackageDescript desc(REQUEST_PUSH, epoch);
             for (auto &grad_pair : item.second) {
                 desc.content.append(&grad_pair, sizeof(grad_pair)); // push data pair
             }
@@ -86,7 +90,7 @@ private:
                     callback();
                 }
             };
-            gDelivery.send_sync(std::move(desc), to_id);
+            gDelivery.send_async(desc, to_id);
         }
         
         printf("[WORKER Push] %zu Grad-pairs Sended\n", grads.size());

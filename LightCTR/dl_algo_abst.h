@@ -33,6 +33,8 @@ public:
     }
     virtual ~DL_Algo_Abst() {
         dataSet.clear();
+        delete threadpool;
+        threadpool = NULL;
     }
     
     virtual void init(size_t hidden_size) {
@@ -54,7 +56,6 @@ public:
         for (size_t p = 0; p < epoch; p++) {
             
             GradientUpdater::__global_bTraining = true;
-            threadpool->init();
             
             // Mini-Batch SGD and shuffle selected
             for (size_t rid = 0; rid < dataRow_cnt; rid++) {
@@ -106,21 +107,18 @@ public:
                 if (dl_algo == RNN) {
                     task(); // force RNN into serialization
                 } else {
-                    threadpool->addTask(task);
+                    threadpool->addTask(move(task));
                 }
                 
                 if ((rid + 1) % GradientUpdater::__global_minibatch_size == 0) {
-                    threadpool->join();
+                    threadpool->wait();
                     applyBP();
-                    threadpool->init();
                 }
             }
-            threadpool->join();
             
             if (p % 2 == 0) {
                 
                 GradientUpdater::__global_bTraining = false;
-                threadpool->init();
                 
                 // Validate Loss
                 std::atomic<double> loss(0.0f);
@@ -168,10 +166,10 @@ public:
                     if (dl_algo == RNN) {
                         task();
                     } else {
-                        threadpool->addTask(task);
+                        threadpool->addTask(move(task));
                     }
                 }
-                threadpool->join();
+                threadpool->wait();
                 printf("\nepoch %zu Loss = %lf correct = %.3f\n",
                        p, loss.load(), 1.0f * correct / dataRow_cnt);
             }
@@ -219,7 +217,7 @@ public:
                         break;
                     }
                 }
-                dataSet.emplace_back(tmp);
+                dataSet.emplace_back(move(tmp));
                 if (dataSet.size() > 500) {
                     break;
                 }

@@ -68,7 +68,7 @@ public:
             quantizated_codes.emplace_back(res);
             printf("Finished %d part\n", i);
         }
-        return quantizated_codes;
+        return quantizated_codes; // return local vector by RVO
     }
     
     RealT* get_centroids(size_t which_part, CompressT which_class) {
