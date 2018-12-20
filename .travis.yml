@@ -2,10 +2,12 @@ os: osx
 language: cpp
 
 script:
-make
-make master
-make ps
-make worker
+  - make
+  - make master
+  - make ps
+  - make worker
+  - make ring_master
+  - make ring_worker
 
 notifications:
   email:
