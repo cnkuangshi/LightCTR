@@ -178,12 +178,12 @@ public:
         return true;
     }
     
-    void regist_handler(MsgType type, request_handler_t &&handler) {
+    void regist_handler(MsgType type, request_handler_t&& handler) {
         std::unique_lock<SpinLock> lock(handlerMap_lock);
         if (handlerMap.count(type) == 0) {
             handlerMap.emplace(type, std::forward<request_handler_t>(handler));
         } else {
-            handlerMap[type] = handler;
+            handlerMap[type] = std::forward<request_handler_t>(handler);
         }
     }
     

@@ -63,6 +63,15 @@ public:
         cond_.notify_all();
     }
     
+    inline void emplace(T&& new_value) {
+        {
+            std::unique_lock<std::mutex> lk(mu_);
+            queue_.emplace_back(std::forward<T>(new_value));
+            element_cnt++;
+        }
+        cond_.notify_all();
+    }
+    
     inline void pop() {
         std::unique_lock<std::mutex> lk(mu_);
         cond_.wait(lk, [this]{
@@ -84,6 +93,16 @@ public:
             return 1;
         }
         return 0;
+    }
+    
+    inline typename std::list<T>::iterator mutable_element(size_t index) {
+        std::unique_lock<std::mutex> lk(mu_);
+        assert(index < element_cnt);
+        auto it = queue_.begin();
+        while (index--) {
+            it++;
+        }
+        return it;
     }
     
     inline int modify(const T& value, T* addr) {
@@ -113,7 +132,8 @@ public:
         return 1;
     }
     
-    inline size_t size() const {
+    inline size_t size() {
+        std::unique_lock<std::mutex> lk(mu_);
         return element_cnt;
     }
     

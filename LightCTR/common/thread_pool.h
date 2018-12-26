@@ -33,7 +33,8 @@ inline void synchronize() {
 
 class ThreadPool {
 public:
-    ThreadPool(size_t);
+    explicit ThreadPool(size_t);
+    ThreadPool() = delete;
     ~ThreadPool();
     
     

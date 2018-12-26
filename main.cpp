@@ -73,39 +73,48 @@ bool GradientUpdater::__global_bTraining(true);
 int main(int argc, const char * argv[]) {
     
 #ifdef MASTER
-    Master master(Run_Mode::PS_Mode);
-#elif defined MASTER_RING
-    Master master(Run_Mode::Ring_Mode);
-#elif defined PS
-    ParamServer<Key, Value>();
-#elif defined WORKER
-    Distributed_Algo_Abst *train = new Distributed_Algo_Abst(
-                                 "./data/train_sparse",
-                                 /*epoch*/50);
-    train->Train();
-#elif defined WORKER_RING
-    puts("Run in Ring Mode");
-    const int s = 5;
-    int param[5] = {1, 1, 1, 1, 1};
-    Worker_RingReduce<int> syncer(s, __global_cluster_worker_cnt);
-    int EP = 1;
-    while (EP--) {
-        syncer.syncGradient(1, &param[0], [&param](size_t epoch) {
-            printf("Reduce: ");
-            for (size_t i = 0; i < s; i++) {
-                printf("%d ", *(param + i));
-            }
-            puts("");
-        }, [&param](size_t epoch) {
-            printf("Gather: ");
-            for (size_t i = 0; i < s; i++) {
-                printf("%d ", *(param + i));
-            }
-            puts("");
-        });
+    {
+        Master master(Run_Mode::PS_Mode);
     }
-    syncer.shutdown(NULL);
-    
+#elif defined MASTER_RING
+    {
+        Master master(Run_Mode::Ring_Mode);
+    }
+#elif defined PS
+    {
+        ParamServer<Key, Value>();
+    }
+#elif defined WORKER
+    {
+        Distributed_Algo_Abst *train = new Distributed_Algo_Abst(
+                                     "./data/train_sparse",
+                                     /*epoch*/50);
+        train->Train();
+    }
+#elif defined WORKER_RING
+    {
+        puts("Run in Ring Mode");
+        const int s = 5;
+        int param[5] = {1, 1, 1, 1, 1};
+        Worker_RingReduce<int> syncer(s, __global_cluster_worker_cnt);
+        int EP = 1;
+        while (EP--) {
+            syncer.syncGradient(1, &param[0], [&param](size_t epoch) {
+                printf("Reduce: ");
+                for (size_t i = 0; i < s; i++) {
+                    printf("%d ", *(param + i));
+                }
+                puts("");
+            }, [&param](size_t epoch) {
+                printf("Gather: ");
+                for (size_t i = 0; i < s; i++) {
+                    printf("%d ", *(param + i));
+                }
+                puts("");
+            });
+        }
+        syncer.shutdown(NULL);
+    }
 #elif (defined TEST_FM) || (defined TEST_FFM) || (defined TEST_NFM) || (defined TEST_GBM) || (defined TEST_GMM) || (defined TEST_TM) || (defined TEST_EMB) || (defined TEST_CNN) || (defined TEST_RNN) || (defined TEST_VAE) || (defined TEST_ANN)
     int T = 200;
     

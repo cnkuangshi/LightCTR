@@ -81,6 +81,7 @@ private:
         initPrime(primes);
         
         g_pShmAddr = getShmAddr(0x5fef, tashtable_reserve_size);
+        memset(g_pShmAddr, 0, tashtable_reserve_size);
     }
     ShmHashTable(const ShmHashTable&) = delete;
     ShmHashTable(ShmHashTable&&) = delete;

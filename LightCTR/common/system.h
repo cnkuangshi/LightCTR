@@ -97,26 +97,31 @@ double SystemMemoryUsage() {
     return usedMem;
 }
 
-bool mmapLoad(const char* filename, void** mmapPtr) {
-    int _fd = open(filename, O_RDONLY, (int)0400);
+bool mmapLoad(const char* filename, void** mmapPtr, bool writable) {
+    int flag = O_RDONLY;
+    if (writable)
+        flag = O_RDWR;
+    int _fd = open(filename, flag);
     if (_fd == -1) {
-        _fd = 0;
+        printf("open file errno = %d %s\n", errno, strerror(errno));
         return false;
     }
     off_t size = lseek(_fd, 0, SEEK_END);
-    void* _nodes;
+    
+    flag = PROT_READ;
+    if (writable)
+        flag |= PROT_WRITE;
 #ifdef MAP_POPULATE
-    _nodes = mmap(
-                  0, size, PROT_READ, MAP_SHARED | MAP_POPULATE, _fd, 0);
+    *mmapPtr = mmap(
+                  0, size, flag, MAP_SHARED | MAP_POPULATE, _fd, 0);
 #else
-    _nodes = mmap(
-                  0, size, PROT_READ, MAP_SHARED, _fd, 0);
+    *mmapPtr = mmap(
+                  0, size, flag, MAP_SHARED, _fd, 0);
 #endif
     close(_fd);
-    if (_nodes == MAP_FAILED) {
+    if (*mmapPtr == MAP_FAILED) {
         return false;
     }
-    *mmapPtr = _nodes;
     return true;
 }
 

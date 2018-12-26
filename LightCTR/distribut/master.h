@@ -226,7 +226,7 @@ private:
                 };
                 gDelivery.send_async(desc, node_id);
             });
-            heartbeats_runloop.push(event);
+            heartbeats_runloop.emplace(std::move(event));
         }
         rwlock_heartbeat.unlock();
     }

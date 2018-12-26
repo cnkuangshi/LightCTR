@@ -131,14 +131,14 @@ void FM_Predict::loadDataRow(string dataPath, bool with_valid_label) {
                 if (fid < fm->feature_cnt) {
                     assert(!isnan(fid));
                     assert(!isnan(val));
-                    tmp.emplace_back(*new FMFeature(fid, val, fieldid));
+                    tmp.emplace_back(FMFeature(fid, val, fieldid));
                 }
             }
         }
         if (tmp.empty()) {
             continue;
         }
-        this->test_dataSet.emplace_back(tmp);
+        this->test_dataSet.emplace_back(move(tmp));
     }
     this->test_dataRow_cnt = this->test_dataSet.size();
     assert(test_dataRow_cnt > 0);
