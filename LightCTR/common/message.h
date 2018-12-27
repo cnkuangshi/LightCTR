@@ -24,6 +24,7 @@ enum MsgType {
     REQUEST_FIN,
     REQUEST_PUSH,
     REQUEST_PULL,
+    REQUEST_INFER,
     HEARTBEAT,
     RESERVED,
     UNKNOWN
@@ -113,7 +114,7 @@ public:
         }
     }
     PackageDescript &operator=(const PackageDescript &) = delete;
-    PackageDescript &operator=(PackageDescript &&other) {
+    PackageDescript &operator=(PackageDescript&& other) {
         if (this != &other) {
             msgType = other.msgType;
             epoch_version = other.epoch_version;
@@ -124,6 +125,7 @@ public:
             callback = std::move(other.callback);
             sync_callback = std::move(other.sync_callback);
             other.callback = NULL;
+            other.sync_callback = NULL;
             content = std::move(other.content);
         }
         return *this;
@@ -136,10 +138,10 @@ public:
         send_time = other.send_time;
         to_node_id = other.to_node_id;
         callback = other.callback;
-        sync_callback = std::move(other.sync_callback);
+        sync_callback = other.sync_callback;
         content = Buffer(other.content.buffer(), other.content.size());
     }
-    PackageDescript(PackageDescript &&other) {
+    PackageDescript(PackageDescript&& other) {
         msgType = other.msgType;
         epoch_version = other.epoch_version;
         node_id = other.node_id;
@@ -149,6 +151,7 @@ public:
         callback = std::move(other.callback);
         sync_callback = std::move(other.sync_callback);
         other.callback = NULL;
+        other.sync_callback = NULL;
         content = std::move(other.content);
     }
     

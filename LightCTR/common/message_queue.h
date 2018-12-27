@@ -163,6 +163,7 @@ private:
             if (breakflag) {
                 return;
             }
+            // in this case MessageQueue can't be added, so No need copy the queue
             
             time_t wait_time = 10 * 1000;
             
