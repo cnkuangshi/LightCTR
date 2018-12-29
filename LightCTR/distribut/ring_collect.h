@@ -66,7 +66,7 @@ public:
             
             step_barrier.reset(2);
             
-            const size_t step_version = i + 1;
+            const size_t step_version = epoch * (2 * _ring_size - 2) + i + 1;
             // receive segment from last-skip on the ring topology
             regist_reduce_handler(rcv_ptr, recv_segment_id, step_version);
             
@@ -111,7 +111,7 @@ public:
             
             step_barrier.reset(2);
             
-            const size_t step_version = _ring_size + i;
+            const size_t step_version = epoch * (2 * _ring_size - 2) + _ring_size + i;
             // receive segment from last-skip on the ring topology
             regist_gather_handler(rcv_ptr, recv_segment_id, step_version);
             

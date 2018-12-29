@@ -95,23 +95,24 @@ int main(int argc, const char * argv[]) {
     {
         puts("Run in Ring Mode");
         const int s = 5;
-        int param[5] = {1, 1, 1, 1, 1};
-        Worker_RingReduce<int> syncer(s, __global_cluster_worker_cnt);
-        int EP = 1;
-        while (EP--) {
-            syncer.syncGradient(1, &param[0], [&param](size_t epoch) {
+        float param[5] = {1, 1, 1, 1, 1};
+        Worker_RingReduce<float> syncer(s, __global_cluster_worker_cnt);
+        int EP = 20;
+        for (size_t i = 0; i < EP; i++) {
+            syncer.syncGradient(i, &param[0], [&param](size_t epoch) {
                 printf("Reduce: ");
                 for (size_t i = 0; i < s; i++) {
-                    printf("%d ", *(param + i));
+                    printf("%f ", *(param + i));
                 }
                 puts("");
             }, [&param](size_t epoch) {
                 printf("Gather: ");
                 for (size_t i = 0; i < s; i++) {
-                    printf("%d ", *(param + i));
+                    printf("%f ", *(param + i));
                 }
                 puts("");
             });
+            puts("***************************");
         }
         syncer.shutdown(NULL);
     }

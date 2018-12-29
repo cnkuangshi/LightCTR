@@ -23,14 +23,14 @@ using namespace std;
 
 typedef size_t Key;
 struct Value {
-    double w;
+    float w;
     Value() {
         w = 0.0f;
     }
     Value(const Value &x) {
         w = x.w;
     }
-    Value(double _w): w(_w) {
+    Value(float _w): w(_w) {
     }
     Value& operator+ (const Value &x) {
         w += x.w;

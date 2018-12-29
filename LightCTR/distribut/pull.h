@@ -75,19 +75,20 @@ private:
         
         for (auto &item : pull_map) {
             const size_t to_id = item.first;
-            const size_t msg_cnt = item.second.size();
             PackageDescript desc(REQUEST_PULL);
             for (auto &key_it : item.second) {
-                desc.content.append(&key_it, sizeof(key_it)); // pull keys
+                // pull VarUint keys
+                desc.content.appendVarUint(key_it);
             }
-            desc.callback = [&keys, msg_cnt, callback](
+            desc.callback = [&keys, callback](
                             std::shared_ptr<PackageDescript> resp_package) {
                 std::pair<TKey, TValue> data_pair;
                 
-                assert(resp_package->content.size() <= msg_cnt * sizeof(data_pair)
-                       && resp_package->content.size() % sizeof(data_pair) == 0);
                 while(!resp_package->content.readEOF()) {
-                    resp_package->content >> data_pair; // recv by pair
+                    // parsing pull response by VarUint & float16_t
+                    resp_package->content.readVarUint(&data_pair.first);
+                    resp_package->content.readHalfFloat(&data_pair.second);
+                    
                     assert(data_pair.second.checkValid());
                     
                     auto it = keys.find(data_pair.first);

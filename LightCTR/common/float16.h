@@ -18,14 +18,14 @@ public:
         assert(sizeof(float16_t) * 8 == 16);
     }
     
-    explicit Float16(void* src) { // double or float
-        _float32_value = *(float*)src;
-        convert(_float32_value);
+    explicit Float16(const void* src32) {
+        _float32_value = *static_cast<const float*>(src32);
+        _float16_value = convert(_float32_value);
     }
     
-    explicit Float16(float16_t src) {
-        _float16_value = src;
-        _float32_value = toFloat32(src);
+    explicit Float16(float16_t src16) {
+        _float16_value = src16;
+        _float32_value = toFloat32(src16);
     }
     
     inline float16_t float16_value() {

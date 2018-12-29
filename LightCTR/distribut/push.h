@@ -82,7 +82,9 @@ private:
             const size_t to_id = item.first;
             PackageDescript desc(REQUEST_PUSH, epoch);
             for (auto &grad_pair : item.second) {
-                desc.content.append(&grad_pair, sizeof(grad_pair)); // push data pair
+                // push data pair by VarUint & float16_t
+                desc.content.appendVarUint(grad_pair.first);
+                desc.content << Float16(&grad_pair.second).float16_value();
             }
             desc.callback = [callback](std::shared_ptr<PackageDescript> resp_package) {
                 // response without content

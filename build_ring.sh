@@ -4,6 +4,7 @@ if [ $# -lt 2 ]; then
     exit -1;
 fi
 
+export LightCTR_PS_NUM=0
 export LightCTR_WORKER_NUM=$1
 shift
 export LightCTR_MASTER_ADDR=$1

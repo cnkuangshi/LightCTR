@@ -53,7 +53,8 @@ private:
     void regist_curNode_toMaster() {
         PackageDescript desc(REQUEST_HANDSHAKE);
         const Addr& local_addr = gDelivery.local_addr();
-        desc.content.append(local_addr.toString().c_str(), local_addr.toString().length());
+        std::string local_addr_str = local_addr.toString();
+        desc.content.append(local_addr_str.c_str(), local_addr_str.length());
         
         desc.callback = [this](std::shared_ptr<PackageDescript> resp_package) {
             size_t node_id;

@@ -105,8 +105,8 @@ inline void Float16_sum(void* invec1, void* invec2, void* outvec, int len) {
 #endif
     
     for (int i = 0; i < len; ++i) {
-        auto x = Float16(in1 + i);
-        auto y = Float16(in2 + i);
+        auto x = Float16(*(in1 + i));
+        auto y = Float16(*(in2 + i));
         auto res = Float16(x.float32_value() + y.float32_value());
         *(out + i) = res.float16_value();
     }

@@ -110,12 +110,10 @@ private:
                                              PackageDescript& response) {
             // Lock-free pulling based by Hogwild!
             TKey key;
-            assert(request->content.size() % sizeof(key) == 0);
-            printf("[PS PULL] recv %zu keys\n", request->content.size() / sizeof(key));
             
             size_t cnt = 0, skip_cnt = 0;
             while (!request->content.readEOF()) { // read keys needed by worker
-                request->content >> key;
+                request->content.readVarUint(&key);
                 
                 auto it = paramShardTable.find(key);
                 if (it == paramShardTable.end()) {
@@ -131,9 +129,11 @@ private:
                 }
                 // return pull target param by pair
                 auto pair = make_pair(it->first, it->second.data_readonly);
-                response.content << pair;
+                response.content.appendVarUint(pair.first);
+                response.content << Float16(&pair.second).float16_value();
                 cnt++;
             }
+            assert(request->content.readEOF());
             
             printf("[PS PULL] send %zu pairs, skip %zu pairs\n", cnt, skip_cnt);
         };
@@ -145,8 +145,6 @@ private:
             assert(request->node_id >= BEGIN_ID_OF_WORKER);
             const size_t worker_id = request->node_id - BEGIN_ID_OF_WORKER - 1;
             assert(worker_id < __global_cluster_worker_cnt);
-            assert(request->content.size() % sizeof(data_pair) == 0);
-            printf("[PS PUSH] recv %zu pairs\n", request->content.size() / sizeof(data_pair));
             
             rwlock.wlock();
             
@@ -162,7 +160,9 @@ private:
             
             size_t saved_cnt = 0, skip_cnt = 0;
             while (!request->content.readEOF()) {
-                request->content >> data_pair;
+                request->content.readVarUint(&data_pair.first);
+                request->content.readHalfFloat(&data_pair.second);
+                
                 assert(data_pair.second.checkValid());
                 
                 // do gradient clipping and rescale
@@ -235,6 +235,7 @@ private:
             
             rwlock.unlock();
             
+            assert(request->content.readEOF());
             printf("[PS PUSH] saved %zu pairs, skip %zu pairs\n", saved_cnt, skip_cnt);
             // TODO params backup checkpoint to Hard Disk periodicity
         };

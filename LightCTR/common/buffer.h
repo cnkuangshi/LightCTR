@@ -39,7 +39,7 @@ public:
     }
     
     Buffer &operator=(const Buffer &) = delete;
-    Buffer &operator=(Buffer &&other) {
+    Buffer &operator=(Buffer&& other) {
         if (this != &other) {
             free();
             _buffer = other._buffer;
@@ -86,7 +86,7 @@ public:
     }
     
     template <typename T>
-    inline void append(T *x, size_t len) {
+    inline void append(const T* x, size_t len) {
         if (_capacity == 0) {
             _capacity = len;
             reserve(_capacity);
@@ -104,13 +104,66 @@ public:
     }
     
     template <typename T>
-    inline void read(T *x, size_t len = 0) {
+    inline void appendVarUint(T x) {
+        const size_t type_size = sizeof(T) * 8;
+        assert(type_size == 32 || type_size == 64);
+        assert(x >= 0);
+        
+        char* beginPtr = new char[5];
+        char* ptr = beginPtr;
+        static const uint32_t B = 128;
+        while (x >= B) {
+            *(ptr++) = (x & (B-1)) | B;
+            x >>= 7;
+        }
+        *(ptr++) = static_cast<char>(x);
+        append(beginPtr, ptr - beginPtr);
+        delete[] beginPtr;
+    }
+    
+    template <typename T>
+    inline void read(T* x, size_t len = 0) {
         if (len == 0) {
             len = size(); // read all
         }
         memcpy(x, _cursor, len);
         _cursor += len;
         assert(_cursor <= _end);
+    }
+    
+    template <typename T>
+    inline void readHalfFloat(T* x) {
+        float16_t t;
+        memcpy(&t, _cursor, sizeof(float16_t));
+        _cursor += sizeof(float16_t);
+        assert(_cursor <= _end);
+        if (sizeof(T) == 4 || sizeof(T) == 8) {
+            *x = static_cast<T>(Float16(t).float32_value());
+        }
+    }
+    
+    template <typename T>
+    inline void readVarUint(T* x) {
+        const size_t type_size = sizeof(T) * 8;
+        assert(type_size == 32 || type_size == 64);
+        T res = 0;
+        
+        bool check_flg = false;
+        char *local_cursor = _cursor;
+        for (size_t shift = 0; shift < type_size && local_cursor <= _end; shift += 7) {
+            size_t byte = *(reinterpret_cast<const char*>(local_cursor)); // read one byte
+            local_cursor++;
+            if (byte & 128) {
+                res |= (byte & 127) << shift;
+            } else {
+                res |= byte << shift;
+                check_flg = true;
+                break;
+            }
+        }
+        assert(check_flg && res >= 0);
+        *x = res;
+        _cursor = local_cursor;
     }
     
     inline size_t readed_size() const {
@@ -131,12 +184,12 @@ public:
     }
     
     template <typename T>
-    Buffer& operator >> (T &x) { // just for read
+    Buffer& operator >> (T& x) { // just for read
         read((char *)&x, sizeof(T));
         return *this;
     }
     template <typename T>
-    Buffer& operator << (T &x) {
+    Buffer& operator << (const T& x) {
         append(&x, sizeof(T));
         return *this;
     }
