@@ -47,6 +47,9 @@ public:
                     BEGIN_ID_OF_WORKER + 1 + cur_node_id, send_to_id);
         gDelivery.get_router(recv_from_id);
         gDelivery.get_router(send_to_id);
+                        
+        // TODO recovering boot mode, Copy parameters from the other conventional Ring worker
+        // and Start send and receive by processing epoch_version
     }
     
     ~Worker_RingReduce() {
@@ -54,8 +57,9 @@ public:
         segment_end_arr.clear();
     }
     
-    void syncGradient(size_t epoch, T* gradPtr, std::function<void(size_t)> reduce_callback,
-              std::function<void(size_t)> gather_callback) {
+    void syncGradient(size_t epoch, T* gradPtr,
+                      std::function<void(size_t)> reduce_callback = NULL,
+                      std::function<void(size_t)> gather_callback = NULL) {
         // Firstly do all-reduce
         for (size_t i = 0; i < _ring_size - 1; i++) {
             const size_t send_segment_id = (cur_node_id + _ring_size - i) % _ring_size;
@@ -96,7 +100,7 @@ public:
             
             step_barrier.block();
             
-            if (reduce_callback) {
+            if (unlikely(reduce_callback)) {
                 reduce_callback(i);
             }
         }
@@ -135,13 +139,13 @@ public:
                 gDelivery.send_async(desc, send_to_id);
                 if (pre_ahead_flag) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                    printf("[REDUCE] wait for %zu step\n", step_version);
+                    printf("[GATHER] wait for %zu step\n", step_version);
                 }
             } while(pre_ahead_flag);
             
             step_barrier.block();
             
-            if (gather_callback) {
+            if (unlikely(gather_callback)) {
                 gather_callback(i);
             }
         }
