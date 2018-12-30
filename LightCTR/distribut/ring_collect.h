@@ -45,6 +45,7 @@ public:
         
         printf("[RING] Ring %zu -> %zu -> %zu\n", recv_from_id,
                     BEGIN_ID_OF_WORKER + 1 + cur_node_id, send_to_id);
+        // check router
         gDelivery.get_router(recv_from_id);
         gDelivery.get_router(send_to_id);
                         
@@ -66,7 +67,7 @@ public:
             const size_t recv_segment_id = (cur_node_id + _ring_size - i - 1) % _ring_size;
             
             // send segment to next-skip on the ring topology
-            T* snd_ptr = gradPtr + segment_end_arr[send_segment_id] - segment_size_arr[send_segment_id];
+            const T* snd_ptr = gradPtr + segment_end_arr[send_segment_id] - segment_size_arr[send_segment_id];
             T* rcv_ptr = gradPtr + segment_end_arr[recv_segment_id] - segment_size_arr[recv_segment_id];
             
             step_barrier.reset(2);
@@ -93,8 +94,9 @@ public:
             do {
                 gDelivery.send_async(desc, send_to_id);
                 if (pre_ahead_flag) {
+                    // TODO dynamic waiting interval for network delay or crash of some machines
                     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                    printf("[REDUCE] wait for %zu step\n", step_version);
+                    printf("[REDUCE] waiting for the %zu step\n", step_version);
                 }
             } while(pre_ahead_flag);
             
@@ -111,7 +113,7 @@ public:
             const size_t recv_segment_id = (cur_node_id + _ring_size - i) % _ring_size;
             
             // send segment to next-skip on the ring topology
-            T* snd_ptr = gradPtr + segment_end_arr[send_segment_id] - segment_size_arr[send_segment_id];
+            const T* snd_ptr = gradPtr + segment_end_arr[send_segment_id] - segment_size_arr[send_segment_id];
             T* rcv_ptr = gradPtr + segment_end_arr[recv_segment_id] - segment_size_arr[recv_segment_id];
             
             step_barrier.reset(2);
@@ -139,7 +141,7 @@ public:
                 gDelivery.send_async(desc, send_to_id);
                 if (pre_ahead_flag) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                    printf("[GATHER] wait for %zu step\n", step_version);
+                    printf("[GATHER] waiting for the %zu step\n", step_version);
                 }
             } while(pre_ahead_flag);
             

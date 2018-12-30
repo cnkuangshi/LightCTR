@@ -1,13 +1,13 @@
 //
-//  threadsafe_queue.h
+//  message_queue.h
 //  LightCTR
 //
 //  Created by SongKuangshi on 2017/12/14.
 //  Copyright © 2017年 SongKuangshi. All rights reserved.
 //
 
-#ifndef threadsafe_queue_h
-#define threadsafe_queue_h
+#ifndef message_queue_h
+#define message_queue_h
 
 #include <list>
 #include <condition_variable>
@@ -211,4 +211,4 @@ private:
     std::condition_variable wait_cond_;
 };
 
-#endif /* threadsafe_queue_h */
+#endif /* message_queue_h */

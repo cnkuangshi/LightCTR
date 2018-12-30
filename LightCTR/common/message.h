@@ -60,8 +60,7 @@ public:
     ZMQ_Message &operator=(const ZMQ_Message &) = delete;
     ZMQ_Message &operator=(ZMQ_Message &&other) {
         if (this != &other) {
-            int res = zmq_msg_move(&_zmg, &other.zmg());
-            assert(0 == res);
+            assert(0 == zmq_msg_move(&_zmg, &other.zmg()));
         }
         return *this;
     }
@@ -70,11 +69,11 @@ public:
         return zmq_msg_size(&_zmg);
     }
     
-    char *buffer() {
+    const char* buffer() {
         return (char *)zmq_msg_data(&_zmg);
     }
     
-    zmq_msg_t &zmg() {
+    zmq_msg_t& zmg() {
         return _zmg;
     }
     
