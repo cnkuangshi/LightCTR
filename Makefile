@@ -1,6 +1,6 @@
 export CC  = gcc
 export CXX = g++
-export CFLAGS = -std=c++11 -Wall -O3 -D__AVX -mavx -mssse3 -Wno-unknown-pragmas -Wno-reorder -Wno-null-conversion
+export CFLAGS = -std=c++11 -Wall -O3 -D__AVX__ -mavx -mssse3 -Wno-unknown-pragmas -Wno-reorder -Wno-null-conversion
 
 BIN = LightCTR_BIN
 ZMQ_INC = ./LightCTR/third/zeromq/include

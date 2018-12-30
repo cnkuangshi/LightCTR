@@ -11,6 +11,7 @@
 #include "LightCTR/common/system.h"
 #include "LightCTR/common/float16.h"
 #include "LightCTR/util/pca.h"
+#include "LightCTR/common/persistent_buffer.h"
 #include "LightCTR/util/shm_hashtable.h"
 
 #include "LightCTR/distribut/master.h"
@@ -94,25 +95,19 @@ int main(int argc, const char * argv[]) {
 #elif defined WORKER_RING
     {
         puts("Run in Ring Mode");
-        const int s = 5;
-        float param[5] = {1, 1, 1, 1, 1};
+        const int s = 50000;
         Worker_RingReduce<float> syncer(s, __global_cluster_worker_cnt);
-        int EP = 20;
-        for (size_t i = 0; i < EP; i++) {
-            syncer.syncGradient(i, &param[0], [&param](size_t epoch) {
-                printf("Reduce: ");
-                for (size_t i = 0; i < s; i++) {
-                    printf("%f ", *(param + i));
-                }
-                puts("");
-            }, [&param](size_t epoch) {
-                printf("Gather: ");
-                for (size_t i = 0; i < s; i++) {
-                    printf("%f ", *(param + i));
-                }
-                puts("");
-            });
-            puts("***************************");
+        int Epoch = 20;
+        for (size_t i = 0; i < Epoch; i++) {
+            float grad[s];
+            for (size_t j = 0; j < s; j++) {
+                grad[j] = 1;
+            }
+            syncer.syncGradient(i, &grad[0], NULL, NULL);
+            for (size_t j = 0; j < s; j++) {
+                assert(fabs(grad[j] - __global_cluster_worker_cnt) < 1e-5);
+            }
+            printf("**** Epoch %zu completed ****\n", i);
         }
         syncer.shutdown(NULL);
     }
@@ -207,15 +202,6 @@ int main(int argc, const char * argv[]) {
     vector<size_t> result;
     // query nearest neighbor of word embedding "state"
     float query_input[100] =  {-0.215541,0.251575,-0.123793,-0.18618,0.394535,0.266759,-0.159331,0.0909755,0.0540601,-0.276212,0.380615,-0.0750995,-0.122459,0.0973589,0.169981,-0.342782,-0.0320617,-0.275038,0.579765,0.0414525,0.0775329,0.150825,0.482595,0.342002,0.0489829,-0.104399,0.352892,0.470403,-0.073506,-0.0415242,0.0239289,0.327784,0.13405,0.15727,-0.262377,0.0391232,0.0853101,0.0493847,0.47749,-0.549036,0.259656,-0.0657005,0.566566,-0.273963,-0.196387,-0.494518,0.143773,-0.175798,0.409012,0.246421,-0.326558,0.373128,-0.199175,-0.409402,-0.196671,0.264,-0.0510461,0.106293,0.336967,0.275339,-0.0805158,0.296924,-0.17147,-0.533959,-0.455968,-0.034138,-0.280526,0.662283,-0.233623,-0.0299424,0.170299,-0.181736,-0.180484,0.0795437,0.0958492,0.14166,-0.0649171,0.267815,0.0393757,-0.00221303,0.0444415,-0.338447,0.154752,0.409157,0.0893646,0.263286,0.0204169,-0.171885,-0.102385,0.391818,-0.012545,-0.0170537,0.0460637,-0.446041,-0.111145,0.0875019,-0.123241,-0.26915,-0.0139937,0.224774};
-    
-    float16_t output[100];
-    float out[100];
-    auto transformer = Float16();
-    transformer.convert2Float16(query_input, output, 100);
-    transformer.recover2Float32(output, out, 100);
-    for (int i = 0; i < 10; i++) {
-        printf("(%f, %f) ", query_input[i], out[i]);
-    }
     
     vector<float> input(query_input, query_input + 100);
     annIndex->query(input, 50, result);

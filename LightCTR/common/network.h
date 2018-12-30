@@ -33,8 +33,9 @@
 #define BEGIN_ID_OF_WORKER 10000
 #define BEGIN_ID_OF_PS 1
 
-const std::string __global_Master_IP_Port = getEnv("LightCTR_MASTER_ADDR",
-                                                   "tcp://127.0.0.1:17832");
+const std::string __global_Master_IP_Port = "tcp://" +
+                                            std::string(getEnv("LightCTR_MASTER_ADDR",
+                                                   "127.0.0.1:17832"));
 
 typedef std::function<void(std::shared_ptr<PackageDescript>, PackageDescript&)> request_handler_t;
 

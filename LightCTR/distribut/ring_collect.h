@@ -10,7 +10,8 @@
 #define ring_collect_h
 
 #include "dist_machine_abst.h"
-#include "vector"
+#include <vector>
+#include "../common/avx.h"
 
 // especially design for GPUs' collective ring-reduce
 template<typename T>
@@ -167,15 +168,21 @@ private:
                             request->content.size() / sizeof(T));
             
             assert(segment_size_arr[recv_segment_id] * sizeof(T) == request->content.size());
-            T grad_value;
-            size_t offset = 0;
-            while (!request->content.readEOF()) {
-                request->content >> grad_value;
-                *(ptr + offset) += grad_value; // accumulate gradients
-                offset++;
-            }
-            assert(offset == segment_size_arr[recv_segment_id]);
             
+            if (typeid(T) == typeid(float)) { // try to use AVX
+                float* ptr_t = static_cast<float*>(ptr);
+                const float* buffer = reinterpret_cast<const float*>(request->content.buffer());
+                avx_vecAdd(buffer, ptr_t, ptr_t, segment_size_arr[recv_segment_id]);
+            } else {
+                T grad_value;
+                size_t offset = 0;
+                while (!request->content.readEOF()) {
+                    request->content >> grad_value;
+                    *(ptr + offset) += grad_value; // accumulate gradients
+                    offset++;
+                }
+                assert(offset == segment_size_arr[recv_segment_id]);
+            }
             response.epoch_version = step_version;
             step_barrier.unblock();
         };

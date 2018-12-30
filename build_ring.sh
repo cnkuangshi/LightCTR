@@ -1,6 +1,6 @@
 #!/bin/sh
 if [ $# -lt 2 ]; then
-    echo "usage: $0 [worker_num] [master_ip_port tcp://127.0.0.1:17832]"
+    echo "usage: $0 [worker_num] [master_ip_port like 127.0.0.1:17832]"
     exit -1;
 fi
 

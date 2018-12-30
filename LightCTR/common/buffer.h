@@ -65,13 +65,13 @@ public:
     inline void reset() {
         _cursor = _end = _buffer;
     }
-    inline char *buffer() const {
+    inline const char* buffer() const {
         return _buffer;
     }
-    inline char *cursor() const {
+    inline const char* cursor() const {
         return _cursor;
     }
-    inline char *end() const {
+    inline const char* end() const {
         return _end;
     }
     

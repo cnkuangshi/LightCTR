@@ -16,6 +16,26 @@
 #include "float16.h"
 
 // AVX Support
+
+inline void avx_vecAdd(const float* x, const float* y, float* res, size_t len) {
+    if (len > 7) {
+        for (; len > 7; len -= 8) {
+            __m256 t = _mm256_add_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y));
+            _mm256_store_ps(res, t);
+            x += 8;
+            y += 8;
+            res += 8;
+        }
+    }
+    // Don't forget the remaining values.
+    for (; len > 0; len--) {
+        *res = *x + *y;
+        x++;
+        y++;
+        res++;
+    }
+}
+
 inline float hsum256_ps_avx(__m256 v) {
     const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(v, 1), _mm256_castps256_ps128(v));
     const __m128 x64 = _mm_add_ps(x128, _mm_movehl_ps(x128, x128));
@@ -23,11 +43,11 @@ inline float hsum256_ps_avx(__m256 v) {
     return _mm_cvtss_f32(x32);
 }
 
-inline float avx_dotProduct(const float* x, const float *y, size_t f) {
+inline float avx_dotProduct(const float* x, const float* y, size_t len) {
     float result = 0;
-    if (f > 7) {
+    if (len > 7) {
         __m256 d = _mm256_setzero_ps();
-        for (; f > 7; f -= 8) {
+        for (; len > 7; len -= 8) {
             d = _mm256_add_ps(d, _mm256_mul_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y)));
             x += 8;
             y += 8;
@@ -36,7 +56,7 @@ inline float avx_dotProduct(const float* x, const float *y, size_t f) {
         result += hsum256_ps_avx(d);
     }
     // Don't forget the remaining values.
-    for (; f > 0; f--) {
+    for (; len > 0; len--) {
         result += *x * *y;
         x++;
         y++;
@@ -87,29 +107,27 @@ inline void Float16_sum(void* invec1, void* invec2, void* outvec, int len) {
     auto* out = (float16_t*)outvec;
     
 #if __AVX__ && __F16C__
-    if (is_avx_and_f16c()) {
-        for (int i = 0; i < (len / 8) * 8; i += 8) {
-            // convert in1 & in2 to m256
-            __m256 in_m256 = _mm256_cvtph_ps(_mm_loadu_si128((__m128i*)(in1 + i)));
-            __m256 inout_m256 =
-            _mm256_cvtph_ps(_mm_loadu_si128((__m128i*)(in2 + i)));
-            
-            // add them together to new_inout_m256
-            __m256 new_inout_m256 = _mm256_add_ps(in_m256, inout_m256);
-            
-            // convert back and store in out
-            __m128i new_inout_m128i = _mm256_cvtps_ph(new_inout_m256, 0);
-            _mm_storeu_si128((__m128i*)(out + i), new_inout_m128i);
-        }
+    for (int i = 0; i < (len / 8) * 8; i += 8) {
+        // convert in1 & in2 to m256
+        __m256 in_m256 = _mm256_cvtph_ps(_mm_loadu_si128((__m128i*)(in1 + i)));
+        __m256 inout_m256 =
+        _mm256_cvtph_ps(_mm_loadu_si128((__m128i*)(in2 + i)));
+        
+        // add them together to new_inout_m256
+        __m256 new_inout_m256 = _mm256_add_ps(in_m256, inout_m256);
+        
+        // convert back and store in out
+        __m128i new_inout_m128i = _mm256_cvtps_ph(new_inout_m256, 0);
+        _mm_storeu_si128((__m128i*)(out + i), new_inout_m128i);
     }
-#endif
-    
+#else
     for (int i = 0; i < len; ++i) {
         auto x = Float16(*(in1 + i));
         auto y = Float16(*(in2 + i));
         auto res = Float16(x.float32_value() + y.float32_value());
         *(out + i) = res.float16_value();
     }
+#endif
 }
 
 #endif /* avx_h */

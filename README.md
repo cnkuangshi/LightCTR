@@ -21,7 +21,7 @@ Meanwhile, LightCTR is also an open source project that oriented to code readers
 更复杂的模型带来更好的表征能力，但同时也加大了计算时间消耗，响应时间与点击率呈强负相关，为了兼顾线上点击率预估的性能与效果，可使用不同模型逐层预测，如第一层采用在线学习、并引入稀疏解的简单模型`LightCTR::FTRL_LR`，第二层采用上文提到的输入层局部连接的`LightCTR::MLP`、或`LightCTR::NFM`等复杂模型进行精细预测。在系统层面，抽取并缓存DNN模型中最后一组全连接层权值或输出，作为用户或商品的固定表达，使用`LightCTR::ANN`近邻向量检索的TopN结果作为推荐召回，在最大化CTR/ROI的同时，降低线上推理的平均响应时间。此外，LightCTR在探索通过模型参数分位点压缩、二值网络等方法，在不损失预测精度前提下大幅提升计算效率。
 
 #### 多机多线程并行计算
-当模型参数量超过单机内存容量、或单机训练效率达不到时效性要求时，LightCTR基于参数服务器与异步梯度下降理论，支持可扩展性的模型参数集群训练。集群分为Master, ParamServer与Worker三种角色；一个集群有一个Master负责集群启动与运行状态的维护，大规模模型参数以DHT散布在多个ParamServer上，与多个负责模型数据并行梯度运算的Worker协同，每轮训练都先从ParamServer拉取(Pull)一个样本Batch的参数，运算得到的参数梯度推送(Push)到ParamServer进行梯度汇总，ParamServer通过梯度截断、延迟梯度补偿、动量修正等手段，异步无锁的迭代更新参数。参数在ParamServer上紧凑存储、变长压缩传输，通过特征命中率与权值大小进行特征优选与淘汰，提升集群内通信效率。LightCTR分布式集群采取心跳监控、消息重传等容错方式。同时LightCTR包含基于环集合通信的分布式梯度同步方案。
+当模型参数量超过单机内存容量、或单机训练效率达不到时效性要求时，LightCTR基于参数服务器与异步梯度下降理论，支持可扩展性的模型参数集群训练。集群分为Master, ParamServer与Worker三种角色；一个集群有一个Master负责集群启动与运行状态的维护，大规模模型参数以DHT散布在多个ParamServer上，与多个负责模型数据并行梯度运算的Worker协同，每轮训练都先从ParamServer拉取(Pull)一个样本Batch的参数，运算得到的参数梯度推送(Push)到ParamServer进行梯度汇总，ParamServer通过梯度截断、延迟梯度补偿、动量修正等手段，异步无锁的迭代更新参数。参数在ParamServer上紧凑存储、变长压缩传输，通过特征命中率与权值大小进行特征优选与淘汰，提升集群内通信效率。LightCTR分布式集群采取心跳监控、消息重传等容错方式。同时，LightCTR也包含基于Ring-Reduce集合通信的去中心化梯度同步方案，每个节点存储全量模型可单独提供推断预测能力，训练过程通过有限次迭代获取其他节点梯度结果，在一定集群规模下可实现线性加速比。
 
 ## List of Implemented Algorithms
 
@@ -47,7 +47,7 @@ Meanwhile, LightCTR is also an open source project that oriented to code readers
 * Support distributed model training based on Parameter Server or Ring-Reduce Collective communication
 * Gradient clipping, momentum correction and Asynchronous SGD with Delay compensation
 * Shared parameters Key-Value pairs store in physical nodes by DHT in Shared memory
-* Lock-free Multi-threaded training and Vectorized compiling(AVX)
+* Lock-free Multi-threaded training and Vectorized compiling (AVX)
 
 ## Quick Start
 * LightCTR depends on C++11 and ZeroMQ only
