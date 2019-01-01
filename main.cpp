@@ -75,10 +75,12 @@ int main(int argc, const char * argv[]) {
     
 #ifdef MASTER
     {
+        puts("Run in PS Mode");
         Master master(Run_Mode::PS_Mode);
     }
 #elif defined MASTER_RING
     {
+        puts("Run in Ring Mode");
         Master master(Run_Mode::Ring_Mode);
     }
 #elif defined PS
@@ -87,6 +89,7 @@ int main(int argc, const char * argv[]) {
     }
 #elif defined WORKER
     {
+        puts("Run in PS Mode");
         Distributed_Algo_Abst *train = new Distributed_Algo_Abst(
                                      "./data/train_sparse",
                                      /*epoch*/50);
@@ -95,18 +98,24 @@ int main(int argc, const char * argv[]) {
 #elif defined WORKER_RING
     {
         puts("Run in Ring Mode");
-        const int s = 50000;
-        Worker_RingReduce<float> syncer(s, __global_cluster_worker_cnt);
+        const int s = 100;
+        BufferFusion<float> buf_fusion;
+        for (size_t i = 0; i < 10; i++) {
+            auto grad = new float[s << i];
+            buf_fusion.registMemChunk(grad, s << i);
+        }
+        
+        Worker_RingReduce<float> syncer(buf_fusion, __global_cluster_worker_cnt);
+        
         int Epoch = 20;
         for (size_t i = 0; i < Epoch; i++) {
-            float grad[s];
-            for (size_t j = 0; j < s; j++) {
-                grad[j] = 1;
-            }
-            syncer.syncGradient(i, &grad[0]);
-            for (size_t j = 0; j < s; j++) {
-                assert(fabs(grad[j] - __global_cluster_worker_cnt) < 1e-5);
-            }
+            buf_fusion.memset_c(1);
+            syncer.syncGradient(i);
+            buf_fusion.transform(0, buf_fusion.size(), [](float* begin, float* end) {
+                for (size_t i = 0; i < end - begin; i++) {
+                    assert(*(begin + i) == __global_cluster_worker_cnt);
+                }
+            });
             printf("**** Epoch %zu completed ****\n", i);
         }
         syncer.shutdown(NULL);

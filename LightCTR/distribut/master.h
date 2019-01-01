@@ -145,6 +145,8 @@ private:
         std::string addr_str;
         
         if (run_mode == Run_Mode::PS_Mode) {
+            puts("[Master] Broadcast PS and Worker topology");
+            assert(registered_ps_cnt > 0 && registered_worker_cnt > 0);
             for (size_t ps_id = 1; ps_id <= registered_ps_cnt; ps_id++) {
                 addr_str = gDelivery.get_router(ps_id).toString();
                 resp_desc.content.append(addr_str.c_str(),
@@ -171,6 +173,7 @@ private:
             }
         } else {
             puts("[Master] Broadcast Ring Worker topology");
+            assert(registered_ps_cnt == 0 && registered_worker_cnt > 0);
             for (size_t w_id = BEGIN_ID_OF_WORKER + 1; w_id <= registered_worker_cnt; w_id++) {
                 addr_str = gDelivery.get_router(w_id).toString();
                 resp_desc.content.append(addr_str.c_str(),

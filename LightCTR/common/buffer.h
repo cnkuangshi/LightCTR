@@ -11,13 +11,15 @@
 
 class Buffer {
 public:
-    Buffer() {
-        assert(_capacity > 0);
+    explicit Buffer(size_t capacity = 64) {
+        assert(capacity > 0);
+        _capacity = ((capacity + __align - 1) & (~(__align - 1)));
         _buffer = new char[_capacity];
         _cursor = _end = _buffer;
     }
+    
     Buffer(const void* buf, size_t len) {
-        assert(_capacity > 0 && buf && len >= 0);
+        assert(buf && len >= 0); // allow empty Buffer for Heartbeat
         _capacity = len;
         _buffer = new char[_capacity];
         _cursor = _end = _buffer;
@@ -95,6 +97,7 @@ public:
             size_t new_cap = _capacity;
             while (cur_size + len > new_cap) {
                 new_cap = 2 * new_cap;
+                new_cap = ((new_cap + __align - 1) & (~(__align - 1)));
             }
             reserve(new_cap);
         }
@@ -196,7 +199,7 @@ public:
     
 protected:
     inline void reserve(size_t newcap) {
-        if (newcap > _capacity) {
+        if (unlikely(newcap > _capacity)) {
             char* newbuf = new char[newcap];
             assert(newbuf);
             if (size() > 0) {
@@ -218,7 +221,9 @@ private:
     char *_buffer = nullptr;
     char *_cursor = nullptr;
     char *_end = nullptr;
-    size_t _capacity = 64;
+    size_t _capacity;
+    
+    const size_t __align = 2;
 };
 
 #endif /* buffer_h */
