@@ -236,7 +236,7 @@ public:
         }
     }
     
-    void send_sync(PackageDescript& pDesc, size_t to_id) {
+    bool send_sync(PackageDescript& pDesc, size_t to_id, time_t RTT_timeout_ms) {
         assert(pDesc.msgType != RESPONSE);
         Barrier barrier;
         pDesc.sync_callback = [&pDesc, &barrier](std::shared_ptr<PackageDescript> ptr) {
@@ -245,7 +245,7 @@ public:
             barrier.unblock();
         };
         send_async(pDesc, to_id);
-        barrier.block();
+        return barrier.block(RTT_timeout_ms, NULL);
     }
     
     void start_loop() {
@@ -406,15 +406,15 @@ private:
     }
     
     void handle_request(std::shared_ptr<PackageDescript> request) {
-        printf("[REQUEST] recv msg_id = %zu msgType = %d\n",
-               request->message_id, request->msgType);
+        printf("[REQUEST] Receiving from node_id = %zu msg_id = %zu msgType = %d\n",
+               request->node_id, request->message_id, request->msgType);
         
-        request_handler_t handler; // get handler of PS
+        request_handler_t handler; // get handler
         if (request->msgType != HEARTBEAT) {
             std::unique_lock<SpinLock> lock(handlerMap_lock);
             auto it = handlerMap.find(request->msgType);
             if (it == handlerMap.end()) {
-                puts("[Network] Recv unacceptable msg, Skip");
+                puts("[WARNING][Network] Recv Unacceptable msg, Skip and No response");
                 return;
             }
             handler = it->second;
@@ -462,7 +462,8 @@ private:
     }
     
     void timeoutResender() {
-        const time_t timeout = 5;
+        const time_t timeout = 2; // seconds
+        const size_t max_retry_times = 5;
         while(serving) {
             const PackageDescript& pkg = sending_queue.front();
             const size_t pkg_msgid = pkg.message_id;
@@ -470,7 +471,10 @@ private:
             assert(pkg.send_time > 0);
             
             time_t cur_time = time(NULL);
-            if (pkg.send_time + timeout >= cur_time) {
+            if (pkg.send_time + max_retry_times * timeout >= cur_time) {
+                sending_queue.pop();
+                continue;
+            } else if (pkg.send_time + timeout >= cur_time) {
                 const time_t interval = pkg.send_time + timeout - cur_time;
                 assert(interval >= 0);
                 std::this_thread::sleep_for(std::chrono::seconds(interval));

@@ -34,14 +34,17 @@ public:
         });
     }
     
-    inline void block(int milliseconds,
-               std::function<void()> timeout_callback = std::function<void()>()) {
-        std::thread timer_thread([this, milliseconds, timeout_callback] {
-            std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
-            timeout_callback();
-            unblock();
+    inline bool block(time_t timeout_ms, std::function<void()> timeout_callback) {
+        std::unique_lock<std::mutex> glock(lock_);
+        auto status = cond_.wait_for(glock, std::chrono::milliseconds(timeout_ms), [this] {
+            return flag_ <= 0;
         });
-        timer_thread.detach();
+        if (!status && timeout_callback) {
+            timeout_callback();
+        }
+        // false if the predicate pred still evaluates to false
+        // after the rel_time timeout expired, otherwise true
+        return status;
     }
     
     inline void unblock() {

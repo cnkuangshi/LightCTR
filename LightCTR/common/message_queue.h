@@ -137,6 +137,11 @@ public:
         return element_cnt;
     }
     
+    inline bool empty() {
+        std::unique_lock<std::mutex> lk(mu_);
+        return element_cnt == 0;
+    }
+    
 protected:
     std::mutex mu_;
     size_t element_cnt = 0;

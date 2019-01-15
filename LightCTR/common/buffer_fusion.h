@@ -138,7 +138,7 @@ public:
     
     void flatten(Buffer** __dst) const {
         assert(total_size > 0);
-        memcpy_out(*__dst, 0, total_size);
+        memcpy_out(__dst, 0, total_size);
     }
     
 private:

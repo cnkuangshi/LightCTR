@@ -107,7 +107,7 @@ int main(int argc, const char * argv[]) {
         
         Worker_RingReduce<float> syncer(buf_fusion, __global_cluster_worker_cnt);
         
-        int Epoch = 20;
+        int Epoch = 50;
         for (size_t i = 0; i < Epoch; i++) {
             buf_fusion.memset_c(1);
             syncer.syncGradient(i);
@@ -116,9 +116,7 @@ int main(int argc, const char * argv[]) {
                     assert(*(begin + i) == __global_cluster_worker_cnt);
                 }
             });
-            printf("**** Epoch %zu completed ****\n", i);
         }
-        syncer.shutdown(NULL);
     }
 #elif (defined TEST_FM) || (defined TEST_FFM) || (defined TEST_NFM) || (defined TEST_GBM) || (defined TEST_GMM) || (defined TEST_TM) || (defined TEST_EMB) || (defined TEST_CNN) || (defined TEST_RNN) || (defined TEST_VAE) || (defined TEST_ANN)
     int T = 200;
