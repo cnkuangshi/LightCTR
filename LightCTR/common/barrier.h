@@ -13,6 +13,15 @@
 #include <thread>
 #include <condition_variable>
 
+
+// fence in write
+#define wmb() __asm__ __volatile__("sfence":::"memory")
+// fence in read
+#define rmb() __asm__ __volatile__("lfence":::"memory")
+// fence in write and read
+#define rwmb() __asm__ __volatile__("mfence":::"memory")
+
+
 class Barrier {
 public:
     Barrier() {

@@ -13,9 +13,9 @@
 #include <vector>
 #include "../common/buffer_fusion.h"
 #include "../common/avx.h"
-#include "../common/lock.h"
+#include "../common/barrier.h"
 
-const time_t kPreAheadWaitMSInterval = 10000;
+const time_t kTimeoutRetryMSInterval = 10000;
 
 // especially design for GPUs' collective ring-reduce
 template<typename T>
@@ -106,8 +106,8 @@ public:
             
             bool send_status = false;
             do {
-                send_status = gDelivery.send_sync(desc, send_to_id, kPreAheadWaitMSInterval);
-                if (!send_status) {
+                send_status = gDelivery.send_sync(desc, send_to_id, kTimeoutRetryMSInterval);
+                if (unlikely(!send_status)) {
                     // TODO dynamic waiting interval for network delay or crash of some machines
                     printf("[ERROR][REDUCE] send step = %zu package failed, retry\n", step_version);
                 }
@@ -156,8 +156,8 @@ public:
             
             bool send_status = false;
             do {
-                send_status = gDelivery.send_sync(desc, send_to_id, kPreAheadWaitMSInterval);
-                if (!send_status) {
+                send_status = gDelivery.send_sync(desc, send_to_id, kTimeoutRetryMSInterval);
+                if (unlikely(!send_status)) {
                     printf("[ERROR][GATHER] send step %zu package failed, retry\n", step_version);
                 }
             } while(!send_status);

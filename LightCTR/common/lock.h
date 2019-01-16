@@ -22,12 +22,6 @@ inline bool atomic_compare_and_swap(float* ptr, const float &oldval, const float
                                         *reinterpret_cast<const uint32_t*>(&newval));
 };
 
-// fence in write
-#define wmb() __asm__ __volatile__("sfence":::"memory")
-// fence in read
-#define rmb() __asm__ __volatile__("lfence":::"memory")
-// fence in write and read
-#define rwmb() __asm__ __volatile__("mfence":::"memory")
 
 class SpinLock {
 public:
