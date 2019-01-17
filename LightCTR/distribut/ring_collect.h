@@ -66,6 +66,7 @@ public:
     }
     
     void syncGradient(size_t epoch,
+                      bool do_Average = true,
                       std::function<void(size_t)> reduce_callback = NULL,
                       std::function<void(size_t)> gather_callback = NULL) {
         step_version = epoch * (2 * _ring_size - 2);
@@ -170,6 +171,14 @@ public:
         }
         
         // Finally
+        if (likely(do_Average)) {
+            const float scalar = 1.0 / _ring_size;
+            _buf_fusion.transform(0,
+                                  _buf_fusion.size(),
+                                  [scalar](T* begin, T* end) {
+                                      avx_vecScale(begin, begin, end - begin, scalar);
+                                  });
+        }
         printf("[RING] **** Epoch %zu synchronizer completed ****\n", epoch);
     }
     

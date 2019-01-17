@@ -81,6 +81,24 @@ inline float avx_L2Norm(const float* x, size_t f) {
     return result;
 }
 
+inline void avx_vecScale(const float* x, float *res, size_t len, float scalar) {
+    const __m256 _scalar = _mm256_broadcast_ss(&scalar);
+    if (len > 7) {
+        for (; len > 7; len -= 8) {
+            __m256 t = _mm256_mul_ps(_mm256_loadu_ps(x), _scalar);
+            _mm256_store_ps(res, t);
+            x += 8;
+            res += 8;
+        }
+    }
+    // Don't forget the remaining values.
+    for (; len > 0; len--) {
+        *res = *x * scalar;
+        x++;
+        res++;
+    }
+}
+
 inline float avx_L2Distance(const float* x, const float *y, size_t f) {
     float result = 0;
     if (f > 7) {

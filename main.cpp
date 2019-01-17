@@ -113,7 +113,7 @@ int main(int argc, const char * argv[]) {
             syncer.syncGradient(i);
             buf_fusion.transform(0, buf_fusion.size(), [](float* begin, float* end) {
                 for (size_t i = 0; i < end - begin; i++) {
-                    assert(*(begin + i) == __global_cluster_worker_cnt);
+                    assert(*(begin + i) == 1.);
                 }
             });
         }
