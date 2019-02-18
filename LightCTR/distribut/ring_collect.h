@@ -21,28 +21,8 @@ const time_t kTimeoutRetryMSInterval = 10000;
 template<typename T>
 class Worker_RingReduce : public Dist_Machine_Abst {
 public:
-    Worker_RingReduce(BufferFusion<T>& buf_fusion, size_t ring_size)
-                    : _buf_fusion(buf_fusion), _ring_size(ring_size) {
-        _param_size = _buf_fusion.size();
-        assert(_param_size > 0 && ring_size > 0);
-        assert(ring_size == __global_cluster_worker_cnt);
-                        
-        segment_size_arr.resize(ring_size);
-        segment_end_arr.resize(ring_size);
-        const size_t seg_size = _param_size / ring_size;
-        const size_t seg_res = _param_size % ring_size;
+    explicit Worker_RingReduce(size_t ring_size) : _ring_size(ring_size) {
         
-        for (size_t i = 0; i < ring_size; i++) {
-            segment_size_arr[i] = seg_size;
-            if (i < seg_res) {
-                segment_size_arr[i]++;
-            }
-            if (i == 0) {
-                segment_end_arr[0] = segment_size_arr[0];
-            } else {
-                segment_end_arr[i] = segment_end_arr[i - 1] + segment_size_arr[i];
-            }
-        }
         cur_node_id = Rank() - 1; // begin from 0
         assert(cur_node_id >= 0);
         recv_from_id = BEGIN_ID_OF_WORKER + 1 + (cur_node_id + _ring_size - 1) % _ring_size;
@@ -53,8 +33,6 @@ public:
         // check router
         gDelivery.get_router(recv_from_id);
         gDelivery.get_router(send_to_id);
-        
-        regist_reduce_gather_handler();
         // TODO recovering boot mode, Copy parameters from the other conventional Ring worker
         // and Start send and receive by processing epoch_version
     }
@@ -65,10 +43,12 @@ public:
         segment_end_arr.clear();
     }
     
-    void syncGradient(size_t epoch,
+    void syncGradient(std::shared_ptr<BufferFusion<T> > _buf_fusion,
+                      size_t epoch,
                       bool do_Average = true,
                       std::function<void(size_t)> reduce_callback = NULL,
                       std::function<void(size_t)> gather_callback = NULL) {
+        init(_buf_fusion);
         step_version = epoch * (2 * _ring_size - 2);
         
         // Firstly do all-reduce
@@ -89,20 +69,20 @@ public:
                 auto request = cache.front();
                 cache.pop();
                 assert(request->epoch_version == step_version);
-                _do_reduce(request->content);
+                _do_reduce(_buf_fusion, request->content);
                 step_barrier.unblock();
             }
             
             PackageDescript desc(REQUEST_PUSH, step_version);
             Buffer* buffer_ptr = nullptr;
-            _buf_fusion.memcpy_out(&buffer_ptr,
+            _buf_fusion->memcpy_out(&buffer_ptr,
                               segment_end_arr[send_segment_id] - segment_size_arr[send_segment_id],
                               segment_size_arr[send_segment_id]);
             desc.content = std::move(*buffer_ptr);
             
             desc.callback = [this](std::shared_ptr<PackageDescript> resp_package) {
                 printf("[REDUCE] send step = %zu package success\n", step_version);
-                assert(resp_package->epoch_version && resp_package->epoch_version <= step_version);
+//                assert(resp_package->epoch_version && resp_package->epoch_version <= step_version);
             };
             
             bool send_status = false;
@@ -139,20 +119,20 @@ public:
                 auto request = cache.front();
                 cache.pop();
                 assert(request->epoch_version == step_version);
-                _do_gather(request->content);
+                _do_gather(_buf_fusion, request->content);
                 step_barrier.unblock();
             }
             
             PackageDescript desc(REQUEST_PUSH, step_version);
             Buffer* buffer_ptr = nullptr;
-            _buf_fusion.memcpy_out(&buffer_ptr,
+            _buf_fusion->memcpy_out(&buffer_ptr,
                                     segment_end_arr[send_segment_id] - segment_size_arr[send_segment_id],
                                     segment_size_arr[send_segment_id]);
             desc.content = std::move(*buffer_ptr);
             
             desc.callback = [this](std::shared_ptr<PackageDescript> resp_package) {
                 printf("[GATHER] send step = %zu package success\n", step_version);
-                assert(resp_package->epoch_version && resp_package->epoch_version <= step_version);
+//                assert(resp_package->epoch_version && resp_package->epoch_version <= step_version);
             };
             
             bool send_status = false;
@@ -173,8 +153,8 @@ public:
         // Finally
         if (likely(do_Average)) {
             const float scalar = 1.0 / _ring_size;
-            _buf_fusion.transform(0,
-                                  _buf_fusion.size(),
+            _buf_fusion->transform(0,
+                                  _buf_fusion->size(),
                                   [scalar](T* begin, T* end) {
                                       avx_vecScale(begin, begin, end - begin, scalar);
                                   });
@@ -183,14 +163,42 @@ public:
     }
     
 private:
-    void _do_reduce(Buffer& data) {
+    void init(std::shared_ptr<BufferFusion<T> > _buf_fusion) {
+        assert(_ring_size > 0);
+        if (unlikely(_param_size != _buf_fusion->size())) {
+        
+            _param_size = _buf_fusion->size();
+            assert(_param_size > 0);
+            
+            segment_size_arr.resize(_ring_size);
+            segment_end_arr.resize(_ring_size);
+            const size_t seg_size = _param_size / _ring_size;
+            const size_t seg_res = _param_size % _ring_size;
+            
+            for (size_t i = 0; i < _ring_size; i++) {
+                segment_size_arr[i] = seg_size;
+                if (i < seg_res) {
+                    segment_size_arr[i]++;
+                }
+                if (i == 0) {
+                    segment_end_arr[0] = segment_size_arr[0];
+                } else {
+                    segment_end_arr[i] = segment_end_arr[i - 1] + segment_size_arr[i];
+                }
+            }
+        }
+        
+        regist_reduce_gather_handler(_buf_fusion);
+    }
+    
+    void _do_reduce(std::shared_ptr<BufferFusion<T> > _buf_fusion, Buffer& data) {
         assert(segment_size_arr[recv_segment_id] * sizeof(T) == data.size());
         
         // accumulate gradients
         if (typeid(T) == typeid(float)) { // try to use AVX
             const float* buffer = reinterpret_cast<const float*>(data.buffer());
             
-            _buf_fusion.transform(rcv_offset,
+            _buf_fusion->transform(rcv_offset,
                                   segment_size_arr[recv_segment_id],
                                   [&buffer](T* begin, T* end) {
                                       avx_vecAdd(buffer, begin, begin, end - begin);
@@ -198,7 +206,7 @@ private:
                                   });
         } else {
             
-            _buf_fusion.transform(rcv_offset,
+            _buf_fusion->transform(rcv_offset,
                                   segment_size_arr[recv_segment_id],
                                   [&data](T* begin, T* end) {
                                       T grad_value;
@@ -211,22 +219,22 @@ private:
         }
     }
     
-    void _do_gather(const Buffer& data) {
+    void _do_gather(std::shared_ptr<BufferFusion<T> > _buf_fusion, const Buffer& data) {
         assert(segment_size_arr[recv_segment_id] * sizeof(T) == data.size());
         
         const float* buffer = reinterpret_cast<const float*>(data.buffer());
-        _buf_fusion.memcpy_in(rcv_offset, buffer, segment_size_arr[recv_segment_id]);
+        _buf_fusion->memcpy_in(rcv_offset, buffer, segment_size_arr[recv_segment_id]);
     }
     
-    void regist_reduce_gather_handler() {
-        request_handler_t handler = [this](std::shared_ptr<PackageDescript> request,
+    void regist_reduce_gather_handler(std::shared_ptr<BufferFusion<T> > _buf_fusion) {
+        request_handler_t handler = [this, _buf_fusion](std::shared_ptr<PackageDescript> request,
                                            PackageDescript& response) {
             rmb();
             assert(request->node_id > BEGIN_ID_OF_WORKER);
             const size_t worker_id = request->node_id;
             assert(worker_id == recv_from_id);
             
-            assert(request->epoch_version >= step_version);
+//            assert(request->epoch_version >= step_version);
             if (step_version != request->epoch_version) {
                 // cache the request into deque and response the situation
                 cache.push(request);
@@ -242,9 +250,9 @@ private:
             
             const size_t type = step_version % (2 * _ring_size - 2);
             if (type > 0 && type < _ring_size) {
-                _do_reduce(request->content);
+                _do_reduce(_buf_fusion, request->content);
             } else {
-                _do_gather(request->content);
+                _do_gather(_buf_fusion, request->content);
             }
             
             response.epoch_version = step_version;
@@ -263,9 +271,8 @@ private:
     
     MessageQueue<std::shared_ptr<PackageDescript> > cache;
     
-    BufferFusion<T>& _buf_fusion;
     size_t _param_size;
-    size_t _ring_size;
+    const size_t _ring_size = 0;
     
     size_t cur_node_id;
     size_t recv_from_id;

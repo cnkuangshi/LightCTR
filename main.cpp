@@ -97,27 +97,30 @@ int main(int argc, const char * argv[]) {
     }
 #elif defined WORKER_RING
     {
+        Worker_RingReduce<float> syncer(__global_cluster_worker_cnt);
+        
         puts("Run in Ring Mode");
         const int s = 100;
-        BufferFusion<float> buf_fusion;
+        auto buf_fusion = std::make_shared<BufferFusion<float> >();
         for (size_t i = 0; i < 10; i++) {
             auto grad = new float[s << i];
-            buf_fusion.registMemChunk(grad, s << i);
+            buf_fusion->registMemChunk(grad, s << i);
         }
         
-        Worker_RingReduce<float> syncer(buf_fusion, __global_cluster_worker_cnt);
-        
+        clock_start();
         int Epoch = 50;
         for (size_t i = 0; i < Epoch; i++) {
-            buf_fusion.memset_c(1);
-            syncer.syncGradient(i);
-            buf_fusion.transform(0, buf_fusion.size(), [](float* begin, float* end) {
+            buf_fusion->memset_c(1);
+            syncer.syncGradient(buf_fusion, i);
+            buf_fusion->transform(0, buf_fusion->size(), [](float* begin, float* end) {
                 for (size_t i = 0; i < end - begin; i++) {
                     assert(*(begin + i) == 1.);
                 }
             });
         }
+        printf("Cost %fs\n", clock_cycles() * 1.0e-9);
     }
+    
 #elif (defined TEST_FM) || (defined TEST_FFM) || (defined TEST_NFM) || (defined TEST_GBM) || (defined TEST_GMM) || (defined TEST_TM) || (defined TEST_EMB) || (defined TEST_CNN) || (defined TEST_RNN) || (defined TEST_VAE) || (defined TEST_ANN)
     int T = 200;
     

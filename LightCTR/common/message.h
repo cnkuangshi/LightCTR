@@ -26,6 +26,7 @@ enum MsgType {
     REQUEST_PULL,
     REQUEST_INFER,
     HEARTBEAT,
+    BREAKER,
     RESERVED,
     UNKNOWN
 };

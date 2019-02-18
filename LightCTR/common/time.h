@@ -24,11 +24,11 @@ typedef uint64_t Cycle;
 typedef double Second;
 
 struct timeval __g_now_tv;
-extern Cycle beginning_, ending_;
-extern Second beginning_seconds_, ending_seconds_;
-extern bool running_;
+Cycle beginning_, ending_;
+Second beginning_seconds_, ending_seconds_;
+bool running_;
 
-inline void __must_inline__ update_tv () {
+inline void __must_inline__ update_tv() {
     gettimeofday(&__g_now_tv, NULL);
 }
 
@@ -78,19 +78,19 @@ inline uint64_t timestamp() {
 #endif
 }
 
-inline void start() {
+inline void clock_start() {
     beginning_ = timestamp();
     beginning_seconds_ = (beginning_ + 0.0) * 1.0e-9;
     running_ = true;
 }
 
-inline void stop() {
+inline void clock_stop() {
     ending_ = timestamp();
     ending_seconds_ = (ending_ + 0.0) * 1.0e-9;
     running_ = false;
 }
 
-inline Cycle cycles() {
+inline Cycle clock_cycles() {
     if(running_) {
         return (timestamp() - beginning_);
     } else {

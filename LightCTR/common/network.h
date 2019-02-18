@@ -269,6 +269,7 @@ public:
         }
         serving = false;
         
+        sending_queue.push(PackageDescript(BREAKER));
         RTT_timeout_monitor->join();
         puts("[Network] stop RTT timeout monitor");
         handle_pool->wait();
@@ -466,6 +467,9 @@ private:
         const size_t max_retry_times = 5;
         while(serving) {
             const PackageDescript& pkg = sending_queue.front();
+            if (pkg.msgType == BREAKER) {
+                return;
+            }
             const size_t pkg_msgid = pkg.message_id;
             const size_t pkg_to_nodeid = pkg.to_node_id;
             assert(pkg.send_time > 0);
