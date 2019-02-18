@@ -11,10 +11,10 @@
 #include "../util/random.h"
 
 #define FOR(i,n) for(size_t i = 0;i < n;i++)
-const double PI = acos(-1);
-const double LogPI = log(2 * PI);
+const float PI = acos(-1);
+const float LogPI = log(2 * PI);
 
-inline double log_sum(double a, double b) {
+inline float log_sum(float a, float b) {
     if (a < b) {
         return b + log(1.0f + exp(a - b));
     } else {
@@ -24,11 +24,11 @@ inline double log_sum(double a, double b) {
 
 void Train_GMM_Algo::init() {
     this->gaussModels = new Gauss[cluster_cnt];
-    this->latentVar = new vector<double>*[dataRow_cnt];
+    this->latentVar = new vector<float>*[dataRow_cnt];
     FOR(i,cluster_cnt) {
-        gaussModels[i].mu = new double[feature_cnt];
-        gaussModels[i].sigma = new double[feature_cnt];
-        memset(gaussModels[i].mu, 0, sizeof(double) * feature_cnt);
+        gaussModels[i].mu = new float[feature_cnt];
+        gaussModels[i].sigma = new float[feature_cnt];
+        memset(gaussModels[i].mu, 0, sizeof(float) * feature_cnt);
         FOR(fid, feature_cnt) {
             gaussModels[i].mu[fid] = (UniformNumRand() - 0.5f) * scale;
             gaussModels[i].sigma[fid] = 1.0f;
@@ -36,14 +36,14 @@ void Train_GMM_Algo::init() {
         gaussModels[i].weight = 1.0f / cluster_cnt;
     }
     FOR(rid, dataRow_cnt) {
-        latentVar[rid] = new vector<double>();
+        latentVar[rid] = new vector<float>();
         latentVar[rid]->resize(cluster_cnt);
     }
 }
 
 // Log Probability Density Function of Multivariate Gauss Distribution
-double Train_GMM_Algo::GaussianLPDF(size_t gasid, size_t rid) {
-    double expN = 0, LogDetSigma = 0.0f, tmp = 0;
+float Train_GMM_Algo::GaussianLPDF(size_t gasid, size_t rid) {
+    float expN = 0, LogDetSigma = 0.0f, tmp = 0;
     FOR(fid, feature_cnt) {
         tmp = dataSet[rid][fid] * scale - gaussModels[gasid].mu[fid];
         expN += tmp * tmp / gaussModels[gasid].sigma[fid];
@@ -55,9 +55,9 @@ double Train_GMM_Algo::GaussianLPDF(size_t gasid, size_t rid) {
     return tmp;
 }
 
-vector<double>** Train_GMM_Algo::Train_EStep() {
+vector<float>** Train_GMM_Algo::Train_EStep() {
     FOR(rid,dataRow_cnt) {
-        double LogSumPDF = 0;
+        float LogSumPDF = 0;
         FOR(gasid,cluster_cnt) {
             gaussModels[gasid].pdf_tmp = GaussianLPDF(gasid, rid);
             assert(gaussModels[gasid].pdf_tmp < 0);
@@ -68,20 +68,20 @@ vector<double>** Train_GMM_Algo::Train_EStep() {
             }
         }
         FOR(gasid,cluster_cnt) {
-            double tmp = gaussModels[gasid].pdf_tmp - LogSumPDF;
+            float tmp = gaussModels[gasid].pdf_tmp - LogSumPDF;
             assert(tmp <= 0);
             this->latentVar[rid]->at(gasid) = exp(tmp);
-//            printf("----rid %zu in cluster %zu latent %lf\n", rid, gasid, tmp);
+//            printf("----rid %zu in cluster %zu latent %f\n", rid, gasid, tmp);
         }
         assert(this->latentVar[rid]->size() == cluster_cnt);
     }
     return this->latentVar;
 }
 
-double Train_GMM_Algo::Train_MStep(vector<double>** latentVar) {
+float Train_GMM_Algo::Train_MStep(vector<float>** latentVar) {
     FOR(gasid, cluster_cnt) {
         threadpool->addTask([&, gasid]() {
-            double newWeight = 0;
+            float newWeight = 0;
             FOR(rid,dataRow_cnt) {
                 newWeight += latentVar[rid]->at(gasid);
             }
@@ -89,8 +89,8 @@ double Train_GMM_Algo::Train_MStep(vector<double>** latentVar) {
             gaussModels[gasid].sumRid_tmp = newWeight;
             // update new gauss weight
             gaussModels[gasid].weight = newWeight / dataRow_cnt;
-            memset(gaussModels[gasid].mu, 0, sizeof(double) * feature_cnt);
-            memset(gaussModels[gasid].sigma, 0, sizeof(double) * feature_cnt);
+            memset(gaussModels[gasid].mu, 0, sizeof(float) * feature_cnt);
+            memset(gaussModels[gasid].sigma, 0, sizeof(float) * feature_cnt);
         });
     }
     threadpool->wait();
@@ -99,18 +99,18 @@ double Train_GMM_Algo::Train_MStep(vector<double>** latentVar) {
         threadpool->addTask([&, gasid]() {
             // update new gauss mu
             FOR(fid, feature_cnt) {
-                double sum_tmp = 0.0f;
+                float sum_tmp = 0.0f;
                 FOR(rid, dataRow_cnt) {
-                    double t = latentVar[rid]->at(gasid) * dataSet[rid][fid] * scale;
+                    float t = latentVar[rid]->at(gasid) * dataSet[rid][fid] * scale;
                     sum_tmp += t;
                 }
                 gaussModels[gasid].mu[fid] = sum_tmp / gaussModels[gasid].sumRid_tmp;
             }
             // update new gauss sigma
             FOR(fid, feature_cnt) {
-                double sum_tmp = 0.0f;
+                float sum_tmp = 0.0f;
                 FOR(rid, dataRow_cnt) {
-                    double t = dataSet[rid][fid] * scale - gaussModels[gasid].mu[fid];
+                    float t = dataSet[rid][fid] * scale - gaussModels[gasid].mu[fid];
                     sum_tmp += latentVar[rid]->at(gasid) * t * t;
                 }
                 gaussModels[gasid].sigma[fid] = sum_tmp / gaussModels[gasid].sumRid_tmp;
@@ -123,7 +123,7 @@ double Train_GMM_Algo::Train_MStep(vector<double>** latentVar) {
     threadpool->wait();
     
     // compute log likelihood ELOB
-    double sumLogPDF = 0.0f;
+    float sumLogPDF = 0.0f;
     FOR(rid, dataRow_cnt) {
         FOR(gasid, cluster_cnt) {
             sumLogPDF += GaussianLPDF(gasid, rid) * latentVar[rid]->at(gasid);
@@ -138,7 +138,7 @@ shared_ptr<vector<int> > Train_GMM_Algo::Predict() {
     ans->reserve(dataRow_cnt);
     FOR(rid,dataRow_cnt) {
         int whichTopic = -1;
-        double maxP = 0.0f, tmp;
+        float maxP = 0.0f, tmp;
         FOR(gasid,cluster_cnt) {
             tmp = GaussianLPDF(gasid, rid);
             assert(tmp < 0);

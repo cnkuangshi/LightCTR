@@ -44,13 +44,13 @@ public:
             new Fully_Conn_Layer<ActivationFunction>(fcLayer, 72, this->multiclass_output_cnt);
     }
     
-    vector<double>* Predict(size_t rid, vector<vector<double> >* const dataRow) {
+    vector<float>* Predict(size_t rid, vector<vector<float> >* const dataRow) {
         static Matrix* dataRow_Matrix = new Matrix(1, 28);
         static Matrix* dataRow_Matrix_fc = new Matrix(1, hidden_size, 0);
         static vector<Matrix*> *tmp = new vector<Matrix*>();
         tmp->resize(1);
         
-        vector<double> *pred = NULL;
+        vector<float> *pred = NULL;
         tmp->at(0) = dataRow_Matrix;
         
         auto begin = dataRow->at(rid).begin();
@@ -78,7 +78,7 @@ public:
         this->inputLayer->backward(this->attentionLayer->inputDelta());
     }
     
-    void applyBP() const {
+    void applyBP(size_t epoch) const {
         this->inputLayer->applyBatchGradient();
         this->attentionLayer->applyBatchGradient();
     }

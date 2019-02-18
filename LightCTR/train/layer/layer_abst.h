@@ -17,6 +17,7 @@
 #include "../../util/matrix.h"
 #include "../../util/gradientUpdater.h"
 #include "../../util/momentumUpdater.h"
+#include "../../common/buffer_fusion.h"
 #include "assert.h"
 
 #define FOR(i,n) for(size_t i = 0;i < n;i++)
@@ -41,11 +42,13 @@ public:
     virtual ~Layer_Base() {
     }
     
-    virtual vector<double>* forward(vector<Matrix*>* const prevLOutputMatrix) = 0;
+    virtual vector<float>* forward(vector<Matrix*>* const prevLOutputMatrix) = 0;
     
     virtual void backward(vector<Matrix*>* const outputDeltaMatrix) = 0;
     
     virtual const vector<Matrix*>* output() = 0;
+    
+    virtual void registerGradient(std::shared_ptr<BufferFusion<float> > _buf_fusion) = 0;
     
     virtual void applyBatchGradient() { // for each mini-batch gradient batch update stage
         if (nextLayer) {

@@ -48,13 +48,13 @@ private:
     size_t learnable_params_cnt;
     
     void batchGradCompute(size_t, size_t);
-    void accumWVGrad(size_t rid, double pred);
+    void accumWVGrad(size_t rid, float pred);
     
-    double *update_g;
-    inline double* update_W(size_t fid) {
+    float *update_g;
+    inline float* update_W(size_t fid) {
         return &update_g[fid];
     }
-    inline double* update_V(size_t fid, size_t fieldid, size_t facid) {
+    inline float* update_V(size_t fid, size_t fieldid, size_t facid) {
         assert(this->feature_cnt + fid * this->field_cnt * this->factor_cnt
                + fieldid * this->factor_cnt + facid <= learnable_params_cnt);
         return &update_g[this->feature_cnt + fid * this->field_cnt * this->factor_cnt

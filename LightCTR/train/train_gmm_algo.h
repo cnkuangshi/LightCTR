@@ -15,27 +15,27 @@
 #include "../em_algo_abst.h"
 using namespace std;
 
-class Train_GMM_Algo : public EM_Algo_Abst<vector<double> > {
+class Train_GMM_Algo : public EM_Algo_Abst<vector<float> > {
 
     struct Point {
-        double* data;
+        float* data;
         ~Point() {
             delete [] data;
         }
     };
     struct Gauss {
-        double* mu;
-        double* sigma; // simple covariance to diagonal matrix
-        double weight;
-        double pdf_tmp;
-        double sumRid_tmp;
+        float* mu;
+        float* sigma; // simple covariance to diagonal matrix
+        float weight;
+        float pdf_tmp;
+        float sumRid_tmp;
         Gauss() {
             pdf_tmp = sumRid_tmp = 0;
         }
     };
 public:
     Train_GMM_Algo(string _dataFile, size_t _epoch, size_t _cluster_cnt,
-                   size_t _feature_cnt, double _scale = 1.0f):
+                   size_t _feature_cnt, float _scale = 1.0f):
     EM_Algo_Abst(_dataFile, _epoch, _feature_cnt), cluster_cnt(_cluster_cnt), scale(_scale) {
         threadpool = new ThreadPool(thread::hardware_concurrency());
         init();
@@ -53,19 +53,19 @@ public:
     }
 
     void init();
-    vector<double>** Train_EStep();
-    double Train_MStep(vector<double>**);
+    vector<float>** Train_EStep();
+    float Train_MStep(vector<float>**);
     shared_ptr<vector<int> > Predict();
     
-    double GaussianLPDF(size_t gasid, size_t rid);
+    float GaussianLPDF(size_t gasid, size_t rid);
     void printArguments();
     
     size_t cluster_cnt;
     
 private:
-    double scale;
+    float scale;
     Gauss *gaussModels;
-    vector<double>* *latentVar;
+    vector<float>* *latentVar;
     
     ThreadPool *threadpool;
 };

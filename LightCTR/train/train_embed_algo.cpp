@@ -35,9 +35,9 @@ void Train_Embed_Algo::init() {
         pair<int, int> p2 = Q.top();
         Q.pop();
         curNode = treeArry + treeNode_cnt;
-        curNode->weight = new double[emb_dimention];
+        curNode->weight = new float[emb_dimention];
         // hierarchical softmax weight init with 0
-        memset(curNode->weight, 0, sizeof(double) * emb_dimention);
+        memset(curNode->weight, 0, sizeof(float) * emb_dimention);
         
         curNode->frequency = p1.first + p2.first;
         curNode->left = p1.second;
@@ -126,15 +126,15 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
     // N-Gram CBOW continuous bag of word
     // TODO skip-gram impl
     // cbow hsoftmax and negative discriminant
-    vector<double> ctx_sum, emb_delta;
+    vector<float> ctx_sum, emb_delta;
     ctx_sum.resize(emb_dimention);
     emb_delta.resize(emb_dimention);
-    double decay_alpha = learning_rate;
+    float decay_alpha = learning_rate;
     
     // each document trains epoch times
     for (size_t ep = 0; ep < epoch; ep++) {
         decay_alpha *= 0.96f;
-        decay_alpha = max(decay_alpha, 0.0001);
+        decay_alpha = fmax(decay_alpha, 0.0001);
         
         int length = (int)doc_wordid_vec.size();
         for (int word_index = 0; word_index < length; word_index++) {
@@ -160,16 +160,16 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
             const Node* curNode = treeRoot;
             for (size_t c = 0; c < word_code[cur_wid].length(); c++) {
                 int realdir = word_code[cur_wid][c] - '0';
-                double preddir = 0.0f;
+                float preddir = 0.0f;
                 FOR_D {
                     preddir += curNode->weight[i] * ctx_sum[i];
                 }
                 if(!(preddir > -30 && preddir < 30)) {
-                    printf("-- warning hiso %zu-%zu preddir = %lf\n", cur_wid, c, preddir);
+                    printf("-- warning hiso %zu-%zu preddir = %f\n", cur_wid, c, preddir);
                 }
                 preddir = sigmoid.forward(preddir);
                 // LR gradient to max Loglikelihood
-                double gradient = decay_alpha * (realdir - preddir);
+                float gradient = decay_alpha * (realdir - preddir);
                 FOR_D {
                     emb_delta[i] += gradient * curNode->weight[i];
                     curNode->weight[i] += gradient * ctx_sum[i];
@@ -188,16 +188,16 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
                         wid = negSampleTable[rand() % negTable_size];
                     } while (wid == cur_wid);
                 }
-                double preddir = 0.0f;
+                float preddir = 0.0f;
                 FOR_D {
                     preddir += negWeight[wid][i] * ctx_sum[i];
                 }
                 if(!(preddir > -30 && preddir < 30)) {
-                    printf("-- warning negsa %zu preddir = %lf\n", cur_wid, preddir);
+                    printf("-- warning negsa %zu preddir = %f\n", cur_wid, preddir);
                 }
                 preddir = sigmoid.forward(preddir);
                 // LR gradient to max Loglikelihood
-                double gradient = decay_alpha * (label - preddir);
+                float gradient = decay_alpha * (label - preddir);
                 FOR_D {
                     emb_delta[i] += gradient * negWeight[wid][i];
                     negWeight[wid][i] += gradient * ctx_sum[i];

@@ -44,7 +44,7 @@ struct Value {
         w *= x.w;
         return *this;
     }
-    Value& operator* (double x) {
+    Value& operator* (float x) {
         w *= x;
         return *this;
     }
@@ -52,7 +52,7 @@ struct Value {
         w /= x.w;
         return *this;
     }
-    Value& operator/ (double x) {
+    Value& operator/ (float x) {
         w /= x;
         return *this;
     }
@@ -110,7 +110,7 @@ public:
     void Train() {
         GradientUpdater::__global_bTraining = true;
         
-        vector<double> loss_curve, accuracy_curve;
+        vector<float> loss_curve, accuracy_curve;
         for (size_t i = 0; i < this->epoch; i++) {
             train_loss = 0;
             accuracy = 0;
@@ -127,13 +127,13 @@ public:
             }
             threadpool->wait();
             
-            printf("[Worker Train] epoch = %zu loss = %lf\n", i, -train_loss);
+            printf("[Worker Train] epoch = %zu loss = %f\n", i, -train_loss);
             loss_curve.emplace_back(-train_loss);
-            accuracy_curve.emplace_back((double)accuracy / dataRow_cnt);
+            accuracy_curve.emplace_back((float)accuracy / dataRow_cnt);
         }
         
         for (int i = 0; i < this->epoch; i++) {
-            printf("%lf(%.3lf) ", loss_curve[i], accuracy_curve[i]);
+            printf("%f(%.3f) ", loss_curve[i], accuracy_curve[i]);
         }
         puts("");
         
@@ -181,10 +181,10 @@ public:
             worker.pull_op.sync(*pull_map);
         
         size_t local_accuracy = 0;
-        double local_loss = 0;
+        float local_loss = 0;
         
         for (size_t rid = rbegin; rid < rend; rid++) { // data row
-            double pred = 0.0f;
+            float pred = 0.0f;
             for (size_t i = 0; i < dataSet[rid].size(); i++) {
                 if (dataSet[rid][i].second == 0) {
                     continue;
@@ -192,11 +192,11 @@ public:
                 const size_t fid = dataSet[rid][i].first;
                 const Value param = pull_map->at(fid);
                 
-                const double X = dataSet[rid][i].second;
+                const float X = dataSet[rid][i].second;
                 pred += param.w * X;
             }
             
-            double pCTR = sigmoid.forward(pred);
+            float pCTR = sigmoid.forward(pred);
             local_loss += (int)this->label[rid] == 1 ?
                                     log(pCTR) : log(1.0 - pCTR);
             assert(!isnan(local_loss));
@@ -210,7 +210,7 @@ public:
                 continue;
             }
             
-            const double loss = pred - label[rid];
+            const float loss = pred - label[rid];
             
             for (size_t i = 0; i < dataSet[rid].size(); i++) {
                 if (dataSet[rid][i].second == 0) {
@@ -218,9 +218,9 @@ public:
                 }
                 const size_t fid = dataSet[rid][i].first;
                 const Value param = pull_map->at(fid);
-                const double X = dataSet[rid][i].second;
+                const float X = dataSet[rid][i].second;
                 
-                const double gradW = loss * X + L2Reg_ratio * param.w;
+                const float gradW = loss * X + L2Reg_ratio * param.w;
                 assert(gradW < 100);
                 
                 auto it = push_map->find(fid);
@@ -253,7 +253,7 @@ private:
         string line;
         int nchar, y;
         size_t fid, fieldid;
-        double val;
+        float val;
         fin_.open(dataPath, ios::in);
         if(!fin_.is_open()){
             cout << "open file error!" << endl;
@@ -268,7 +268,7 @@ private:
                 pline += nchar + 1;
                 label.emplace_back(y);
                 while(pline < line.c_str() + (int)line.length() &&
-                      sscanf(pline, "%zu:%zu:%lf%n", &fieldid, &fid, &val, &nchar) >= 2){
+                      sscanf(pline, "%zu:%zu:%f%n", &fieldid, &fid, &val, &nchar) >= 2){
                     pline += nchar + 1;
                     tmp.emplace_back(FMFeature(fid, val, fieldid));
                     this->feature_cnt = max(this->feature_cnt, fid + 1);
@@ -287,7 +287,7 @@ private:
     size_t feature_cnt{0};
     size_t dataRow_cnt{0};
     
-    double L2Reg_ratio;
+    float L2Reg_ratio;
     
     Barrier terminate_barrier;
     
@@ -298,7 +298,7 @@ private:
     Worker<Key, Value> worker;
     
     mutex loss_lock;
-    double train_loss = 0;
+    float train_loss = 0;
     size_t accuracy{0};
     Sigmoid sigmoid;
     

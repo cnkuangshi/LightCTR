@@ -21,7 +21,7 @@
 #include <list>
 
 const uint32_t __global_cluster_ps_cnt = getEnv("LightCTR_PS_NUM", 0); // read from env
-const uint32_t __global_cluster_worker_cnt = getEnv("LightCTR_WORKER_NUM", 2);
+const uint32_t __global_cluster_worker_cnt = getEnv("LightCTR_WORKER_NUM", 3);
 
 class Master {
 public:
@@ -206,7 +206,9 @@ private:
                 if (node_id == 0) {
                     return;
                 }
+#ifdef DEBUG
                 printf("[HEARTBEAT] checking alive of node_id = %zu\n", node_id);
+#endif
                 int res = checkAlive(node_id);
                 if (res == -1) {
                     // stop router the node

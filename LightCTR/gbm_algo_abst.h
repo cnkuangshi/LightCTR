@@ -25,7 +25,7 @@ protected:
     struct LeafNodeStat;
     struct RegTreeNode {
         RegTreeNode *left, *right, *father;
-        double split_threshold;
+        float split_threshold;
         int split_feature_index;
         bool dataNAN_go_Right;
 
@@ -48,10 +48,10 @@ protected:
     };
     struct LeafNodeStat {
         RegTreeNode* treeNode;
-        double weight;
+        float weight;
         size_t data_cnt;
-        double gain;
-        double sumGrad, sumHess;
+        float gain;
+        float sumGrad, sumHess;
         bool active;
         LeafNodeStat(RegTreeNode *_node) {
             active = true;
@@ -69,7 +69,7 @@ protected:
         bool operator== (const LeafNodeStat& t) const {
             return treeNode->node_index == t.treeNode->node_index;
         }
-        inline bool needUpdate(double splitGain, size_t split_index) {
+        inline bool needUpdate(float splitGain, size_t split_index) {
             assert(!isnan(splitGain));
             assert(split_index >= 0);
             if (treeNode->split_feature_index <= split_index) {
@@ -124,7 +124,7 @@ public:
         return make_pair(leftNode, rightNode);
     }
     
-    inline RegTreeNode* nextLevel(RegTreeNode* root, map<size_t, double>& dataRow) {
+    inline RegTreeNode* nextLevel(RegTreeNode* root, map<size_t, float>& dataRow) {
         assert(!bLeaf(root));
         
         bool go_left = 1;
@@ -132,7 +132,7 @@ public:
             // this data row don't have split feature, go default
             root->dataNAN_go_Right ? go_left = 0 : go_left = 1;
         } else {
-            double threshold = root->split_threshold;
+            float threshold = root->split_threshold;
             dataRow[root->split_feature_index] < threshold ? go_left = 1 : go_left = 0;
         }
         assert(go_left ? root->left : root->right);
@@ -144,7 +144,7 @@ public:
         return root->left == NULL && root->right == NULL;
     }
     
-    inline double locAtLeafWeight(RegTreeNode* root, map<size_t, double>& dataRow) {
+    inline float locAtLeafWeight(RegTreeNode* root, map<size_t, float>& dataRow) {
         while (!bLeaf(root)) {
             root = nextLevel(root, dataRow);
         }
@@ -165,7 +165,7 @@ public:
             cout << "open file error!" << endl;
             exit(1);
         }
-        map<size_t, double> tmp;
+        map<size_t, float> tmp;
         
         while(!fin_.eof()){
             getline(fin_, line);
@@ -223,16 +223,16 @@ public:
     vector<RegTreeNode*> RegTreeRootArr;
     vector<int> fscore;
     list<LeafNodeStat*> leafNodes, leafNodes_tmp;
-    vector<pair<double, double> > dataSet_Grad;
-    map<size_t, vector<pair<size_t, double> > > dataSet_feature;
+    vector<pair<float, float> > dataSet_Grad;
+    map<size_t, vector<pair<size_t, float> > > dataSet_feature;
     
     int has_pred_tree;
-    double* dataSet_Pred;
+    float* dataSet_Pred;
     
     size_t maxDepth, minLeafW;
     size_t multiclass;
     size_t feature_cnt, dataRow_cnt;
-    vector<map<size_t, double> > dataSet;
+    vector<map<size_t, float> > dataSet;
     vector<int> label;
 };
 

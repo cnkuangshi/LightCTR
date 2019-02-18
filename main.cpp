@@ -8,7 +8,6 @@
 
 #include <iostream>
 #include "LightCTR/common/time.h"
-#include "LightCTR/common/system.h"
 #include "LightCTR/common/float16.h"
 #include "LightCTR/util/pca.h"
 #include "LightCTR/common/persistent_buffer.h"
@@ -50,7 +49,7 @@
 using namespace std;
 
 // Attention to check config in GradientUpdater
-//#define TEST_NFM
+#define TEST_CNN
 
 /* Recommend Configuration
  * Distributed LR lr=0.1
@@ -60,14 +59,14 @@ using namespace std;
  * RNN batch=10 lr=0.03
  */
 
-size_t GradientUpdater::__global_minibatch_size(50);
-double GradientUpdater::__global_learning_rate(0.1);
-double GradientUpdater::__global_ema_rate(0.99);
-double GradientUpdater::__global_sparse_rate(0.6);
-double GradientUpdater::__global_lambdaL2(0.001f);
-double GradientUpdater::__global_lambdaL1(1e-5);
-double MomentumUpdater::__global_momentum(0.8);
-double MomentumUpdater::__global_momentum_adam2(0.999);
+size_t GradientUpdater::__global_minibatch_size(10);
+float GradientUpdater::__global_learning_rate(0.01);
+float GradientUpdater::__global_ema_rate(0.99);
+float GradientUpdater::__global_sparse_rate(0.6);
+float GradientUpdater::__global_lambdaL2(0.001f);
+float GradientUpdater::__global_lambdaL1(1e-5);
+float MomentumUpdater::__global_momentum(0.8);
+float MomentumUpdater::__global_momentum_adam2(0.999);
 
 bool GradientUpdater::__global_bTraining(true);
 
@@ -95,39 +94,13 @@ int main(int argc, const char * argv[]) {
                                      /*epoch*/50);
         train->Train();
     }
-#elif defined WORKER_RING
-    {
-        Worker_RingReduce<float> syncer(__global_cluster_worker_cnt);
-        
-        puts("Run in Ring Mode");
-        const int s = 100;
-        auto buf_fusion = std::make_shared<BufferFusion<float> >();
-        for (size_t i = 0; i < 10; i++) {
-            auto grad = new float[s << i];
-            buf_fusion->registMemChunk(grad, s << i);
-        }
-        
-        clock_start();
-        int Epoch = 50;
-        for (size_t i = 0; i < Epoch; i++) {
-            buf_fusion->memset_c(1);
-            syncer.syncGradient(buf_fusion, i);
-            buf_fusion->transform(0, buf_fusion->size(), [](float* begin, float* end) {
-                for (size_t i = 0; i < end - begin; i++) {
-                    assert(*(begin + i) == 1.);
-                }
-            });
-        }
-        printf("Cost %fs\n", clock_cycles() * 1.0e-9);
-    }
-    
 #elif (defined TEST_FM) || (defined TEST_FFM) || (defined TEST_NFM) || (defined TEST_GBM) || (defined TEST_GMM) || (defined TEST_TM) || (defined TEST_EMB) || (defined TEST_CNN) || (defined TEST_RNN) || (defined TEST_VAE) || (defined TEST_ANN)
     int T = 200;
     
 #ifdef TEST_FM
     FM_Algo_Abst *train = new Train_FM_Algo(
                         "./data/train_sparse.csv",
-                        /*epoch*/3,
+                        /*epoch*/30,
                         /*factor_cnt*/10);
     FM_Predict pred(train, "./data/train_sparse.csv", true);
 #elif defined TEST_FFM
@@ -153,14 +126,14 @@ int main(int argc, const char * argv[]) {
                           /*multiclass*/10);
     GBM_Predict pred(train, "./data/train_dense.csv", true);
 #elif defined TEST_GMM
-    EM_Algo_Abst<vector<double> > *train =
+    EM_Algo_Abst<vector<float> > *train =
     new Train_GMM_Algo(
                       "./data/train_cluster.csv",
                       /*epoch*/50, /*cluster_cnt*/100,
                       /*feature_cnt*/10);
     T = 1;
 #elif defined TEST_TM
-    EM_Algo_Abst<vector<vector<double>* > > *train =
+    EM_Algo_Abst<vector<vector<float>* > > *train =
     new Train_TM_Algo(
                    "./data/train_topic.csv",
                    "./data/vocab.txt",
@@ -179,8 +152,8 @@ int main(int argc, const char * argv[]) {
                        /*vocab_cnt*/5000);
     T = 1;
 #elif defined TEST_CNN
-    DL_Algo_Abst<Square<double, int>, Tanh, Softmax> *train =
-    new Train_CNN_Algo<Square<double, int>, Tanh, Softmax>(
+    DL_Algo_Abst<Square<float, int>, Tanh, Softmax> *train =
+    new Train_CNN_Algo<Square<float, int>, Tanh, Softmax>(
                          "./data/train_dense.csv",
                          /*epoch*/300,
                          /*feature_cnt*/784,
@@ -188,8 +161,8 @@ int main(int argc, const char * argv[]) {
                          /*multiclass_output_cnt*/10);
     T = 1;
 #elif defined TEST_VAE
-    Train_VAE_Algo<Square<double, double>, Sigmoid> *train =
-    new Train_VAE_Algo<Square<double, double>, Sigmoid>(
+    Train_VAE_Algo<Square<float, float>, Sigmoid> *train =
+    new Train_VAE_Algo<Square<float, float>, Sigmoid>(
                          "./data/train_dense.csv",
                          /*epoch*/600,
                          /*feature_cnt*/784,
@@ -197,8 +170,8 @@ int main(int argc, const char * argv[]) {
                          /*gauss*/20);
     T = 1;
 #elif defined TEST_RNN
-    DL_Algo_Abst<Square<double, int>, Tanh, Softmax> *train =
-    new Train_RNN_Algo<Square<double, int>, Tanh, Softmax>(
+    DL_Algo_Abst<Square<float, int>, Tanh, Softmax> *train =
+    new Train_RNN_Algo<Square<float, int>, Tanh, Softmax>(
                          "./data/train_dense.csv",
                          /*epoch*/600,
                          /*feature_cnt*/784,
@@ -218,7 +191,7 @@ int main(int argc, const char * argv[]) {
 #ifdef TEST_EMB
 //        train->loadPretrainFile("./output/word_embedding.txt");
         // Notice, word embedding vector multiply 10 to cluster
-        EM_Algo_Abst<vector<double> > *cluster =
+        EM_Algo_Abst<vector<float> > *cluster =
         new Train_GMM_Algo(
                         "./output/word_embedding.txt",
                         50,

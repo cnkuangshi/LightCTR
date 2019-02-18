@@ -53,7 +53,7 @@ public:
     }
     
     void Train() {
-        static vector<double> *grad = new vector<double>();
+        static vector<float> *grad = new vector<float>();
         static Matrix* dataRow_Matrix = new Matrix(1, feature_cnt, 0);
         static Matrix* grad_Matrix = new Matrix(1, feature_cnt, 0);
         static vector<Matrix*> *tmp = new vector<Matrix*>();
@@ -67,7 +67,7 @@ public:
             for (size_t rid = 0; rid < dataRow_cnt; rid++) {
                 dataRow_Matrix->loadDataPtr(&dataSet[rid]);
                 tmp->at(0) = dataRow_Matrix;
-                vector<double> *pred = this->encodeLayer->forward(tmp);
+                vector<float> *pred = this->encodeLayer->forward(tmp);
                 outputActivFun.forward(pred);
                 assert(pred->size() == feature_cnt);
                 grad->resize(pred->size());
@@ -86,11 +86,11 @@ public:
                 GradientUpdater::__global_bTraining = false;
                 
                 // Validate Loss
-                double loss = 0.0f;
+                float loss = 0.0f;
                 for (size_t rid = 0; rid < dataRow_cnt; rid+=2) {
                     dataRow_Matrix->loadDataPtr(&dataSet[rid]);
                     tmp->at(0) = dataRow_Matrix;
-                    vector<double> *pred = this->encodeLayer->forward(tmp);
+                    vector<float> *pred = this->encodeLayer->forward(tmp);
                     outputActivFun.forward(pred);
                     loss += lossFun.loss(pred, &dataSet[rid]);
                     if (rid == 4 || rid == 8) { // look like number 4 or 5
@@ -103,23 +103,23 @@ public:
                         }
                     }
                 }
-                printf("\nepoch %zu Loss = %lf\n", p, loss);
+                printf("\nepoch %zu Loss = %f\n", p, loss);
             }
         }
     }
     
-    vector<double>* encode(vector<double>* input) {
+    vector<float>* encode(vector<float>* input) {
         assert(input->size() == feature_cnt);
         sampleLayer->bEncoding = true;
-        vector<double> *encode = this->encodeLayer->forward(input);
+        vector<float> *encode = this->encodeLayer->forward(input);
         sampleLayer->bEncoding = false;
         assert(encode->size() == gauss_cnt);
         return encode;
     }
     
-    vector<double>* decode(vector<double>* input) {
+    vector<float>* decode(vector<float>* input) {
         assert(input->size() == gauss_cnt);
-        vector<double> *decode = this->decodeLayer->forward(input);
+        vector<float> *decode = this->decodeLayer->forward(input);
         outputActivFun.forward(decode);
         return decode;
     }
@@ -142,7 +142,7 @@ public:
         }
         
         while(!fin_.eof()){
-            vector<double> tmp;
+            vector<float> tmp;
             tmp.resize(feature_cnt);
             getline(fin_, line);
             fill(tmp.begin(), tmp.end(), 0);
@@ -197,7 +197,7 @@ private:
     Sample_Layer<Identity> *sampleLayer;
     
     size_t dataRow_cnt, feature_cnt, gauss_cnt;
-    vector<vector<double> > dataSet;
+    vector<vector<float> > dataSet;
 };
 
 #endif /* train_vae_algo_h */

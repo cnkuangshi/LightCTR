@@ -17,12 +17,19 @@ template <typename T>
 class BufferFusion {
 public:
     ~BufferFusion() {
+        if (!autoRelease) {
+            return;
+        }
         for (size_t i = 0; i < bufs_ptr_arr.size(); i++) {
             if (bufs_ptr_arr[i]) {
                 delete[] bufs_ptr_arr[i];
                 bufs_ptr_arr[i] = NULL;
             }
         }
+    }
+    
+    void registMemChunk(vector<T>* ptr, size_t size) {
+        registMemChunk(ptr->data(), size);
     }
     
     void registMemChunk(T* ptr, size_t size) {
@@ -142,7 +149,7 @@ public:
     }
     
 private:
-    
+    bool autoRelease{false};
     std::vector<T*> bufs_ptr_arr;
     std::vector<size_t> bufs_size_arr;
     size_t total_size = 0;

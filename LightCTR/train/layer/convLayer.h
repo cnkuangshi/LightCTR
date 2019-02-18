@@ -88,7 +88,19 @@ public:
         }
     }
     
-    vector<double>* forward(vector<Matrix*>* prevLOutput) {
+    void registerGradient(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
+        FOR(i, filter_cnt) {
+            _buf_fusion->registMemChunk(filterDelta[i]->pointer(), filterDelta[i]->size());
+        }
+        FOR(i, filter_cnt) {
+            _buf_fusion->registMemChunk(biasDelta[i]->pointer(), biasDelta[i]->size());
+        }
+        if (this->nextLayer) {
+            this->nextLayer->registerGradient(_buf_fusion);
+        }
+    }
+    
+    vector<float>* forward(vector<Matrix*>* prevLOutput) {
         assert(this->nextLayer);
         assert(prevLOutput->size() == this->input_dimention);
         
@@ -135,7 +147,7 @@ public:
             }
             if (bias[filid] == NULL) { // Asynchronous to lazy init
                 unique_lock<SpinLock> glock(this->lock);
-                if (bias[filid] == NULL) { // double check
+                if (bias[filid] == NULL) { // float check
                     bias[filid] = new Matrix(m_ptr->x_len, m_ptr->y_len);
                     bias[filid]->randomInit();
                     biasDelta[filid] = new Matrix(m_ptr->x_len, m_ptr->y_len);
@@ -145,7 +157,7 @@ public:
             m_ptr->add(bias[filid]);
             
             // apply Activation Function
-            m_ptr->operate([this](vector<double>* matrix) {
+            m_ptr->operate([this](vector<float>* matrix) {
                 assert(matrix);
                 this->getActiveFun().forward(matrix);
             });
@@ -190,7 +202,7 @@ public:
                         }
                     }
                 }
-                m_ptr->operate([&, i](vector<double>* matrix) {
+                m_ptr->operate([&, i](vector<float>* matrix) {
                     this->prevLayer->getActiveFun().backward(matrix,
                             this->prevLayer->output()->at(i)->pointer(), matrix);
                 });

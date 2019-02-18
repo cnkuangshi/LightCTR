@@ -49,16 +49,16 @@ private:
     void flash();
     
     Sigmoid sigmoid;
-    vector<double>* *update_threadLocal;
+    vector<float>* *update_threadLocal;
     
     void batchGradCompute(size_t, size_t, size_t);
-    void accumWVGrad(size_t, double, vector<double>*);
+    void accumWVGrad(size_t, float, vector<float>*);
 
-    double *update_g;
-    inline double* update_W(size_t fid) const {
+    float *update_g;
+    inline float* update_W(size_t fid) const {
         return &update_g[fid];
     }
-    inline double* update_V(size_t fid, size_t facid) const {
+    inline float* update_V(size_t fid, size_t facid) const {
         assert(this->feature_cnt + fid * this->factor_cnt + facid < this->feature_cnt * (this->factor_cnt + 1));
         return &update_g[this->feature_cnt + fid * this->factor_cnt + facid];
     }

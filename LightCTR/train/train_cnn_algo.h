@@ -13,6 +13,7 @@
 #include "layer/poolingLayer.h"
 #include "layer/adapterLayer.h"
 #include "layer/convLayer.h"
+#include "../distribut/ring_collect.h"
 using namespace std;
 
 template <typename LossFunction, typename ActivationFunction, typename OutputActivationFunction>
@@ -30,9 +31,13 @@ public:
     ~Train_CNN_Algo() {
         delete this->inputLayer;
         delete this->outputLayer;
+        delete syncer;
     }
     
     void init(size_t hidden_size) {
+#ifdef WORKER_RING
+        syncer = new Worker_RingReduce<float>(__global_cluster_worker_cnt);
+#endif
         // Net structure of 28x28: 5x5 12 pool 6 3x3 4 3x3 2 flatten fc-100
         this->inputLayer = new Conv_Layer<ActivationFunction>(NULL, 1, 6, CNN_Config{5, 0, 2});
         Max_Pooling_Layer<Identity>* poolLayer =
@@ -49,11 +54,11 @@ public:
                                                      this->multiclass_output_cnt);
     }
     
-    vector<double>* Predict(size_t rid, vector<vector<double> >* const dataRow) {
+    vector<float>* Predict(size_t rid, vector<vector<float> >* const dataRow) {
         Matrix*& dataRow_Matrix = *tl_dataRow_Matrix;
         if (dataRow_Matrix == NULL) {
-            dataRow_Matrix = new Matrix(sqrt((double)this->feature_cnt),
-                                        sqrt((double)this->feature_cnt), 0);
+            dataRow_Matrix = new Matrix(sqrt((float)this->feature_cnt),
+                                        sqrt((float)this->feature_cnt), 0);
         }
         vector<Matrix*>*& wrapper = *tl_wrapper;
         if (wrapper == NULL) {
@@ -67,14 +72,19 @@ public:
     }
     
     void BP(size_t rid, vector<Matrix*>* grad) {
-        assert(GradientUpdater::__global_bTraining);
         this->outputLayer->backward(grad);
     }
     
-    void applyBP() const {
+    void applyBP(size_t epoch) const {
+#ifdef WORKER_RING
+        auto buf_fusion = std::make_shared<BufferFusion<float> >();
+        this->inputLayer->registerGradient(buf_fusion);
+        syncer->syncGradient(buf_fusion, epoch);
+#endif
         this->inputLayer->applyBatchGradient();
     }
 private:
+    Worker_RingReduce<float>* syncer;
     ThreadLocal<vector<Matrix*>*> tl_wrapper;
     ThreadLocal<Matrix*> tl_dataRow_Matrix;
 };

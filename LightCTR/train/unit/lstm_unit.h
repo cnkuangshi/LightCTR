@@ -109,7 +109,7 @@ public:
     }
     
     // Attention to LSTM Unit forward wouldn't auto pass data into next layer
-    vector<double>* forward(vector<Matrix*>* const prevLOutputMatrix) {
+    vector<float>* forward(vector<Matrix*>* const prevLOutputMatrix) {
         if (cur_seqid == batch_size) {
             cur_seqid = 0; // new batch input row
         }
@@ -346,7 +346,7 @@ private:
     // calculate temp matrix cache
     Matrix *cache, *cache_bp, *cache_h_bp;
     
-    double error_clip_threshold;
+    float error_clip_threshold;
     vector<Matrix*> *wrapper;
     
     // for updater

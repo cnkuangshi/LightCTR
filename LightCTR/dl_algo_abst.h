@@ -43,12 +43,12 @@ public:
         this->outputLayer = new Fully_Conn_Layer<ActivationFunction>(inputLayer, hidden_size, multiclass_output_cnt);
     }
     
-    virtual vector<double>* Predict(size_t, vector<vector<double> >* const) = 0;
+    virtual vector<float>* Predict(size_t, vector<vector<float> >* const) = 0;
     virtual void BP(size_t, vector<Matrix*>*) = 0;
-    virtual void applyBP() const = 0;
+    virtual void applyBP(size_t epoch) const = 0;
     
     void Train() {
-        static ThreadLocal<vector<double>* > tl_grad;
+        static ThreadLocal<vector<float>* > tl_grad;
         static ThreadLocal<vector<int>* > tl_onehot;
         static ThreadLocal<Matrix*> tl_grad_Matrix;
         static ThreadLocal<vector<Matrix*>* > tl_tmp;
@@ -61,15 +61,15 @@ public:
             for (size_t rid = 0; rid < dataRow_cnt; rid++) {
                 
                 auto task = [&, rid]() {
-                    const vector<double> *pred = Predict(rid, &dataSet);
+                    vector<float> *pred = Predict(rid, &dataSet);
                     
                     assert(pred->size() == multiclass_output_cnt);
                     outputActivFun.forward(pred);
                     
                     // init threadLocal var
-                    vector<double>*& grad = *tl_grad;
+                    vector<float>*& grad = *tl_grad;
                     if (grad == NULL) {
-                        grad = new vector<double>();
+                        grad = new vector<float>();
                         grad->resize(multiclass_output_cnt);
                     }
                     vector<int>*& onehot = *tl_onehot;
@@ -112,27 +112,27 @@ public:
                 
                 if ((rid + 1) % GradientUpdater::__global_minibatch_size == 0) {
                     threadpool->wait();
-                    applyBP();
+                    applyBP(p);
                 }
             }
             
-            if (p % 2 == 0) {
+            if (p % 1 == 0) {
                 
                 GradientUpdater::__global_bTraining = false;
                 
                 // Validate Loss
-                std::atomic<double> loss(0.0f);
+                std::atomic<float> loss(0.0f);
                 std::atomic<int> correct(0);
                 for (size_t rid = 0; rid < dataRow_cnt; rid++) {
                     auto task = [&, rid]() {
-                        const vector<double> *pred = Predict(rid, &dataSet);
+                        vector<float> *pred = Predict(rid, &dataSet);
                         
                         outputActivFun.forward(pred);
                         
                         // init threadLocal var
-                        vector<double>*& grad = *tl_grad;
+                        vector<float>*& grad = *tl_grad;
                         if (grad == NULL) {
-                            grad = new vector<double>();
+                            grad = new vector<float>();
                             grad->resize(multiclass_output_cnt);
                         }
                         vector<int>*& onehot = *tl_onehot;
@@ -170,7 +170,7 @@ public:
                     }
                 }
                 threadpool->wait();
-                printf("\nepoch %zu Loss = %lf correct = %.3f\n",
+                printf("\nepoch %zu Loss = %f correct = %.3f\n",
                        p, loss.load(), 1.0f * correct / dataRow_cnt);
             }
         }
@@ -190,7 +190,7 @@ public:
         }
         
         while(!fin_.eof()){
-            vector<double> tmp;
+            vector<float> tmp;
             tmp.resize(feature_cnt);
             getline(fin_, line);
             fill(tmp.begin(), tmp.end(), 0);
@@ -244,7 +244,7 @@ private:
     
     size_t epoch;
     
-    vector<vector<double> > dataSet;
+    vector<vector<float> > dataSet;
     vector<int> label;
     
     ThreadPool *threadpool;

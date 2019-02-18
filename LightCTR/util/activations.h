@@ -17,16 +17,16 @@ using namespace std;
 
 class Activation {
 public:
-    virtual inline void forward(vector<double>* input) = 0;
-    virtual inline void backward(const vector<double>* delta, const vector<double>* forward_output, vector<double>* to) = 0;
+    virtual inline void forward(vector<float>* input) = 0;
+    virtual inline void backward(const vector<float>* delta, const vector<float>* forward_output, vector<float>* to) = 0;
 };
 
 class Identity : public Activation {
 public:
-    inline void forward(vector<double>* input) {
+    inline void forward(vector<float>* input) {
         return;
     }
-    inline void backward(const vector<double>* delta, const vector<double>* foutput, vector<double>* to) {
+    inline void backward(const vector<float>* delta, const vector<float>* foutput, vector<float>* to) {
         assert(delta->size() == foutput->size());
         assert(to->size() == foutput->size());
         for (size_t i = 0; i < delta->size(); i++) {
@@ -38,22 +38,22 @@ public:
 class Binary_Sigmoid : public Activation {
     // used in forward process of Binary Neural Network
 public:
-    inline double forward(double input) {
-        const double res = (input + 1.0f) / 2.0f;
+    inline float forward(float input) {
+        const float res = (input + 1.0f) / 2.0f;
         return fmax(0.0f, fmin(1.0f, res)); // clip to [0, 1]
     }
-    inline void forward(vector<double>* input) {
-        double scaler = 0.0f;
+    inline void forward(vector<float>* input) {
+        float scaler = 0.0f;
         for (auto it = input->begin(); it != input->end(); it++) {
             scaler += abs(*it); // accumulate of L1-norm
         }
         scaler /= input->size();
         for (auto it = input->begin(); it != input->end(); it++) {
-            double sign = *it > 0 ? 1 : -1;
+            float sign = *it > 0 ? 1 : -1;
             *it = *it * scaler * sign;
         }
     }
-    inline void backward(const vector<double>* delta, const vector<double>* foutput, vector<double>* to) {
+    inline void backward(const vector<float>* delta, const vector<float>* foutput, vector<float>* to) {
         // standard backward propagation except binary weight
         assert(delta->size() == foutput->size());
         assert(to->size() == foutput->size());
@@ -65,7 +65,7 @@ public:
 
 class Sigmoid : public Activation {
 public:
-    inline double forward(double input) {
+    inline float forward(float input) {
         if(input < -30){
             return 1e-12;
         } else if(input > 30) {
@@ -73,7 +73,7 @@ public:
         }
         return 1.0f / (1.0f + exp(-input));
     }
-    inline void forward(vector<double>* input) {
+    inline void forward(vector<float>* input) {
         for (auto it = input->begin(); it != input->end(); it++) {
             assert(!isnan(*it));
             if(*it < -30){
@@ -86,7 +86,7 @@ public:
             assert(!isnan(*it));
         }
     }
-    inline void backward(const vector<double>* delta, const vector<double>* foutput, vector<double>* to) {
+    inline void backward(const vector<float>* delta, const vector<float>* foutput, vector<float>* to) {
         assert(delta->size() == foutput->size());
         assert(to->size() == foutput->size());
         for (size_t i = 0; i < delta->size(); i++) {
@@ -98,13 +98,13 @@ public:
 
 class Softmax : public Activation {
 public:
-    Softmax(double _softTargetRate = 1.0f) : softTargetRate(_softTargetRate) {
+    Softmax(float _softTargetRate = 1.0f) : softTargetRate(_softTargetRate) {
     }
-    inline size_t forward_max(vector<double>* input) {
+    inline size_t forward_max(vector<float>* input) {
         return max_element(input->begin(), input->end()) - input->begin();
     }
-    inline void forward(vector<double>* input) {
-        double sum = 0.0f;
+    inline void forward(vector<float>* input) {
+        float sum = 0.0f;
         auto maxV = *max_element(input->begin(), input->end());
         // for numerical stability overflow
         for (auto it = input->begin(); it != input->end(); it++) {
@@ -119,13 +119,13 @@ public:
             }
         }
     }
-    inline void backward(const vector<double>* delta, const vector<double>* foutput, vector<double>* to) {
+    inline void backward(const vector<float>* delta, const vector<float>* foutput, vector<float>* to) {
         assert(delta->size() == foutput->size());
         assert(to->size() == foutput->size());
         // softmax Derivative (whether i == j) * softmax(input[i]) - softmax(input[i]) * softmax(input[i])
         // each derivative of Z_(L) = sum_i( delta_(i) * -forward_output_(i) * forward_output_(L) )
         //      + delta_(L) * forward_output_(L)
-        double sum = 0.0f;
+        float sum = 0.0f;
         for (size_t i = 0; i < delta->size(); i++) {
             sum += delta->at(i) * foutput->at(i);
         }
@@ -136,19 +136,19 @@ public:
     }
 private:
     // used in distillation soft target softmax, when larger than 1 makes smooth classification
-    double softTargetRate;
+    float softTargetRate;
 };
 
 class Tanh : public Activation {
 public:
-    inline void forward(vector<double>* input) {
-        double t1, t2;
+    inline void forward(vector<float>* input) {
+        float t1, t2;
         for (auto it = input->begin(); it != input->end(); it++) {
             t1 = exp(*it), t2 = exp(- (*it));
             *it = (t1 - t2) / (t1 + t2);
         }
     }
-    inline void backward(const vector<double>* delta, const vector<double>* foutput, vector<double>* to) {
+    inline void backward(const vector<float>* delta, const vector<float>* foutput, vector<float>* to) {
         assert(delta->size() == foutput->size());
         assert(to->size() == foutput->size());
         for (size_t i = 0; i < delta->size(); i++) {
@@ -159,14 +159,14 @@ public:
 
 class ReLU : public Activation { // Local Response Normalization
 public:
-    inline void forward(vector<double>* input) {
+    inline void forward(vector<float>* input) {
         for (auto it = input->begin(); it != input->end(); it++) {
             if (*it < 0.0f) {
                 *it = 0.0f; // negative slope is 0
             }
         }
     }
-    inline void backward(const vector<double>* delta, const vector<double>* foutput, vector<double>* to) {
+    inline void backward(const vector<float>* delta, const vector<float>* foutput, vector<float>* to) {
         assert(delta->size() == foutput->size());
         assert(to->size() == foutput->size());
         for (size_t i = 0; i < delta->size(); i++) {
@@ -181,15 +181,15 @@ public:
 
 class SoftPlus : public Activation {
 public:
-    inline void forward(vector<double>* input) {
+    inline void forward(vector<float>* input) {
         for (auto it = input->begin(); it != input->end(); it++) {
             *it = log(1 + exp(*it));
         }
     }
-    inline void backward(const vector<double>* delta, const vector<double>* foutput, vector<double>* to) {
+    inline void backward(const vector<float>* delta, const vector<float>* foutput, vector<float>* to) {
         assert(delta->size() == foutput->size());
         assert(to->size() == foutput->size());
-        double t;
+        float t;
         for (size_t i = 0; i < delta->size(); i++) {
             t = exp(foutput->at(i));
             to->at(i) = delta->at(i) * (t - 1) / t;

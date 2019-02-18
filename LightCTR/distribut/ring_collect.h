@@ -65,7 +65,9 @@ public:
             
             // receive segment from last-skip on the ring topology
             if (!cache.empty()) {
+#ifdef DEBUG
                 printf("[REDUCE] step = %zu read from cache\n", step_version);
+#endif
                 auto request = cache.front();
                 cache.pop();
                 assert(request->epoch_version == step_version);
@@ -79,19 +81,21 @@ public:
                               segment_end_arr[send_segment_id] - segment_size_arr[send_segment_id],
                               segment_size_arr[send_segment_id]);
             desc.content = std::move(*buffer_ptr);
-            
+#ifdef DEBUG
             desc.callback = [this](std::shared_ptr<PackageDescript> resp_package) {
                 printf("[REDUCE] send step = %zu package success\n", step_version);
 //                assert(resp_package->epoch_version && resp_package->epoch_version <= step_version);
             };
-            
+#endif
             bool send_status = false;
             do {
                 send_status = gDelivery.send_sync(desc, send_to_id, kTimeoutRetryMSInterval);
+#ifdef DEBUG
                 if (unlikely(!send_status)) {
                     // TODO dynamic waiting interval for network delay or crash of some machines
                     printf("[ERROR][REDUCE] send step = %zu package failed, retry\n", step_version);
                 }
+#endif
             } while(!send_status);
             
             step_barrier.block();
@@ -115,7 +119,9 @@ public:
             
             // receive segment from last-skip on the ring topology
             if (!cache.empty()) {
+#ifdef DEBUG
                 printf("[GATHER] step = %zu read from cache\n", step_version);
+#endif
                 auto request = cache.front();
                 cache.pop();
                 assert(request->epoch_version == step_version);
@@ -129,18 +135,21 @@ public:
                                     segment_end_arr[send_segment_id] - segment_size_arr[send_segment_id],
                                     segment_size_arr[send_segment_id]);
             desc.content = std::move(*buffer_ptr);
-            
+#ifdef DEBUG
             desc.callback = [this](std::shared_ptr<PackageDescript> resp_package) {
                 printf("[GATHER] send step = %zu package success\n", step_version);
 //                assert(resp_package->epoch_version && resp_package->epoch_version <= step_version);
             };
+#endif
             
             bool send_status = false;
             do {
                 send_status = gDelivery.send_sync(desc, send_to_id, kTimeoutRetryMSInterval);
+#ifdef DEBUG
                 if (unlikely(!send_status)) {
                     printf("[ERROR][GATHER] send step %zu package failed, retry\n", step_version);
                 }
+#endif
             } while(!send_status);
             
             step_barrier.block();
@@ -159,7 +168,9 @@ public:
                                       avx_vecScale(begin, begin, end - begin, scalar);
                                   });
         }
+#ifdef DEBUG
         printf("[RING] **** Epoch %zu synchronizer completed ****\n", epoch);
+#endif
     }
     
 private:
@@ -238,15 +249,19 @@ private:
             if (step_version != request->epoch_version) {
                 // cache the request into deque and response the situation
                 cache.push(request);
+#ifdef DEBUG
                 printf("[RING] receive not match %zu expected %zu, cache it\n",
                        request->epoch_version, step_version);
+#endif
                 response.epoch_version = step_version;
                 return;
             }
             
             assert(request->content.size() % sizeof(T) == 0);
+#ifdef DEBUG
             printf("[RING] step %zu: recv %zu gradients\n",
                    step_version, request->content.size() / sizeof(T));
+#endif
             
             const size_t type = step_version % (2 * _ring_size - 2);
             if (type > 0 && type < _ring_size) {

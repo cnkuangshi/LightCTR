@@ -202,8 +202,10 @@ public:
                 // Never resend RESPONSE
                 if(time(NULL) - pDesc.send_time <= 20) {
                     sending_queue.push(pDesc); // save Duplicated package into queue
+#ifdef DEBUG
                     printf("[QUEUE] save package msg_id = %zu msg_remain = %zu\n",
                            pDesc.message_id, sending_queue.size());
+#endif
                 }
             }
         }
@@ -214,10 +216,10 @@ public:
             assert(callbackMap.count(pDesc.message_id) == 0);
             callbackMap.emplace(pDesc.message_id, std::move(pDesc.callback));
         }
-        
+#ifdef DEBUG
         printf("[Network] Sending to node_id = %zu msg_id = %zu msgType = %d\n",
                to_id, pDesc.message_id, pDesc.msgType);
-        
+#endif
         Package snd_package(pDesc);
         assert(snd_package.head.size() > 0);
         
@@ -407,15 +409,18 @@ private:
     }
     
     void handle_request(std::shared_ptr<PackageDescript> request) {
+#ifdef DEBUG
         printf("[REQUEST] Receiving from node_id = %zu msg_id = %zu msgType = %d\n",
                request->node_id, request->message_id, request->msgType);
-        
+#endif
         request_handler_t handler; // get handler
         if (request->msgType != HEARTBEAT) {
             std::unique_lock<SpinLock> lock(handlerMap_lock);
             auto it = handlerMap.find(request->msgType);
             if (it == handlerMap.end()) {
+#ifdef DEBUG
                 puts("[WARNING][Network] Recv Unacceptable msg, Skip and No response");
+#endif
                 return;
             }
             handler = it->second;
@@ -429,22 +434,25 @@ private:
             }
             const size_t to_id = request->node_id;
             resp_desc.to_node_id = to_id;
+#ifdef DEBUG
             printf("[RESPONSE]");
+#endif
             send_async(resp_desc, to_id); // send response
         });
     }
     
     void handle_response(std::shared_ptr<PackageDescript> response) {
-        
+#ifdef DEBUG
         printf("[RESPONSE] msg_id = %zu msgType = %d\n",
                response->message_id, response->msgType);
-        
+#endif
         int res = sending_queue.erase(*response);
         if (res == 1) {
+#ifdef DEBUG
             printf("[QUEUE] ACK req msg_id = %zu msg_remain = %zu\n",
                    response->message_id, sending_queue.size());
+#endif
         }
-        
         response_callback_t callback;
         {
             std::unique_lock<SpinLock> lock(callbackMap_lock);
@@ -490,7 +498,9 @@ private:
             resend_pkg.to_node_id = pkg_to_nodeid;
             if (sending_queue.pop_if(resend_pkg, &resend_pkg)) {
                 // detect timeout, do resend
+#ifdef DEBUG
                 printf("[Re-Send]");
+#endif
                 send_async(resend_pkg, resend_pkg.to_node_id);
             }
         }

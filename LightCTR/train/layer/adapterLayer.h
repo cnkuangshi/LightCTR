@@ -27,7 +27,13 @@ public:
     ~Adapter_Layer() {
     }
     
-    vector<double>* forward(vector<Matrix*>* prevLOutput) {
+    void registerGradient(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
+        if (this->nextLayer) {
+            this->nextLayer->registerGradient(_buf_fusion);
+        }
+    }
+    
+    vector<float>* forward(vector<Matrix*>* prevLOutput) {
         // init ThreadLocal var
         Matrix*& output_act = *tl_output_act;
         vector<Matrix*>*& input_delta = *tl_input_delta;
@@ -64,7 +70,7 @@ public:
     }
     
     void backward(vector<Matrix*>* outputDeltaMatrix) {
-        vector<double>* outputDelta = outputDeltaMatrix->at(0)->pointer();
+        vector<float>* outputDelta = outputDeltaMatrix->at(0)->pointer();
         assert(outputDelta->size() == this->output_dimention);
         
         vector<Matrix*>*& input_delta = *tl_input_delta;

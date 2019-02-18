@@ -16,8 +16,8 @@ void Train_GBM_Algo::init() { // run once per gbm train stage
     learning_rate = 0.6f;
     
     has_pred_tree = - (int)multiclass;
-    dataSet_Pred = new double[this->dataRow_cnt * this->multiclass];
-    memset(dataSet_Pred, 0, sizeof(double) * this->dataRow_cnt * this->multiclass);
+    dataSet_Pred = new float[this->dataRow_cnt * this->multiclass];
+    memset(dataSet_Pred, 0, sizeof(float) * this->dataRow_cnt * this->multiclass);
     
     sampleDataSetIndex = new bool[this->dataRow_cnt];
     sampleFeatureSetIndex = new bool[this->feature_cnt];
@@ -30,7 +30,7 @@ void Train_GBM_Algo::init() { // run once per gbm train stage
 void Train_GBM_Algo::flash(RegTreeNode *root, size_t inClass) { // run per gbm tree building
     assert(root != NULL && this->leafNodes_tmp.size() == 1);
     
-    static double sumGrad = 0, sumHess = 0;
+    static float sumGrad = 0, sumHess = 0;
     if (this->multiclass == 1) {
         sumGrad = 0, sumHess = 0;
     }
@@ -45,7 +45,7 @@ void Train_GBM_Algo::flash(RegTreeNode *root, size_t inClass) { // run per gbm t
         
         // predict based on prev RegTree and calculate new predict without current root
         for (size_t tid = max(has_pred_tree, 0); tid < RegTreeRootArr.size() - 1; tid+=multiclass) {
-            double w = locAtLeafWeight(RegTreeRootArr[tid], dataSet[rid]);
+            float w = locAtLeafWeight(RegTreeRootArr[tid], dataSet[rid]);
             dataSet_Pred[rid * multiclass + inClass] += learning_rate * w;
         }
         
@@ -53,10 +53,10 @@ void Train_GBM_Algo::flash(RegTreeNode *root, size_t inClass) { // run per gbm t
             continue; // multi-classification update dataSet_Grad each K trees
         }
         // re-compute Logistic grad and hess for new tree
-        double pred = sigmoid.forward(dataSet_Pred[rid]);
+        float pred = sigmoid.forward(dataSet_Pred[rid]);
         
         // calculate node's total sum of all data's grad and hess
-        pair<double, double> grad_pair = make_pair(grad(pred, label[rid]), hess(pred));
+        pair<float, float> grad_pair = make_pair(grad(pred, label[rid]), hess(pred));
         assert(grad_pair.second >= 0);
         dataSet_Grad[rid] = move(grad_pair);
         sumGrad += grad_pair.first;
@@ -67,7 +67,7 @@ void Train_GBM_Algo::flash(RegTreeNode *root, size_t inClass) { // run per gbm t
         // K-th tree should re-compute Softmax grad and hess for next K trees
         sumGrad = 0, sumHess = 0;
         
-        static vector<double>* tmp = new vector<double>();
+        static vector<float>* tmp = new vector<float>();
         tmp->resize(multiclass);
         
         for (size_t rid = 0; rid < this->dataRow_cnt; rid++) {
@@ -79,13 +79,13 @@ void Train_GBM_Algo::flash(RegTreeNode *root, size_t inClass) { // run per gbm t
             assert(tmp->size() == multiclass);
             softmax.forward(tmp);
             for (size_t c = 0; c < multiclass; c++) {
-                double grad_t = tmp->at(c);
-                double hess_t = grad_t * (1.0 - grad_t) * 2.0;
+                float grad_t = tmp->at(c);
+                float hess_t = grad_t * (1.0 - grad_t) * 2.0;
                 assert(hess_t > 0);
                 if (c == label[rid]) {
                     grad_t = grad_t - 1.0;
                 }
-                pair<double, double> grad_pair = make_pair(grad_t, hess_t);
+                pair<float, float> grad_pair = make_pair(grad_t, hess_t);
                 assert(grad_pair.second >= 0);
                 dataSet_Grad[rid * multiclass + c] = move(grad_pair);
                 sumGrad += grad_pair.first;
@@ -162,7 +162,7 @@ void Train_GBM_Algo::Train() {
                         // weight less than minLeafW or get max depth,
                         // ture tree node into un-active leaf
                         turn_leaf((*it)->treeNode);
-                        double w = weight((*it)->sumGrad, (*it)->sumHess);
+                        float w = weight((*it)->sumGrad, (*it)->sumHess);
                         (*it)->treeNode->leafStat->weight = w;
                     } else {
                         // split tree node and divide node's sample data into new node
@@ -183,7 +183,7 @@ void Train_GBM_Algo::Train() {
                 }
 //                for (auto it = leafNodes.begin(); it != leafNodes.end(); it++) {
 //                    auto node = (*it)->treeNode;
-//                    printf("--- Node %zu have %zu rows using threshold %lf %d active=%d\n",
+//                    printf("--- Node %zu have %zu rows using threshold %f %d active=%d\n",
 //                           node->node_index, (*it)->data_cnt, node->split_threshold,
 //                           node->split_feature_index, node->leafStat == NULL ? 1 : 0);
 //                }
@@ -203,7 +203,7 @@ void Train_GBM_Algo::Train() {
                         // skip data has been in leaf, only new split LeafNodes are active
                         continue;
                     }
-                    pair<double, double> pair = move(dataSet_Grad[rid * multiclass + inClass]);
+                    pair<float, float> pair = move(dataSet_Grad[rid * multiclass + inClass]);
                     node->leafStat->sumGrad += pair.first;
                     node->leafStat->sumHess += pair.second;
                 }
@@ -255,7 +255,7 @@ void Train_GBM_Algo::findSplitFeature(size_t rbegin, size_t rend,
             assert(node_id >= 0);
             SplitNodeStat_Thread *stat =
                 &splitNodeStat_thread[pid * ((1<<this->maxDepth) - 1) + node_id];
-            double value = it->second;
+            float value = it->second;
             
             if (stat->sumHess == 0) {
                 // first data for one node, pass
@@ -269,10 +269,10 @@ void Train_GBM_Algo::findSplitFeature(size_t rbegin, size_t rend,
                     if (stat->sumHess > minLeafW) {
                         LeafNodeStat* globalLeafStat = node->leafStat;
                         assert(globalLeafStat != NULL);
-                        double leftPartGain = gain(stat->sumGrad, stat->sumHess);
-                        double rightPartGain = gain(globalLeafStat->sumGrad - stat->sumGrad,
+                        float leftPartGain = gain(stat->sumGrad, stat->sumHess);
+                        float rightPartGain = gain(globalLeafStat->sumGrad - stat->sumGrad,
                                                     globalLeafStat->sumHess - stat->sumHess);
-                        double splitGain = leftPartGain + rightPartGain
+                        float splitGain = leftPartGain + rightPartGain
                                         - gain(globalLeafStat->sumGrad, globalLeafStat->sumHess);
                         
                         if (stat->needUpdate(splitGain, fid)) {
@@ -284,7 +284,7 @@ void Train_GBM_Algo::findSplitFeature(size_t rbegin, size_t rend,
                     }
                 }
             }
-            pair<double, double> pair = dataSet_Grad[rid * multiclass + inClass];
+            pair<float, float> pair = dataSet_Grad[rid * multiclass + inClass];
             stat->sumGrad += pair.first;
             stat->sumHess += pair.second;
             assert(stat->sumHess > 0);
@@ -304,10 +304,10 @@ void Train_GBM_Algo::findSplitFeature(size_t rbegin, size_t rend,
                 stat->clear();
                 continue;
             }
-            double leftPartGain = gain(stat->sumGrad, stat->sumHess);
-            double rightPartGain = gain((*it)->sumGrad - stat->sumGrad,
+            float leftPartGain = gain(stat->sumGrad, stat->sumHess);
+            float rightPartGain = gain((*it)->sumGrad - stat->sumGrad,
                                         (*it)->sumHess - stat->sumHess);
-            double splitGain = leftPartGain + rightPartGain - gain((*it)->sumGrad, (*it)->sumHess);
+            float splitGain = leftPartGain + rightPartGain - gain((*it)->sumGrad, (*it)->sumHess);
             
             if (stat->needUpdate(splitGain, fid)) {
                 assert(splitGain > 0);

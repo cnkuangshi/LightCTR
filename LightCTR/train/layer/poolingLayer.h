@@ -28,10 +28,18 @@ public:
         
         printf("Pooling Layer\n");
     }
+    Max_Pooling_Layer() = delete;
+    
     ~Max_Pooling_Layer() {
     }
     
-    vector<double>* forward(vector<Matrix*>* prevLOutput) {
+    void registerGradient(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
+        if (this->nextLayer) {
+            this->nextLayer->registerGradient(_buf_fusion);
+        }
+    }
+    
+    vector<float>* forward(vector<Matrix*>* prevLOutput) {
         assert(prevLOutput->size() == this->input_dimention);
         
         // init ThreadLocal var
@@ -64,7 +72,7 @@ public:
             cur_in->zeroInit();
             for (size_t i = 0; i < mat->x_len - config.size + 1; i+= config.size) {
                 for (size_t j = 0; j < mat->y_len - config.size + 1; j+=config.size) {
-                    double MaxV = -0x3fffffff;
+                    float MaxV = -0x3fffffff;
                     size_t mx = -1, my = -1;
                     for (size_t x = i; x < i + config.size; x++) {
                         for (size_t y = j; y < j + config.size; y++) {

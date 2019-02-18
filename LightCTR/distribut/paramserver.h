@@ -177,7 +177,7 @@ private:
                 // apply grad into local param
                 if (updaterType == UpdaterType::DCASGD) {
                     // delayed compensation asynchronous SGD
-                    const double dcasgd_lambda = 0.1;
+                    const float dcasgd_lambda = 0.1;
                     
                     TValue grad = data_pair.second / GradientUpdater::__global_minibatch_size;
                     assert(grad.checkValid());
@@ -193,8 +193,8 @@ private:
                     it->second.shadow_copies[worker_id] = it->second.data;
                 } else if (updaterType == UpdaterType::DCASGDA) {
                     // delayed compensation asynchronous SGD adaptive
-                    const double dcasgd_lambda = 0.1;
-                    const double momentum_rate = 0.95;
+                    const float dcasgd_lambda = 0.1;
+                    const float momentum_rate = 0.95;
                     TValue grad = data_pair.second / GradientUpdater::__global_minibatch_size;
                     it->second.data_accum * momentum_rate + ((grad * grad) * (1 - momentum_rate));
                     
@@ -221,7 +221,7 @@ private:
                 } else {
                     // simple SGD
                     it->second.data - data_pair.second /
-                    ((double)GradientUpdater::__global_minibatch_size
+                    ((float)GradientUpdater::__global_minibatch_size
                      / GradientUpdater::__global_learning_rate);
                 }
                 // at last swap data and data_readonly
@@ -270,7 +270,7 @@ private:
         return it;
     }
     
-    const double rescaleGrad = 1.0f;
+    const float rescaleGrad = 1.0f;
     
     std::unordered_map<TKey, ValueWrapper> paramShardTable;
     RWLock rwlock;

@@ -10,7 +10,7 @@
 #include <iomanip>
 
 void GBM_Predict::Predict(string savePath) {
-    static vector<double> ans, tmp;
+    static vector<float> ans, tmp;
     static vector<int> pLabel;
     size_t badcase = 0;
     tmp.resize(gbm->multiclass);
@@ -34,7 +34,7 @@ void GBM_Predict::Predict(string savePath) {
                 break;
             }
         }
-        double pCTR;
+        float pCTR;
         if (gbm->multiclass == 1) {
             pCTR = sigmoid.forward(tmp[0]);
             pLabel.emplace_back(pCTR > 0.5 ? 1 : 0);
@@ -54,7 +54,7 @@ void GBM_Predict::Predict(string savePath) {
     
     if (!test_label.empty()) {
         assert(ans.size() == test_label.size());
-        double loss = 0;
+        float loss = 0;
         int correct = 0;
         for (size_t i = 0; i < test_label.size(); i++) {
             if (gbm->multiclass == 1) {
@@ -71,7 +71,7 @@ void GBM_Predict::Predict(string savePath) {
             }
         }
         cout << "total log likelihood = " << -loss << " correct = " << setprecision(5) <<
-        (double)correct / test_dataRow_cnt << " with badcase = " << badcase;
+        (float)correct / test_dataRow_cnt << " with badcase = " << badcase;
         
         if (gbm->multiclass == 1) {
             auc->init(&ans, &test_label);
@@ -95,7 +95,7 @@ void GBM_Predict::loadDataRow(string dataPath, bool with_valid_label) {
         cout << "open file error!" << endl;
         exit(1);
     }
-    map<size_t, double> tmp;
+    map<size_t, float> tmp;
     while(!fin_.eof()){
         getline(fin_, line);
         tmp.clear();

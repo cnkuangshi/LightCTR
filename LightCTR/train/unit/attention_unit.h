@@ -37,7 +37,7 @@ public:
     }
     
     // Attention input data should be data concating rnn encoder output sequence, rather than one cell's output
-    vector<double>* forward(vector<Matrix*>* const prevLOutputMatrix) {
+    vector<float>* forward(vector<Matrix*>* const prevLOutputMatrix) {
         assert(prevLOutputMatrix->size() == batch_size);
         
         // init threadlocal var
@@ -93,9 +93,9 @@ public:
         assert(fc_output_act);
         vector<Matrix*>*& wrapper = *tl_wrapper;
         assert(wrapper);
-        vector<double>*& scaleDelta = *tl_scaleDelta;
+        vector<float>*& scaleDelta = *tl_scaleDelta;
         if (scaleDelta == NULL) {
-            scaleDelta = new vector<double>();
+            scaleDelta = new vector<float>();
             scaleDelta->resize(batch_size);
         }
         vector<Matrix*>*& input_delta = *tl_input_delta;
@@ -164,7 +164,7 @@ private:
     ThreadLocal<Matrix*> tl_fc_output_act;
     ThreadLocal<Matrix*> tl_cache, tl_cache_bp;
     
-    ThreadLocal<vector<double>*> tl_scaleDelta;
+    ThreadLocal<vector<float>*> tl_scaleDelta;
     ThreadLocal<vector<Matrix*>*> tl_input_delta;
     
     ThreadLocal<vector<Matrix*>*> tl_wrapper;

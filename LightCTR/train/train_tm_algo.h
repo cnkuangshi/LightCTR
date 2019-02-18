@@ -20,7 +20,7 @@ using namespace std;
 #define PLSA
 
 // Topic Model impl by PLSA and Latent Dirichlet Allocation Algorithm
-class Train_TM_Algo : public EM_Algo_Abst<vector<vector<double>* > > {
+class Train_TM_Algo : public EM_Algo_Abst<vector<vector<float>* > > {
 public:
     Train_TM_Algo(string _dataFile, string _vocabFile, size_t _epoch,
                   size_t _topic, size_t _words):
@@ -63,8 +63,8 @@ public:
     }
     
     void init();
-    vector<vector<double>* >** Train_EStep();
-    double Train_MStep(vector<vector<double>* >**);
+    vector<vector<float>* >** Train_EStep();
+    float Train_MStep(vector<vector<float>* >**);
     
     void printArguments();
     shared_ptr<vector<int> > Predict();
@@ -96,14 +96,14 @@ public:
     ThreadPool *threadpool;
     
 #ifdef PLSA
-    vector<vector<double>* >* *latentVar;
-    vector<double>* topics_of_docs;
-    vector<double>* words_of_topics;
+    vector<vector<float>* >* *latentVar;
+    vector<float>* topics_of_docs;
+    vector<float>* words_of_topics;
     vector<size_t> wordCnt_of_doc;
     // cache for algorithm
-    vector<double>* latent_word_sum; // word_sum[docid][tid] sum of all words
-    vector<double>* latent_doc_sum; // doc_sum[wid][tid] sum of all docs
-    vector<double> latent_word_doc_sum; // word_doc_sum[tid] sum of all docs and words
+    vector<float>* latent_word_sum; // word_sum[docid][tid] sum of all words
+    vector<float>* latent_doc_sum; // doc_sum[wid][tid] sum of all docs
+    vector<float> latent_word_doc_sum; // word_doc_sum[tid] sum of all docs and words
 #endif
 };
 

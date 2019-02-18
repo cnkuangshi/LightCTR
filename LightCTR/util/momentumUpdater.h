@@ -13,8 +13,8 @@
 
 class MomentumUpdater : public GradientUpdater {
 public:
-    static double __global_momentum;
-    static double __global_momentum_adam2;
+    static float __global_momentum;
+    static float __global_momentum_adam2;
 };
 
 class AdadeltaUpdater : public MomentumUpdater {
@@ -88,7 +88,7 @@ public:
     void update(size_t offset, size_t len, T& weight, T& grad) {
         assert(offset + len <= __adadelta_params_cnt);
         for (size_t i = 0; i < len; i++) {
-            double g = grad[i] / __global_minibatch_size, tmp;
+            float g = grad[i] / __global_minibatch_size, tmp;
             if (g != 0) {
                 __adadelta_accum[offset + i] = __adadelta_accum[offset + i] * __global_momentum
                                                + (1.0 - __global_momentum) * g * g;
@@ -106,7 +106,7 @@ public:
         }
     }
 private:
-    vector<double> __adadelta_accum;
+    vector<float> __adadelta_accum;
     size_t __adadelta_params_cnt, __adadelta_acc_size;
 };
 
@@ -129,7 +129,7 @@ public:
         assert(offset + weight.size() <= __adam_params_cnt);
         
         iter++;
-        double correction = sqrt(1 - pow(__global_momentum_adam2, iter))
+        float correction = sqrt(1 - pow(__global_momentum_adam2, iter))
                             / (1 - pow(__global_momentum, iter));
         
         for (size_t i = 0; i < weight.size(); i++) {
@@ -188,11 +188,11 @@ public:
         assert(offset + len <= __adam_params_cnt);
         
         iter++; // get warming up
-        double correction = sqrt(1 - pow(__global_momentum_adam2, iter))
+        float correction = sqrt(1 - pow(__global_momentum_adam2, iter))
                             / (1 - pow(__global_momentum, iter));
         
         for (size_t i = 0; i < len; i++) {
-            double g = grad[i] / __global_minibatch_size, tmp;
+            float g = grad[i] / __global_minibatch_size, tmp;
             if (g != 0) {
                 __adam_accum[offset + i] = __adam_accum[offset + i] * __global_momentum
                                                + (1.0 - __global_momentum) * g;
@@ -210,7 +210,7 @@ public:
     }
 private:
     size_t iter;
-    vector<double> __adam_accum;
+    vector<float> __adam_accum;
     size_t __adam_params_cnt, __adam_acc_size;
 };
 

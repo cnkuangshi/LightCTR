@@ -31,7 +31,7 @@ public:
 private:
     GBM_Algo_Abst* gbm;
     size_t test_dataRow_cnt;
-    vector<map<size_t, double> > test_dataSet;
+    vector<map<size_t, float> > test_dataSet;
     vector<int> test_label;
     
     AucEvaluator* auc;

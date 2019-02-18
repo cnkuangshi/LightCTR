@@ -10,19 +10,19 @@
 #include <iomanip>
 
 void FM_Predict::Predict(string savePath) {
-    vector<double> ans;
+    vector<float> ans;
     int badcase = 0;
     for (size_t rid = 0; rid < this->test_dataRow_cnt; rid++) { // data row
-        double fm_pred = 0.0f;
+        float fm_pred = 0.0f;
         if (fm->sumVX != NULL) {
             for (size_t i = 0; i < test_dataSet[rid].size(); i++) { // feature
                 const size_t fid = test_dataSet[rid][i].first;
                 assert(fid < fm->feature_cnt);
-                const double X = test_dataSet[rid][i].second;
+                const float X = test_dataSet[rid][i].second;
                 fm_pred += fm->W[fid] * X;
 #ifdef FM
                 for (size_t fac_itr = 0; fac_itr < fm->factor_cnt; fac_itr++) {
-                    double tmp = *fm->getV(fid, fac_itr) * X;
+                    float tmp = *fm->getV(fid, fac_itr) * X;
                     fm_pred -= 0.5 * tmp * tmp;
                 }
 #endif
@@ -35,20 +35,20 @@ void FM_Predict::Predict(string savePath) {
         } else {
             for (size_t i = 0; i < test_dataSet[rid].size(); i++) {
                 const size_t fid = test_dataSet[rid][i].first;
-                const double X = test_dataSet[rid][i].second;
+                const float X = test_dataSet[rid][i].second;
                 const size_t field = test_dataSet[rid][i].field;
                 
                 fm_pred += fm->W[fid] * X;
                 
                 for (size_t j = i + 1; j < test_dataSet[rid].size(); j++) {
                     const size_t fid2 = test_dataSet[rid][j].first;
-                    const double X2 = test_dataSet[rid][j].second;
+                    const float X2 = test_dataSet[rid][j].second;
                     const size_t field2 = test_dataSet[rid][j].field;
                     
-                    double field_pred = 0;
+                    float field_pred = 0;
                     for (size_t fac_itr = 0; fac_itr < fm->factor_cnt; fac_itr++) {
-                        double v1 = *fm->getV_field(fid, field2, fac_itr);
-                        double v2 = *fm->getV_field(fid2, field, fac_itr);
+                        float v1 = *fm->getV_field(fid, field2, fac_itr);
+                        float v2 = *fm->getV_field(fid2, field, fac_itr);
                         field_pred += v1 * v2;
                     }
                     fm_pred += field_pred * X * X2;
@@ -56,7 +56,7 @@ void FM_Predict::Predict(string savePath) {
             }
         }
         
-        double pCTR = sigmoid.forward(fm_pred);
+        float pCTR = sigmoid.forward(fm_pred);
         if(fm_pred < -30 || fm_pred > 30){
             badcase ++;
         }
@@ -67,7 +67,7 @@ void FM_Predict::Predict(string savePath) {
     if (!test_label.empty()) {
         assert(ans.size() == test_label.size());
         
-        double loss = 0;
+        float loss = 0;
         int correct = 0;
         for (size_t i = 0; i < test_label.size(); i++) {
             assert(ans[i] > 0 && 1.0 - ans[i] > 0);
@@ -80,7 +80,7 @@ void FM_Predict::Predict(string savePath) {
             }
         }
         cout << "total log likelihood = " << -loss << " correct = " << setprecision(5) <<
-                (double)correct / test_dataRow_cnt << " with badcase = " << badcase;
+                (float)correct / test_dataRow_cnt << " with badcase = " << badcase;
         
         auc->init(&ans, &test_label);
         printf(" auc = %.4f\n", auc->Auc());
@@ -106,7 +106,7 @@ void FM_Predict::loadDataRow(string dataPath, bool with_valid_label) {
     string line;
     int nchar, y;
     size_t fid, fieldid;
-    double val;
+    float val;
     fin_.open(dataPath, ios::in);
     if(!fin_.is_open()){
         cout << "open file error!" << endl;
@@ -123,10 +123,10 @@ void FM_Predict::loadDataRow(string dataPath, bool with_valid_label) {
                 pline += nchar + 1;
             }
         }
-        if(sscanf(pline, "%zu:%zu:%lf%n", &fieldid, &fid, &val, &nchar) >= 2){
+        if(sscanf(pline, "%zu:%zu:%f%n", &fieldid, &fid, &val, &nchar) >= 2){
             pline += nchar + 1;
             while(pline < line.c_str() + (int)line.length() &&
-                  sscanf(pline, "%zu:%zu:%lf%n", &fieldid, &fid, &val, &nchar) >= 2){
+                  sscanf(pline, "%zu:%zu:%f%n", &fieldid, &fid, &val, &nchar) >= 2){
                 pline += nchar + 1;
                 if (fid < fm->feature_cnt) {
                     assert(!isnan(fid));

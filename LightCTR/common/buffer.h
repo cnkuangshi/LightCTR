@@ -9,6 +9,8 @@
 #ifndef buffer_h
 #define buffer_h
 
+#include "float16.h"
+
 class Buffer {
 public:
     explicit Buffer(size_t capacity = 64) {
@@ -199,7 +201,7 @@ public:
     
 protected:
     inline void reserve(size_t newcap) {
-        if (unlikely(newcap > _capacity)) {
+        if (newcap > _capacity) {
             char* newbuf = new char[newcap];
             assert(newbuf);
             if (size() > 0) {

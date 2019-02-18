@@ -24,7 +24,7 @@ class Matrix {
 public:
     Matrix(size_t _x_len, size_t _y_len, bool alloc = 1): x_len(_x_len), y_len(_y_len) {
         if (alloc) {
-            matrix = new vector<double>();
+            matrix = new vector<float>();
             matrix->resize(x_len * y_len);
         }
     }
@@ -32,7 +32,7 @@ public:
         matrix->clear();
         matrix = NULL;
     }
-    inline void loadDataPtr(vector<double>* const dataPtr) {
+    inline void loadDataPtr(vector<float>* const dataPtr) {
         assert(dataPtr->size() == size());
         this->matrix = dataPtr;
     }
@@ -60,7 +60,7 @@ public:
         return x_len * y_len;
     }
     
-    inline const vector<double>::iterator getEle(size_t x, size_t y) const {
+    inline const vector<float>::iterator getEle(size_t x, size_t y) const {
         assert(x * y_len + y < size() && x < x_len);
         return matrix->begin() + x * y_len + y;
     }
@@ -68,7 +68,7 @@ public:
     inline void debugPrint() const {
         for (size_t i = 0; i < x_len; i++) {
             for (size_t j = 0; j < y_len; j++) {
-                printf("%lf ", *getEle(i, j));
+                printf("%f ", *getEle(i, j));
             }
             puts("");
         }
@@ -142,7 +142,7 @@ public:
         return this;
     }
     
-    inline Matrix* clipping(double clip_threshold) {
+    inline Matrix* clipping(float clip_threshold) {
         assert(clip_threshold > 0);
         for (auto it = matrix->begin(); it != matrix->end(); it++) {
             if (*it < -clip_threshold) {
@@ -154,7 +154,7 @@ public:
         return this;
     }
     
-    inline Matrix* add(const Matrix* const another, double scale = 1.0, double self_scale = 1.0) {
+    inline Matrix* add(const Matrix* const another, float scale = 1.0, float self_scale = 1.0) {
         assert(x_len == another->x_len);
         assert(y_len == another->y_len);
         for (auto it = matrix->begin(), it2 = another->pointer()->begin();
@@ -163,14 +163,14 @@ public:
         }
         return this;
     }
-    inline Matrix* add(double fac) {
+    inline Matrix* add(float fac) {
         for (auto it = matrix->begin(); it != matrix->end(); it++) {
             *it += fac;
         }
         return this;
     }
     
-    inline Matrix* subtract(const Matrix* const another, double scale = 1.0) {
+    inline Matrix* subtract(const Matrix* const another, float scale = 1.0) {
         assert(x_len == another->x_len);
         assert(y_len == another->y_len);
         for (auto it = matrix->begin(), it2 = another->pointer()->begin();
@@ -179,21 +179,21 @@ public:
         }
         return this;
     }
-    inline Matrix* subtract(double delta) {
+    inline Matrix* subtract(float delta) {
         for (auto it = matrix->begin(); it != matrix->end(); it++) {
             *it -= delta;
         }
         return this;
     }
     
-    inline Matrix* scale(double scale_fac) {
+    inline Matrix* scale(float scale_fac) {
         for (auto it = matrix->begin(); it != matrix->end(); it++) {
             *it *= scale_fac;
         }
         return this;
     }
     
-    inline Matrix* pow(double fac) {
+    inline Matrix* pow(float fac) {
         for (auto it = matrix->begin(); it != matrix->end(); it++) {
             *it = ::pow(*it, fac);
         }
@@ -221,7 +221,7 @@ public:
         ansM->zeroInit();
         assert(ansM->x_len == x_len);
         assert(ansM->y_len == another->y_len);
-        double tmp;
+        float tmp;
         for (size_t i = 0; i < x_len; i++) {
             for (size_t k = 0; k < y_len; k++) {
                 tmp = *getEle(i, k);
@@ -293,7 +293,7 @@ public:
         for (size_t i = 0; i < x_len + 2 * padding - filter->x_len + 1; i+=stride) {
             for (size_t j = 0; j < y_len + 2 * padding - filter->y_len + 1; j+=stride) {
                 // loop filter size
-                double sum = 0.0f;
+                float sum = 0.0f;
                 for (size_t xc = i; xc < i + filter->x_len; xc++) {
                     for (size_t yc = j; yc < j + filter->y_len; yc++) {
                         if (xc < padding || yc < padding || xc >= padding + x_len || yc >= padding + y_len) {
@@ -308,11 +308,11 @@ public:
         }
     }
     
-    inline vector<double>* pointer() const {
+    inline vector<float>* pointer() const {
         assert(matrix);
         return this->matrix;
     }
-    inline vector<double>& reference() {
+    inline vector<float>& reference() {
         assert(matrix);
         return *this->matrix;
     }
@@ -320,7 +320,7 @@ public:
     size_t x_len, y_len;
     
 private:
-    vector<double>* matrix;
+    vector<float>* matrix;
 };
 
 #endif /* matrix_h */

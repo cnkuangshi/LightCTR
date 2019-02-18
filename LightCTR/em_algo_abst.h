@@ -31,10 +31,10 @@ public:
     }
     
     void Train() {
-        double lastLE = 0;
+        float lastLE = 0;
         for (size_t i = 0; i < this->epoch; i++) {
             T** latentVar = Train_EStep();
-            double likelihood = Train_MStep(latentVar);
+            float likelihood = Train_MStep(latentVar);
             assert(!isnan(likelihood));
             cout << "epoch " << i << " log likelihood ELOB = " << likelihood << endl;
             if (i == 0 || fabs(likelihood - lastLE) > 1e-3) {
@@ -52,7 +52,7 @@ public:
     
     virtual void init() = 0;
     virtual T** Train_EStep() = 0;
-    virtual double Train_MStep(T**) = 0;
+    virtual float Train_MStep(T**) = 0;
     virtual void printArguments() = 0;
     virtual shared_ptr<vector<int> > Predict() = 0;
     
@@ -62,20 +62,20 @@ public:
         ifstream fin_;
         string line;
         int nchar;
-        double val;
+        float val;
         fin_.open(dataPath, ios::in);
         if(!fin_.is_open()){
             cout << "open file error!" << endl;
             exit(1);
         }
-        vector<double> tmp;
+        vector<float> tmp;
         tmp.reserve(feature_cnt);
         while(!fin_.eof()){
             getline(fin_, line);
             tmp.clear();
             const char *pline = line.c_str();
             while(pline < line.c_str() + (int)line.length() &&
-                  sscanf(pline, "%lf%n", &val, &nchar) >= 1){
+                  sscanf(pline, "%f%n", &val, &nchar) >= 1){
                 pline += nchar + 1;
                 assert(!isnan(val));
                 tmp.emplace_back(val);
@@ -92,7 +92,7 @@ public:
     
     size_t epoch;
     size_t feature_cnt, dataRow_cnt;
-    vector<vector<double> > dataSet;
+    vector<vector<float> > dataSet;
 };
 
 #endif /* em_algo_abst_h */

@@ -28,9 +28,9 @@ using namespace std;
 
 struct FMFeature {
     size_t first; // feature id
-    double second; // value
+    float second; // value
     size_t field;
-    FMFeature(size_t _first, double _second, size_t _field):
+    FMFeature(size_t _first, float _second, size_t _field):
     first(_first), second(_second), field(_field) {}
 };
 
@@ -51,15 +51,15 @@ public:
 #endif
     }
     void init() {
-        W = new double[this->feature_cnt];
-        memset(W, 0, sizeof(double) * this->feature_cnt);
+        W = new float[this->feature_cnt];
+        memset(W, 0, sizeof(float) * this->feature_cnt);
 #ifdef FM
         size_t memsize = this->feature_cnt * this->factor_cnt;
         if (this->field_cnt > 0) {
             memsize = this->feature_cnt * this->field_cnt * this->factor_cnt;
         }
-        V = new double[memsize];
-        const double scale = 0.1f / sqrt(this->factor_cnt);
+        V = new float[memsize];
+        const float scale = 0.1f / sqrt(this->factor_cnt);
         for (size_t i = 0; i < memsize; i++) {
             V[i] = GaussRand() * scale;
         }
@@ -76,7 +76,7 @@ public:
         string line;
         int nchar, y;
         size_t fid, fieldid;
-        double val;
+        float val;
         fin_.open(dataPath, ios::in);
         if(!fin_.is_open()){
             cout << "open file error!" << endl;
@@ -91,7 +91,7 @@ public:
                 pline += nchar + 1;
                 label.emplace_back(y);
                 while(pline < line.c_str() + (int)line.length() &&
-                      sscanf(pline, "%zu:%zu:%lf%n", &fieldid, &fid, &val, &nchar) >= 2){
+                      sscanf(pline, "%zu:%zu:%f%n", &fieldid, &fid, &val, &nchar) >= 2){
                     pline += nchar + 1;
                     tmp.emplace_back(*new FMFeature(fid, val, fieldid));
                     this->feature_cnt = max(this->feature_cnt, fid + 1);
@@ -138,23 +138,23 @@ public:
     
     virtual void Train() = 0;
     
-    double L2Reg_ratio;
+    float L2Reg_ratio;
     
-    double *W;
+    float *W;
     size_t feature_cnt, proc_cnt, field_cnt, factor_cnt;
     size_t dataRow_cnt;
     
-    double *V, *sumVX;
-    inline double* getV(size_t fid, size_t facid) const {
+    float *V, *sumVX;
+    inline float* getV(size_t fid, size_t facid) const {
         assert(this->field_cnt == 0);
         assert(fid * this->factor_cnt + facid < this->feature_cnt * this->factor_cnt);
         return &V[fid * this->factor_cnt + facid];
     }
-    inline double* getV_field(size_t fid, size_t fieldid, size_t facid) const {
+    inline float* getV_field(size_t fid, size_t fieldid, size_t facid) const {
         assert(fid * this->factor_cnt + facid < this->feature_cnt * field_cnt * this->factor_cnt);
         return &V[fid * this->field_cnt * this->factor_cnt + fieldid * this->factor_cnt + facid];
     }
-    inline double* getSumVX(size_t rid, size_t facid) const {
+    inline float* getSumVX(size_t rid, size_t facid) const {
         assert(rid * this->factor_cnt + facid < this->dataRow_cnt * this->factor_cnt);
         return &sumVX[rid * this->factor_cnt + facid];
     }
@@ -163,10 +163,10 @@ public:
     
 protected:
     DropoutUpdater dropout;
-    inline double LogisticGradW(double pred, double label, double x) {
+    inline float LogisticGradW(float pred, float label, float x) {
         return (pred - label) * x * dropout.rescale();
     }
-    inline double LogisticGradV(double gradW, double sum, double v, double x) {
+    inline float LogisticGradV(float gradW, float sum, float v, float x) {
         return gradW * (sum - v * x);
     }
     

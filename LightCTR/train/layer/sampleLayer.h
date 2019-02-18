@@ -19,7 +19,7 @@ public:
     Layer_Base(_prevLayer, _input_dimention, _input_dimention >> 1) {
         assert((_input_dimention & 1) == 0);
         gauss_cnt = _input_dimention >> 1;
-        noise = new double[gauss_cnt];
+        noise = new float[gauss_cnt];
         FOR(i, gauss_cnt) {
             noise[i] = GaussRand(); // only generate noise for sampling init once
         }
@@ -36,8 +36,14 @@ public:
         delete noise;
     }
     
-    vector<double>* forward(vector<Matrix*>* prevLOutputMatrix) {
-        vector<double>* prevLOutput = prevLOutputMatrix->at(0)->pointer();
+    void registerGradient(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
+        if (this->nextLayer) {
+            this->nextLayer->registerGradient(_buf_fusion);
+        }
+    }
+    
+    vector<float>* forward(vector<Matrix*>* prevLOutputMatrix) {
+        vector<float>* prevLOutput = prevLOutputMatrix->at(0)->pointer();
         assert(prevLOutput->size() == this->input_dimention);
         
         // init ThreadLocal var
@@ -46,11 +52,11 @@ public:
             output_act = new Matrix(1, this->output_dimention);
         }
         
-        double gaussDelta = 0.0f;
+        float gaussDelta = 0.0f;
         FOR(i, gauss_cnt) {
             // prev layer output is mu and log(sigma^2)
-            double mu = prevLOutput->at(i);
-            double logSigma2 = prevLOutput->at(i + gauss_cnt);
+            float mu = prevLOutput->at(i);
+            float logSigma2 = prevLOutput->at(i + gauss_cnt);
             
             // min[ 0.5 * sum( exp(log_Sigma^2) - (1 + log_Sigma^2) + mu^2 ) ]
             gaussDelta += exp(inner_scale * logSigma2) - (1 + logSigma2) + mu * mu;
@@ -78,9 +84,9 @@ public:
     
     void backward(vector<Matrix*>* outputDeltaMatrix) {
         assert(this->prevLayer);
-        vector<double>* outputDelta = outputDeltaMatrix->at(0)->pointer();
+        vector<float>* outputDelta = outputDeltaMatrix->at(0)->pointer();
         assert(outputDelta->size() == this->output_dimention);
-        vector<double>* prev_output_act = this->prevLayer->output()->at(0)->pointer();
+        vector<float>* prev_output_act = this->prevLayer->output()->at(0)->pointer();
         assert(prev_output_act->size() == this->input_dimention);
         
         // init ThreadLocal var
@@ -133,9 +139,9 @@ private:
     ThreadLocal<Matrix*> tl_output_act; // wx + b with activation
     ThreadLocal<Matrix*> tl_input_delta; // delta of prevLayer wx+b Z_(L-1)
     
-    double inner_scale;
+    float inner_scale;
     
-    double* noise;
+    float* noise;
     size_t gauss_cnt;
 };
 

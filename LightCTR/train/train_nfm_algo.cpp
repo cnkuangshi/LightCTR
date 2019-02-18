@@ -13,11 +13,11 @@ void Train_NFM_Algo::init() {
     batch_size = GradientUpdater::__global_minibatch_size;
     
     learnable_params_cnt = this->feature_cnt * (this->factor_cnt + 1);
-    update_g = new double[learnable_params_cnt];
+    update_g = new float[learnable_params_cnt];
     updater.learnable_params_cnt(learnable_params_cnt);
     
-    sumVX = new double[this->dataRow_cnt * this->factor_cnt];
-    memset(sumVX, 0, sizeof(double) * this->dataRow_cnt * this->factor_cnt);
+    sumVX = new float[this->dataRow_cnt * this->factor_cnt];
+    memset(sumVX, 0, sizeof(float) * this->dataRow_cnt * this->factor_cnt);
     
     printf("Training NFM dropout = %.2f\n", dropout.dropout_rate);
     
@@ -35,7 +35,7 @@ void Train_NFM_Algo::Train() {
     
     for (size_t i = 0; i < this->epoch; i++) {
         
-        memset(sumVX, 0, sizeof(double) * this->dataRow_cnt * this->factor_cnt);
+        memset(sumVX, 0, sizeof(float) * this->dataRow_cnt * this->factor_cnt);
         
         size_t minibatch_epoch = (this->dataRow_cnt + this->batch_size - 1) / this->batch_size;
         
@@ -43,7 +43,7 @@ void Train_NFM_Algo::Train() {
             // re-sample dropout
             dropout.Mask(dropout_mask, this->factor_cnt);
             
-            memset(update_g, 0, sizeof(double) * learnable_params_cnt);
+            memset(update_g, 0, sizeof(float) * learnable_params_cnt);
             
             size_t start_pos = p * batch_size;
             batchGradCompute(start_pos, min(start_pos + batch_size, this->dataRow_cnt));
@@ -74,20 +74,20 @@ void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
             }
             
             fc_input_Matrix->zeroInit();
-            double fm_pred = 0.0f;
+            float fm_pred = 0.0f;
             
             for (size_t i = 0; i < dataSet[rid].size(); i++) {
                 const size_t fid = dataSet[rid][i].first;
                 assert(fid < this->feature_cnt);
                 
-                const double X = dataSet[rid][i].second;
+                const float X = dataSet[rid][i].second;
                 fm_pred += W[fid] * X * dropout.rescale(); // wide part
                 
                 for (size_t fac_itr = 0; fac_itr < this->factor_cnt; fac_itr++) {
                     if (!dropout_mask[fac_itr]) { // apply dropout mask
                         continue;
                     }
-                    const double tmp = *getV(fid, fac_itr) * X;
+                    const float tmp = *getV(fid, fac_itr) * X;
                     *getSumVX(rid, fac_itr) += tmp;
                     *fc_input_Matrix->getEle(0, fac_itr) -= 0.5 * tmp * tmp * dropout.rescale();
                 }
@@ -96,14 +96,14 @@ void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
                 if (!dropout_mask[fac_itr]) { // apply dropout mask
                     continue;
                 }
-                const double tmp = *getSumVX(rid, fac_itr);
+                const float tmp = *getSumVX(rid, fac_itr);
                 assert(!isnan(tmp));
                 *fc_input_Matrix->getEle(0, fac_itr) += 0.5 * tmp * tmp * dropout.rescale();
             }
             
             // deep part
             wrapper->at(0) = fc_input_Matrix;
-            const vector<double> *fc_pred = this->inputLayer->forward(wrapper);
+            const vector<float> *fc_pred = this->inputLayer->forward(wrapper);
             assert(fc_pred && fc_pred->size() == 1);
 
             fm_pred += fc_pred->at(0);
@@ -124,8 +124,8 @@ void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
     threadpool->wait();
 }
 
-void Train_NFM_Algo::accumWideGrad(size_t rid, double pred) {
-    const double target = label[rid];
+void Train_NFM_Algo::accumWideGrad(size_t rid, float pred) {
+    const float target = label[rid];
     size_t fid, x;
     for (size_t i = 0; i < dataSet[rid].size(); i++) {
         if (dataSet[rid][i].second == 0) {
@@ -142,7 +142,7 @@ void Train_NFM_Algo::accumWideGrad(size_t rid, double pred) {
     }
 }
 
-void Train_NFM_Algo::accumDeepGrad(size_t rid, vector<double>* delta) {
+void Train_NFM_Algo::accumDeepGrad(size_t rid, vector<float>* delta) {
     size_t fid, X;
     for (size_t i = 0; i < dataSet[rid].size(); i++) {
         if (dataSet[rid][i].second == 0) {
@@ -156,10 +156,10 @@ void Train_NFM_Algo::accumDeepGrad(size_t rid, vector<double>* delta) {
             if (!dropout_mask[fac_itr]) { // apply dropout mask
                 continue;
             }
-            const double grad = delta->at(fac_itr) * X;
+            const float grad = delta->at(fac_itr) * X;
             
-            const double sum = *getSumVX(rid, fac_itr);
-            const double v = *getV(fid, fac_itr);
+            const float sum = *getSumVX(rid, fac_itr);
+            const float v = *getV(fid, fac_itr);
             
             {
                 unique_lock<SpinLock> glock(this->lock_v);
@@ -173,7 +173,7 @@ void Train_NFM_Algo::ApplyGrad() {
     // update wide part
     updater.update(0, this->feature_cnt, W, update_g);
     // update v deep part
-    double *gradV = update_g + this->feature_cnt;
+    float *gradV = update_g + this->feature_cnt;
     updater.update(this->feature_cnt, this->feature_cnt * this->factor_cnt, V, gradV);
     // update fc deep part
     this->inputLayer->applyBatchGradient();

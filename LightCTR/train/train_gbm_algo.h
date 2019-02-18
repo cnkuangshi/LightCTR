@@ -20,10 +20,10 @@
 
 class Train_GBM_Algo : public GBM_Algo_Abst {
     struct SplitNodeStat_Thread {
-        double sumGrad, sumHess;
-        double gain;
-        double split_threshold;
-        double last_value_toCheck;
+        float sumGrad, sumHess;
+        float gain;
+        float split_threshold;
+        float last_value_toCheck;
         bool dataNAN_go_Right;
         int split_feature_index;
         SplitNodeStat_Thread() {
@@ -36,7 +36,7 @@ class Train_GBM_Algo : public GBM_Algo_Abst {
             sumHess = 0.0f;
             last_value_toCheck = 1e-12;
         }
-        inline bool needUpdate(double splitGain, size_t split_index) {
+        inline bool needUpdate(float splitGain, size_t split_index) {
             assert(!isnan(splitGain));
             assert(split_index >= 0);
             if (split_feature_index <= split_index) {
@@ -85,19 +85,19 @@ public:
         }
     }
     
-    inline double grad(double pred, double label) {
+    inline float grad(float pred, float label) {
         return pred - label;
     }
-    inline double hess(double pred) {
+    inline float hess(float pred) {
         return pred * (1 - pred);
     }
-    inline double weight(double sumGrad, double sumHess) {
+    inline float weight(float sumGrad, float sumHess) {
         return - ThresholdL1(sumGrad, lambda) / (sumHess + lambda);
     }
-    inline double gain(double sumGrad, double sumHess) {
+    inline float gain(float sumGrad, float sumHess) {
         return ThresholdL1(sumGrad, lambda) * ThresholdL1(sumGrad, lambda) / (sumHess + lambda);
     }
-    inline double ThresholdL1(double w, double lambda) {
+    inline float ThresholdL1(float w, float lambda) {
         if (w > +lambda) return w - lambda;
         if (w < -lambda) return w + lambda;
         return 0.0;
@@ -118,7 +118,7 @@ private:
     Softmax softmax;
     Sigmoid sigmoid;
     
-    double eps_feature_value, lambda, learning_rate;
+    float eps_feature_value, lambda, learning_rate;
 };
 
 #endif /* train_gbm_algo_h */

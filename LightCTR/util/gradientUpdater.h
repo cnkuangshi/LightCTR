@@ -15,35 +15,35 @@
 class GradientUpdater {
 public:
     // update weight with L2 Regularization
-    inline static void update(double* weight, double grad) {
+    inline static void update(float* weight, float grad) {
         *weight += grad + __global_lambdaL2 * *weight;
     }
-    inline static void updateL1(double* weight, double grad) {
+    inline static void updateL1(float* weight, float grad) {
         *weight += grad + ThresholdL1(*weight);
     }
-    inline static void update(vector<double>::iterator weight, double grad) {
+    inline static void update(vector<float>::iterator weight, float grad) {
         *weight += grad + __global_lambdaL2 * *weight;
     }
-    inline static void decay(double ratio) {
+    inline static void decay(float ratio) {
         __global_learning_rate *= ratio;
     }
-    inline static double ThresholdL1(double w) {
+    inline static float ThresholdL1(float w) {
         if (w > +__global_lambdaL1) return - __global_lambdaL1;
         if (w < -__global_lambdaL1) return + __global_lambdaL1;
         return 0.0;
     }
     static size_t __global_minibatch_size;
-    static double __global_learning_rate;
-    static double __global_ema_rate;
-    static double __global_sparse_rate;
-    static double __global_lambdaL2, __global_lambdaL1;
+    static float __global_learning_rate;
+    static float __global_ema_rate;
+    static float __global_sparse_rate;
+    static float __global_lambdaL2, __global_lambdaL1;
     
     static bool __global_bTraining; // Tag the phase TRAIN or TEST
 };
 
 class DropoutUpdater : public GradientUpdater {
 public:
-    explicit DropoutUpdater(double _dropout_rate) : dropout_rate(_dropout_rate) {}
+    explicit DropoutUpdater(float _dropout_rate) : dropout_rate(_dropout_rate) {}
     inline void Mask(bool* dropout_mask, size_t len) {
         assert(dropout_mask);
         assert(dropout_rate > 0 && dropout_rate < 1);
@@ -55,13 +55,13 @@ public:
             dropout_mask[i] = SampleBinary(1.0 - dropout_rate);
         }
     }
-    inline double rescale() {
+    inline float rescale() {
         if (GradientUpdater::__global_bTraining == false) {
             return 1.0;
         }
         return 1.0 / (1.0 - dropout_rate);
     }
-    double dropout_rate;
+    float dropout_rate;
 };
 
 class SimpleUpdater : public GradientUpdater {
@@ -69,7 +69,7 @@ public:
     void learnable_params_cnt(size_t cnt) {
         __adagrad_params_cnt = cnt;
     }
-    void update(size_t offset, size_t len, double*& weight, double*& grad) {
+    void update(size_t offset, size_t len, float*& weight, float*& grad) {
         for (size_t i = 0; i < len; i++) {
             weight[i] -= __global_learning_rate * grad[i] / __global_minibatch_size;
             grad[i] = 0.0f;
@@ -141,7 +141,7 @@ public:
     void update(size_t offset, size_t len, T& weight, T& grad) {
         assert(offset + len <= __adagrad_params_cnt);
         for (size_t i = 0; i < len; i++) {
-            double g = grad[i] / __global_minibatch_size;
+            float g = grad[i] / __global_minibatch_size;
             if (g != 0) {
                 __adagrad_accum[offset + i] += g * g;
                 weight[i] -= __global_learning_rate * g / sqrt(__adagrad_accum[offset + i] + 1e-12);
@@ -150,7 +150,7 @@ public:
         }
     }
 private:
-    vector<double> __adagrad_accum;
+    vector<float> __adagrad_accum;
     size_t __adagrad_params_cnt;
 };
 
@@ -214,7 +214,7 @@ public:
     void update(size_t offset, size_t len, T& weight, T& grad) {
         assert(offset + len <= __rms_params_cnt);
         for (size_t i = 0; i < len; i++) {
-            double g = grad[i] / __global_minibatch_size, tmp;
+            float g = grad[i] / __global_minibatch_size, tmp;
             if (g != 0) {
                 // ema_rate closer to 1, EMA can smooth more elements (1-q^n)/(1-q)
                 __rms_accum[offset + i] =
@@ -229,7 +229,7 @@ public:
         }
     }
 private:
-    vector<double> __rms_accum;
+    vector<float> __rms_accum;
     size_t __rms_params_cnt;
 };
 
@@ -242,28 +242,28 @@ public:
     }
     void learnable_params_cnt(size_t cnt) {
         __ftrl_params_cnt = cnt;
-        ftrl_n = new double[cnt];
-        ftrl_sigma = new double[cnt];
-        ftrl_z = new double[cnt];
+        ftrl_n = new float[cnt];
+        ftrl_sigma = new float[cnt];
+        ftrl_z = new float[cnt];
         
-        memset(ftrl_z, 0, sizeof(double) * cnt);
-        memset(ftrl_n, 0, sizeof(double) * cnt);
-        memset(ftrl_sigma, 0, sizeof(double) * cnt);
+        memset(ftrl_z, 0, sizeof(float) * cnt);
+        memset(ftrl_n, 0, sizeof(float) * cnt);
+        memset(ftrl_sigma, 0, sizeof(float) * cnt);
     }
-    void update(size_t offset, size_t len, double*& weight, double*& grad) {
+    void update(size_t offset, size_t len, float*& weight, float*& grad) {
         assert(offset + len <= __ftrl_params_cnt);
         for (size_t fid = 0; fid < len; fid++) {
             if (grad[fid] == 0) {
                 continue;
             }
-            const double g2 = grad[fid] * grad[fid];
+            const float g2 = grad[fid] * grad[fid];
             ftrl_sigma[fid] = (sqrt(ftrl_n[fid] + g2) - sqrt(ftrl_n[fid])) / alpha;
             ftrl_z[fid] += grad[fid] - ftrl_sigma[fid] * weight[fid];
             ftrl_n[fid] += g2;
             if(fabs(ftrl_z[fid]) <= lambda1) {
                 weight[fid] = 0.0f;
             } else {
-                double tmpr = ftrl_z[fid];
+                float tmpr = ftrl_z[fid];
                 if(tmpr >= 0)
                     tmpr -= lambda1;
                 else
@@ -273,9 +273,9 @@ public:
         }
     }
 private:
-    const double alpha = 0.15f, lambda1 = 1.0f, beta = 1.0f, lambda2 = 1.0f;
+    const float alpha = 0.15f, lambda1 = 1.0f, beta = 1.0f, lambda2 = 1.0f;
     size_t __ftrl_params_cnt;
-    double *ftrl_n, *ftrl_sigma, *ftrl_z;
+    float *ftrl_n, *ftrl_sigma, *ftrl_z;
 };
 
 #endif /* gradientUpdater_h */

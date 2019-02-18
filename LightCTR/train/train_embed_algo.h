@@ -29,8 +29,8 @@ using namespace std;
 class Train_Embed_Algo {
     struct Node {
         int left, right;
-        double *weight; // LR weight
-        double frequency;
+        float *weight; // LR weight
+        float frequency;
         Node() {
             left = -1;
             right = -1;
@@ -173,7 +173,7 @@ private:
     }
     
     void InitNegSampleTable() {
-        negWeight = new vector<double>[vocab_cnt];
+        negWeight = new vector<float>[vocab_cnt];
         for (size_t v = 0; v < vocab_cnt; v++) {
             negWeight[v].resize(emb_dimention);
             // negative sampling weight init with 0
@@ -182,19 +182,19 @@ private:
         
         int a;
         long long sum_word_pow = 0; // normalizer
-        double d1, power = 0.75;
+        float d1, power = 0.75;
         negSampleTable = new int[negTable_size];
         assert(negSampleTable);
         for (a = 0; a < vocab_cnt; a++) {
             sum_word_pow += pow(word_frequency[a], power);
         }
         int wid = 0;
-        d1 = pow(word_frequency[wid], power) / (double)sum_word_pow;
+        d1 = pow(word_frequency[wid], power) / (float)sum_word_pow;
         for (a = 0; a < negTable_size; a++) {
             negSampleTable[a] = wid;
-            if (a / (double)negTable_size > d1) {
+            if (a / (float)negTable_size > d1) {
                 wid++;
-                d1 += pow(word_frequency[wid], power) / (double)sum_word_pow;
+                d1 += pow(word_frequency[wid], power) / (float)sum_word_pow;
             }
             if (wid >= vocab_cnt) {
                 wid = (int)vocab_cnt - 1;
@@ -208,7 +208,7 @@ private:
     const int negTable_size = 1e8;
     float subsampling;
     int* negSampleTable;
-    vector<double>* negWeight;
+    vector<float>* negWeight;
     
     unordered_map<string, size_t> vocabTable; // hash vocab to id
     vector<string> vocabString; // id to string
@@ -218,7 +218,7 @@ private:
     string textFile;
     ifstream textStream;
     
-    double learning_rate;
+    float learning_rate;
     
     Node* treeArry; // Huffman tree
     Node* treeRoot;

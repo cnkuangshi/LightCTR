@@ -22,9 +22,9 @@ public:
         is_prob_avg_voting = _is_prob_avg_voting;
     }
     
-    std::shared_ptr<vector<double> > final_result(vector<vector<double> >& sub_results) {
+    std::shared_ptr<vector<float> > final_result(vector<vector<float> >& sub_results) {
         assert(sub_results.size() > 0 && sub_results[0].size() > 0);
-        vector<double> res;
+        vector<float> res;
         res.resize(sub_results[0].size());
         
         if (is_prob_avg_voting) {
@@ -44,7 +44,7 @@ public:
                 res[index]++;
             }
         }
-        return std::make_shared<vector<double> >(res);
+        return std::make_shared<vector<float> >(res);
     }
     
 private:
@@ -55,8 +55,8 @@ private:
 class AdaBoost {
 public:
     explicit AdaBoost(size_t _sample_cnt): sample_cnt(_sample_cnt) {
-        weights = new double[_sample_cnt];
-        const double init_w = 1.0 / _sample_cnt;
+        weights = new float[_sample_cnt];
+        const float init_w = 1.0 / _sample_cnt;
         for (int i = 0; i < _sample_cnt; i++) {
             *(weights + i) = init_w;
         }
@@ -67,18 +67,18 @@ public:
         _model_weights.clear();
     }
     
-    std::shared_ptr<double> ensembling_weak_model(std::vector<bool>& pred_correct_mask) {
-        double err_rate = 0.;
+    std::shared_ptr<float> ensembling_weak_model(std::vector<bool>& pred_correct_mask) {
+        float err_rate = 0.;
         for (int i = 0; i < sample_cnt; i++) {
             if (pred_correct_mask[i] == false)
                 err_rate += 1.;
         }
         err_rate /= sample_cnt;
         
-        double alpha = model_weighting(err_rate);
+        float alpha = model_weighting(err_rate);
         _model_weights.emplace_back(alpha);
         
-        double reweighting = std::exp(alpha);
+        float reweighting = std::exp(alpha);
         for (int i = 0; i < sample_cnt; i++) {
             if (pred_correct_mask[i] == false) {
                 *(weights + i) *= reweighting;
@@ -86,15 +86,15 @@ public:
                 *(weights + i) /= reweighting;
             }
         }
-        return std::make_shared<double>(*weights);
+        return std::make_shared<float>(*weights);
     }
     
-    const vector<double>& model_weights() {
+    const vector<float>& model_weights() {
         return _model_weights;
     }
     
 private:
-    inline double model_weighting(double err_rate){
+    inline float model_weighting(float err_rate){
         if (err_rate < 1e-4) {
             return 1000; // strongly outstanding
         }
@@ -103,8 +103,8 @@ private:
     }
     
     size_t sample_cnt;
-    double* weights = NULL;
-    std::vector<double> _model_weights;
+    float* weights = NULL;
+    std::vector<float> _model_weights;
 };
 
 
