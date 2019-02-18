@@ -43,7 +43,7 @@ public:
     void async(const std::unordered_map<TKey, TValue> &grads, size_t epoch) {
         assert(epoch > 0);
         size_t candidate_ps = 0;
-        sendToPS(grads, epoch, [this, epoch, &candidate_ps]() {
+        sendToPS(grads, candidate_ps, epoch, [this, epoch, &candidate_ps]() {
             candidate_ps--;
             assert(candidate_ps >= 0);
             if (candidate_ps == 0) {

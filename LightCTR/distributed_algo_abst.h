@@ -91,20 +91,16 @@ class Distributed_Algo_Abst {
 public:
     Distributed_Algo_Abst(string _dataPath, size_t _epoch_cnt):
     epoch(_epoch_cnt) {
-        threadpool = new ThreadPool(thread::hardware_concurrency());
-        
         size_t cur_node_id = worker.Rank();
         stringstream ss;
         ss << _dataPath << "_" << cur_node_id << ".csv";
         loadDataRow(ss.str());
         
-        L2Reg_ratio = 0.001f;
+        L2Reg_ratio = 0.f;
         batch_size = GradientUpdater::__global_minibatch_size;
     }
     
     ~Distributed_Algo_Abst() {
-        delete threadpool;
-        threadpool = NULL;
     }
     
     void Train() {
@@ -120,16 +116,14 @@ public:
             for (size_t p = 0; p < minibatch_epoch; p++) {
                 size_t start_pos = p * batch_size;
                 
-                threadpool->addTask(bind(&Distributed_Algo_Abst::batchGradCompute,
-                                         this, i + 1, start_pos,
-                                         min(start_pos + batch_size, this->dataRow_cnt),
-                                         false));
+                batchGradCompute(i + 1, start_pos,
+                                 min(start_pos + batch_size, this->dataRow_cnt),
+                                 false);
             }
-            threadpool->wait();
             
             printf("[Worker Train] epoch = %zu loss = %f\n", i, -train_loss);
-            loss_curve.emplace_back(-train_loss);
-            accuracy_curve.emplace_back((float)accuracy / dataRow_cnt);
+            loss_curve.push_back(train_loss);
+            accuracy_curve.push_back(1.0 * accuracy / dataRow_cnt);
         }
         
         for (int i = 0; i < this->epoch; i++) {
@@ -148,40 +142,32 @@ public:
     
     // Async-SGD
     void batchGradCompute(size_t epoch, size_t rbegin, size_t rend, bool predicting) {
-        // init threadlocal var
-        unordered_map<Key, Value>*& pull_map = *tl_pull_map;
-        if (pull_map == NULL) {
-            pull_map = new unordered_map<Key, Value>();
-            pull_map->reserve(this->feature_cnt);
-        }
-        unordered_map<Key, Value>*& push_map = *tl_push_map;
-        if (push_map == NULL) {
-            push_map = new unordered_map<Key, Value>();
-            push_map->reserve(this->feature_cnt);
-        }
-        
         // TODO cache replacement and transmission algorithms
-        pull_map->clear();
-        push_map->clear();
+        pull_map.clear();
+        push_map.clear();
         
         for (size_t rid = rbegin; rid < rend; rid++) { // data row
             for (size_t i = 0; i < dataSet[rid].size(); i++) {
                 const size_t fid = dataSet[rid][i].first;
                 assert(fid < this->feature_cnt);
                 
-                if (pull_map->count(fid) == 0) { // keys need unique
+                if (pull_map.count(fid) == 0) { // keys need unique
                     // obsolete feature will be default 0
-                    pull_map->insert(make_pair(fid, Value()));
+                    pull_map.insert(make_pair(fid, Value()));
                 }
             }
         }
         
         // Pull lastest batch parameters from PS
-        if (pull_map->size() > 0)
-            worker.pull_op.sync(*pull_map);
-        
-        size_t local_accuracy = 0;
-        float local_loss = 0;
+        if (pull_map.size() > 0) {
+            size_t res = 0;
+            do {
+                res = worker.pull_op.sync(pull_map);
+                if (res != pull_map.size()) { // wait for other workers
+                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                }
+            } while(res != pull_map.size());
+        }
         
         for (size_t rid = rbegin; rid < rend; rid++) { // data row
             float pred = 0.0f;
@@ -190,42 +176,42 @@ public:
                     continue;
                 }
                 const size_t fid = dataSet[rid][i].first;
-                const Value param = pull_map->at(fid);
+                const Value param = pull_map[fid];
                 
                 const float X = dataSet[rid][i].second;
                 pred += param.w * X;
             }
             
             float pCTR = sigmoid.forward(pred);
-            local_loss += (int)this->label[rid] == 1 ?
-                                    log(pCTR) : log(1.0 - pCTR);
-            assert(!isnan(local_loss));
+            train_loss += (int)this->label[rid] == 1 ?
+                                    -log(pCTR) : -log(1.0 - pCTR);
+            assert(!isnan(train_loss));
             if (pCTR >= 0.5 && this->label[rid] == 1) {
-                local_accuracy++;
+                accuracy++;
             } else if (pCTR < 0.5 && this->label[rid] == 0) {
-                local_accuracy++;
+                accuracy++;
             }
             
             if (predicting) {
                 continue;
             }
             
-            const float loss = pred - label[rid];
+            const float loss = pCTR - label[rid];
             
             for (size_t i = 0; i < dataSet[rid].size(); i++) {
                 if (dataSet[rid][i].second == 0) {
                     continue;
                 }
                 const size_t fid = dataSet[rid][i].first;
-                const Value param = pull_map->at(fid);
+                const Value param = pull_map[fid];
                 const float X = dataSet[rid][i].second;
                 
                 const float gradW = loss * X + L2Reg_ratio * param.w;
                 assert(gradW < 100);
                 
-                auto it = push_map->find(fid);
-                if (it == push_map->end()) {
-                    push_map->insert(make_pair(fid, Value(gradW)));
+                auto it = push_map.find(fid);
+                if (it == push_map.end()) {
+                    push_map.insert(make_pair(fid, Value(gradW)));
                 } else {
                     Value grad(gradW);
                     it->second + grad;
@@ -234,15 +220,9 @@ public:
             }
         }
         
-        {
-            unique_lock<mutex> glock(loss_lock);
-            train_loss += local_loss;
-            accuracy += local_accuracy;
-        }
-        
         // Push grads to PS
-        if (push_map->size() > 0)
-            worker.push_op.sync(*push_map, epoch);
+        if (push_map.size() > 0)
+            worker.push_op.sync(push_map, epoch);
     }
     
 private:
@@ -291,13 +271,11 @@ private:
     
     Barrier terminate_barrier;
     
-    ThreadPool* threadpool;
-    ThreadLocal<unordered_map<Key, Value>*> tl_pull_map;
-    ThreadLocal<unordered_map<Key, Value>*> tl_push_map;
+    unordered_map<Key, Value> pull_map;
+    unordered_map<Key, Value> push_map;
     
     Worker<Key, Value> worker;
     
-    mutex loss_lock;
     float train_loss = 0;
     size_t accuracy{0};
     Sigmoid sigmoid;

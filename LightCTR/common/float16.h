@@ -88,12 +88,6 @@ private:
                 f = (0xff << 23) | (sign << 31);  // INF
             }
         }
-#ifdef DEBUG
-        printf("%f\n", *reinterpret_cast<float*>(&f));
-        print_bin16((float16_t)h);
-        print_bin(*reinterpret_cast<float*>(&f));
-        puts("");
-#endif
         return *reinterpret_cast<float*>(&f);
     }
     
@@ -152,12 +146,6 @@ private:
         }
     
         u |= sign;
-#ifdef DEBUG
-        printf("%f\n", src);
-        print_bin(src);
-        print_bin16((float16_t)u);
-        puts("");
-#endif
         return *reinterpret_cast<float16_t*>(&u);
     }
     

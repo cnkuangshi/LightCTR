@@ -16,6 +16,8 @@
 #include "../util/gradientUpdater.h"
 #include "dist_machine_abst.h"
 
+const size_t kStalenessStepThreshold = 5;
+
 enum UpdaterType {
     SGD = 0,
     Adagrad,
@@ -36,7 +38,7 @@ class ParamServer {
         time_t lastUpdateTime;
     };
 public:
-    ParamServer(UpdaterType _updaterType = UpdaterType::DCASGDA) :
+    ParamServer(UpdaterType _updaterType = UpdaterType::SGD) :
     gDelivery(Delivery::Instance()), updaterType(_updaterType) {
         gDelivery.set_node_id(BEGIN_ID_OF_PS);
         regist_curNode_toMaster();
@@ -108,6 +110,12 @@ private:
         request_handler_t pull_handler = [this](
                                              std::shared_ptr<PackageDescript> request,
                                              PackageDescript& response) {
+            if (last_epoch_version + kStalenessStepThreshold <= request->epoch_version) {
+                printf("[PS PULL] last version %zu but recv %zu",
+                       last_epoch_version, request->epoch_version);
+                last_epoch_version = std::max(last_epoch_version, request->epoch_version);
+                return;
+            }
             // Lock-free pulling based by Hogwild!
             TKey key;
             
@@ -122,11 +130,7 @@ private:
                     rwlock.unlock();
                 }
                 assert(it->second.data_readonly.checkValid());
-                if (!it->second.data_readonly.checkPreferredValue()) {
-                    // select preferred feature to reduce transmission cost
-                    skip_cnt++;
-                    continue;
-                }
+                
                 // return pull target param by pair
                 auto pair = make_pair(it->first, it->second.data_readonly);
                 response.content.appendVarUint(pair.first);
@@ -148,10 +152,10 @@ private:
             
             rwlock.wlock();
             
-            if (last_epoch_version - request->epoch_version > 10) {
-                last_epoch_version = std::max(last_epoch_version, request->epoch_version);
+            if (last_epoch_version + kStalenessStepThreshold <= request->epoch_version) {
                 printf("[PS PUSH] last version %zu but recv %zu",
                        last_epoch_version, request->epoch_version);
+                last_epoch_version = std::max(last_epoch_version, request->epoch_version);
                 rwlock.unlock();
                 return;
             }
@@ -167,10 +171,10 @@ private:
                 
                 // do gradient clipping and rescale
                 data_pair.second * rescaleGrad;
-                if (!data_pair.second.checkPreferredValue()) {
-                    skip_cnt++;
-                    continue;
-                }
+//                if (!data_pair.second.checkPreferredValue()) {
+//                    skip_cnt++;
+//                    continue;
+//                }
                 
                 auto it = paramShardTable.find(data_pair.first);
                 

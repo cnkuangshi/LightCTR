@@ -100,7 +100,6 @@ auto ThreadPool::addTask(F&& f, Args&&... args)
     std::future<return_type> ret = task->get_future();
     {
         std::unique_lock<std::mutex> lock(queue_mutex);
-        assert(!stop);
         tasks.emplace([task](){
             (*task)();
         });

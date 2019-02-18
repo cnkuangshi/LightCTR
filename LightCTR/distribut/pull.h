@@ -27,10 +27,12 @@ public:
              gConsistentHash(ConsistentHash::Instance()) {
     }
     // pull params used keys
-    void sync(std::unordered_map<TKey, TValue> &keys) {
+    size_t sync(std::unordered_map<TKey, TValue> &keys) {
         Barrier barrier;
         size_t candidate_ps = 0;
-        sendToPS(keys, candidate_ps, [this, &barrier, &candidate_ps]() {
+        size_t recv_param_cnt = 0;
+        sendToPS(keys, candidate_ps, [this, &barrier, &candidate_ps, &recv_param_cnt](size_t inc) {
+            recv_param_cnt += inc;
             candidate_ps--;
             assert(candidate_ps >= 0);
             if (candidate_ps == 0) {
@@ -39,6 +41,7 @@ public:
             }
         });
         barrier.block();
+        return recv_param_cnt;
     }
     
     void async(std::unordered_map<TKey, TValue> &keys) {
@@ -55,7 +58,7 @@ public:
 private:
     void sendToPS(std::unordered_map<TKey, TValue> &keys,
                   size_t& candidate_ps,
-                  std::function<void()> callback) {
+                  std::function<void(size_t)> callback) {
         auto& pull_map_ptr = *tl_map;
         if (pull_map_ptr == NULL) {
             pull_map_ptr = new std::map<size_t, std::vector<TKey> >();
@@ -84,6 +87,7 @@ private:
                             std::shared_ptr<PackageDescript> resp_package) {
                 std::pair<TKey, TValue> data_pair;
                 
+                size_t inc = 0;
                 while(!resp_package->content.readEOF()) {
                     // parsing pull response by VarUint & float16_t
                     resp_package->content.readVarUint(&data_pair.first);
@@ -95,11 +99,12 @@ private:
                     assert(it != keys.end());
                     
                     it->second = data_pair.second;
+                    inc++;
                 }
                 assert(resp_package->content.readEOF());
                 
                 if (callback) {
-                    callback();
+                    callback(inc);
                 }
             };
             gDelivery.send_async(desc, to_id);

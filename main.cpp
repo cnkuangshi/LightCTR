@@ -49,7 +49,7 @@
 using namespace std;
 
 // Attention to check config in GradientUpdater
-#define TEST_CNN
+//#define TEST_CNN
 
 /* Recommend Configuration
  * Distributed LR lr=0.1
@@ -60,7 +60,7 @@ using namespace std;
  */
 
 size_t GradientUpdater::__global_minibatch_size(10);
-float GradientUpdater::__global_learning_rate(0.01);
+float GradientUpdater::__global_learning_rate(0.1);
 float GradientUpdater::__global_ema_rate(0.99);
 float GradientUpdater::__global_sparse_rate(0.6);
 float GradientUpdater::__global_lambdaL2(0.001f);
@@ -90,8 +90,8 @@ int main(int argc, const char * argv[]) {
     {
         puts("Run in PS Mode");
         Distributed_Algo_Abst *train = new Distributed_Algo_Abst(
-                                     "./data/train_sparse",
-                                     /*epoch*/50);
+                                     "./data/ad_data",
+                                     /*epoch*/100);
         train->Train();
     }
 #elif (defined TEST_FM) || (defined TEST_FFM) || (defined TEST_NFM) || (defined TEST_GBM) || (defined TEST_GMM) || (defined TEST_TM) || (defined TEST_EMB) || (defined TEST_CNN) || (defined TEST_RNN) || (defined TEST_VAE) || (defined TEST_ANN)
