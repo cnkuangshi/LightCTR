@@ -70,8 +70,7 @@ void FM_Predict::Predict(string savePath) {
         float loss = 0;
         int correct = 0;
         for (size_t i = 0; i < test_label.size(); i++) {
-            assert(ans[i] > 0 && 1.0 - ans[i] > 0);
-            loss += (int)this->test_label[i] == 1 ? log(ans[i]) : log(1.0 - ans[i]);
+            loss += (int)this->test_label[i] == 1 ? -log(ans[i]) : -log(1.0 - ans[i]);
             assert(!isnan(loss));
             if (ans[i] > 0.5 && this->test_label[i] == 1) {
                 correct++;
@@ -79,7 +78,7 @@ void FM_Predict::Predict(string savePath) {
                 correct++;
             }
         }
-        cout << "total log likelihood = " << -loss << " correct = " << setprecision(5) <<
+        cout << "total log likelihood = " << loss << " correct = " << setprecision(5) <<
                 (float)correct / test_dataRow_cnt << " with badcase = " << badcase;
         
         auc->init(&ans, &test_label);

@@ -152,7 +152,6 @@ void Train_FM_Algo::accumWVGrad(size_t rid, float pred, vector<float>* update_lo
 }
 
 void Train_FM_Algo::ApplyGrad() {
-    GradientUpdater::__global_minibatch_size = dataRow_cnt;
     
     updater.update(0, this->feature_cnt, W, update_g);
 #ifdef FM

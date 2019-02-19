@@ -12,11 +12,12 @@
 #include "../common/network.h"
 #include "../common/barrier.h"
 #include "../common/lock.h"
+#include "../common/avx.h"
 #include <unordered_map>
 #include "../util/gradientUpdater.h"
 #include "dist_machine_abst.h"
 
-const size_t kStalenessStepThreshold = 5;
+const size_t kStalenessStepThreshold = 10;
 
 enum UpdaterType {
     SGD = 0,
@@ -35,7 +36,12 @@ class ParamServer {
         TValue data_accum; // reserve for adagrad
         // reserve for DCASGD to cache each worker's latest version of parameter
         TValue* shadow_copies;
-        time_t lastUpdateTime;
+    };
+    struct TensorWrapper {
+        TensorWrapper(size_t _len) {
+            data.resize(_len);
+        }
+        vector<float> data;
     };
 public:
     ParamServer(UpdaterType _updaterType = UpdaterType::SGD) :
@@ -111,35 +117,52 @@ private:
                                              std::shared_ptr<PackageDescript> request,
                                              PackageDescript& response) {
             if (last_epoch_version + kStalenessStepThreshold <= request->epoch_version) {
-                printf("[PS PULL] last version %zu but recv %zu",
+                // None values response indicate that worker should wait a moment
+                printf("[PS PULL] last version %zu but recv %zu\n",
                        last_epoch_version, request->epoch_version);
-                last_epoch_version = std::max(last_epoch_version, request->epoch_version);
                 return;
             }
             // Lock-free pulling based by Hogwild!
-            TKey key;
+            TKey key, length;
+            char headByte;
+            request->content >> headByte;
+            assert(headByte == 'N' || headByte == 'T');
             
-            size_t cnt = 0, skip_cnt = 0;
             while (!request->content.readEOF()) { // read keys needed by worker
                 request->content.readVarUint(&key);
+                if (headByte == 'T') {
+                    request->content.readVarUint(&length);
+                    auto it = tensorShardTable.find(key);
+                    if (it == tensorShardTable.end()) {
+                        auto it_pos = tensorShardTable.insert(std::make_pair(key, TensorWrapper(length)));
+                        if (!it_pos.second) { // another write priority
+                            it = tensorShardTable.find(key);
+                            assert(it != tensorShardTable.end());
+                        } else {
+                            it = it_pos.first;
+                        }
+                    }
+                    assert(length == it->second.data.size());
+                    response.content.appendVarUint(key);
+                    response.content.appendVarUint(length);
+                    for (size_t i = 0; i < length; i++) {
+                        response.content << Float16(&it->second.data[i]).float16_value();
+                    }
+                    continue;
+                }
                 
                 auto it = paramShardTable.find(key);
                 if (it == paramShardTable.end()) {
-                    rwlock.wlock(); // should double check by check_and_find
+                    // should double check by check_and_find
                     it = check_and_find(key);
-                    rwlock.unlock();
                 }
                 assert(it->second.data_readonly.checkValid());
                 
                 // return pull target param by pair
-                auto pair = make_pair(it->first, it->second.data_readonly);
-                response.content.appendVarUint(pair.first);
-                response.content << Float16(&pair.second).float16_value();
-                cnt++;
+                response.content.appendVarUint(key);
+                response.content << Float16(&it->second.data_readonly).float16_value();
             }
             assert(request->content.readEOF());
-            
-            printf("[PS PULL] send %zu pairs, skip %zu pairs\n", cnt, skip_cnt);
         };
         
         request_handler_t push_handler = [this](
@@ -150,31 +173,50 @@ private:
             const size_t worker_id = request->node_id - BEGIN_ID_OF_WORKER - 1;
             assert(worker_id < __global_cluster_worker_cnt);
             
-            rwlock.wlock();
-            
             if (last_epoch_version + kStalenessStepThreshold <= request->epoch_version) {
-                printf("[PS PUSH] last version %zu but recv %zu",
+                printf("[PS PUSH] last version %zu but recv %zu\n",
                        last_epoch_version, request->epoch_version);
-                last_epoch_version = std::max(last_epoch_version, request->epoch_version);
-                rwlock.unlock();
                 return;
             }
             
             last_epoch_version = std::max(last_epoch_version, request->epoch_version);
             
-            size_t saved_cnt = 0, skip_cnt = 0;
+            TKey length;
+            char headByte;
+            request->content >> headByte;
+            assert(headByte == 'N' || headByte == 'T');
+            
             while (!request->content.readEOF()) {
                 request->content.readVarUint(&data_pair.first);
+                
+                if (headByte == 'T') {
+                    request->content.readVarUint(&length);
+                    
+                    std::vector<float> values;
+                    for (size_t i = 0; i < length; i++) {
+                        request->content.readHalfFloat(&data_pair.second);
+                        values.push_back(data_pair.second.w);
+                    }
+                    
+                    auto it = tensorShardTable.find(data_pair.first);
+                    assert(length == it->second.data.size());
+                    
+                    // simple SGD
+                    float scaler = - 1.0 * GradientUpdater::__global_minibatch_size
+                                    / GradientUpdater::__global_learning_rate;
+                    avx_vecScale(values.data(), values.data(), length, scaler);
+                    avx_vecAdd(it->second.data.data(), values.data(),
+                               it->second.data.data(), length);
+                    
+                    continue;
+                }
+                
                 request->content.readHalfFloat(&data_pair.second);
                 
                 assert(data_pair.second.checkValid());
                 
                 // do gradient clipping and rescale
                 data_pair.second * rescaleGrad;
-//                if (!data_pair.second.checkPreferredValue()) {
-//                    skip_cnt++;
-//                    continue;
-//                }
                 
                 auto it = paramShardTable.find(data_pair.first);
                 
@@ -230,17 +272,12 @@ private:
                 }
                 // at last swap data and data_readonly
                 it->second.data_readonly = it->second.data;
-                it->second.lastUpdateTime = time(NULL);
-                saved_cnt++;
                 
                 assert(it->second.data.checkValid());
                 assert(it->second.data_accum.checkValid());
             }
             
-            rwlock.unlock();
-            
             assert(request->content.readEOF());
-            printf("[PS PUSH] saved %zu pairs, skip %zu pairs\n", saved_cnt, skip_cnt);
             // TODO params backup checkpoint to Hard Disk periodicity
         };
         gDelivery.regist_handler(REQUEST_PULL, std::move(pull_handler));
@@ -258,7 +295,6 @@ private:
             val_wrapper.data_accum = TValue(1e-8);
             val_wrapper.data_readonly = val_wrapper.data;
             val_wrapper.shadow_copies = NULL;
-            val_wrapper.lastUpdateTime = time(NULL);
             if (updaterType == UpdaterType::DCASGD || updaterType == UpdaterType::DCASGDA) {
                 val_wrapper.shadow_copies = new TValue[__global_cluster_worker_cnt]();
             }
@@ -277,7 +313,7 @@ private:
     const float rescaleGrad = 1.0f;
     
     std::unordered_map<TKey, ValueWrapper> paramShardTable;
-    RWLock rwlock;
+    std::unordered_map<TKey, TensorWrapper> tensorShardTable;
     size_t last_epoch_version{0};
     
     UpdaterType updaterType;

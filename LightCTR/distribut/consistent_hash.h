@@ -21,6 +21,7 @@ public:
         static std::once_flag once;
         static ConsistentHash consist;
         std::call_once(once, [] {
+            assert(__global_cluster_ps_cnt > 0);
             consist.init(__global_cluster_ps_cnt);
         });
         return consist;

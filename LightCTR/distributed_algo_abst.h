@@ -106,6 +106,17 @@ public:
     void Train() {
         GradientUpdater::__global_bTraining = true;
         
+        // init Buffer fusion
+        const size_t dense_dims = 200;
+        param_buf->registMemChunk(new float[dense_dims], dense_dims);
+        float* grad = new float[dense_dims];
+        for (size_t i = 0; i < dense_dims; i++) {
+            grad[i] = GaussRand();
+        }
+        grad_buf->registMemChunk(grad, dense_dims);
+        worker.pull_tensor_op.registTensorFusion(param_buf);
+        worker.push_tensor_op.registTensorFusion(grad_buf);
+        
         vector<float> loss_curve, accuracy_curve;
         for (size_t i = 0; i < this->epoch; i++) {
             train_loss = 0;
@@ -116,7 +127,7 @@ public:
             for (size_t p = 0; p < minibatch_epoch; p++) {
                 size_t start_pos = p * batch_size;
                 
-                batchGradCompute(i + 1, start_pos,
+                batchGradCompute(i * epoch + p + 1, start_pos,
                                  min(start_pos + batch_size, this->dataRow_cnt),
                                  false);
             }
@@ -144,7 +155,9 @@ public:
     void batchGradCompute(size_t epoch, size_t rbegin, size_t rend, bool predicting) {
         // TODO cache replacement and transmission algorithms
         pull_map.clear();
+        pull_tensor_map.clear();
         push_map.clear();
+        push_tensor_map.clear();
         
         for (size_t rid = rbegin; rid < rend; rid++) { // data row
             for (size_t i = 0; i < dataSet[rid].size(); i++) {
@@ -157,13 +170,16 @@ public:
                 }
             }
         }
+        pull_tensor_map.insert(make_pair(0, 0));
+        worker.pull_tensor_op.sync(pull_tensor_map, epoch);
         
         // Pull lastest batch parameters from PS
         if (pull_map.size() > 0) {
             size_t res = 0;
             do {
-                res = worker.pull_op.sync(pull_map);
-                if (res != pull_map.size()) { // wait for other workers
+                res = worker.pull_op.sync(pull_map, epoch);
+                if (res != pull_map.size()) {
+                    puts("wait for other workers");
                     std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 }
             } while(res != pull_map.size());
@@ -223,6 +239,8 @@ public:
         // Push grads to PS
         if (push_map.size() > 0)
             worker.push_op.sync(push_map, epoch);
+        push_tensor_map.insert(make_pair(0, 0));
+        worker.push_tensor_op.sync(push_tensor_map, epoch);
     }
     
 private:
@@ -272,7 +290,12 @@ private:
     Barrier terminate_barrier;
     
     unordered_map<Key, Value> pull_map;
+    unordered_map<Key, Value> pull_tensor_map;
     unordered_map<Key, Value> push_map;
+    unordered_map<Key, Value> push_tensor_map;
+    
+    std::shared_ptr<BufferFusion<float> > param_buf = std::make_shared<BufferFusion<float> >(true);
+    std::shared_ptr<BufferFusion<float> > grad_buf = std::make_shared<BufferFusion<float> >(true);
     
     Worker<Key, Value> worker;
     

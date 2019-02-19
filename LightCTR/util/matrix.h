@@ -320,6 +320,7 @@ public:
     size_t x_len, y_len;
     
 private:
+    Matrix() = delete;
     vector<float>* matrix;
 };
 

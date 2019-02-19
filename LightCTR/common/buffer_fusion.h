@@ -16,6 +16,10 @@
 template <typename T>
 class BufferFusion {
 public:
+    explicit BufferFusion(bool _autoRelease): autoRelease(_autoRelease) {
+        
+    }
+    
     ~BufferFusion() {
         if (!autoRelease) {
             return;
@@ -26,6 +30,13 @@ public:
                 bufs_ptr_arr[i] = NULL;
             }
         }
+        bufs_ptr_arr.clear();
+        bufs_size_arr.clear();
+    }
+    
+    std::pair<T*, size_t> getMemory(size_t index) {
+        assert(index < bufs_size_arr.size());
+        return std::make_pair(bufs_ptr_arr[index], bufs_size_arr[index]);
     }
     
     void registMemChunk(vector<T>* ptr, size_t size) {

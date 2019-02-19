@@ -14,47 +14,44 @@
 #include "../common/thread_pool.h"
 #include "../common/barrier.h"
 #include "../common/network.h"
+#include "../common/buffer_fusion.h"
 
 // Push Grads to PS
 template <class TKey, class TValue>
 class Push {
     
 public:
-    Push() : gDelivery(Delivery::Instance()),
+    Push() = delete;
+    explicit Push(char _headByte) :
+             headByte(_headByte),
+             gDelivery(Delivery::Instance()),
              gConsistentHash(ConsistentHash::Instance()) {
     }
     
+    void registTensorFusion(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
+        assert(headByte == 'T');
+        buf_fusion = _buf_fusion;
+    }
+    
     void sync(const std::unordered_map<TKey, TValue> &grads, size_t epoch) {
+        if (headByte == 'T')
+            assert(buf_fusion);
         assert(epoch > 0);
         Barrier barrier;
-        size_t candidate_ps = 0;
+        int candidate_ps = 0;
         sendToPS(grads, candidate_ps, epoch,
-                 [this, &barrier, epoch, &candidate_ps]() {
+                 [&barrier, &candidate_ps]() {
             candidate_ps--;
-            assert(candidate_ps >= 0);
-            if (candidate_ps == 0) {
-                printf("[WORKER Push] ----- %zu-%zu complete -----\n", epoch, push_seq++);
+            if (candidate_ps <= 0) {
                 barrier.unblock();
             }
         });
         barrier.block();
     }
     
-    void async(const std::unordered_map<TKey, TValue> &grads, size_t epoch) {
-        assert(epoch > 0);
-        size_t candidate_ps = 0;
-        sendToPS(grads, candidate_ps, epoch, [this, epoch, &candidate_ps]() {
-            candidate_ps--;
-            assert(candidate_ps >= 0);
-            if (candidate_ps == 0) {
-                printf("[WORKER Push] ----- %zu-%zu complete -----\n", epoch, push_seq++);
-            }
-        });
-    }
-    
 private:
     void sendToPS(const std::unordered_map<TKey, TValue> &grads,
-                  size_t& candidate_ps,
+                  int& candidate_ps,
                   size_t epoch,
                   std::function<void()> callback) {
         auto& push_map_ptr = *tl_map;
@@ -78,10 +75,27 @@ private:
             push_map[to_id].emplace_back(std::move(*it));
         }
         
+        if (push_map.size() == 0) {
+            if (callback) {
+                callback();
+            }
+        }
+        
         for (auto &item : push_map) {
             const size_t to_id = item.first;
             PackageDescript desc(REQUEST_PUSH, epoch);
+            desc.content << headByte;
             for (auto &grad_pair : item.second) {
+                if (headByte == 'T') {
+                    desc.content.appendVarUint(grad_pair.first);
+                    auto memAddr = buf_fusion->getMemory(grad_pair.first);
+                    desc.content.appendVarUint(memAddr.second);
+                    
+                    for (size_t i = 0; i < memAddr.second; i++) {
+                        desc.content << Float16(memAddr.first + i).float16_value();
+                    }
+                    continue;
+                }
                 // push data pair by VarUint & float16_t
                 desc.content.appendVarUint(grad_pair.first);
                 desc.content << Float16(&grad_pair.second).float16_value();
@@ -95,12 +109,13 @@ private:
             gDelivery.send_async(desc, to_id);
         }
         
-        printf("[WORKER Push] %zu Grad-pairs Sended\n", grads.size());
+        printf("[WORKER Push] %zu %c Grad-pairs Sended\n", grads.size(), headByte);
     }
     
     ThreadLocal<std::map<size_t, std::vector<std::pair<TKey, TValue> > >*> tl_map;
     
-    std::atomic<size_t> push_seq{0};
+    char headByte = 'N';
+    std::shared_ptr<BufferFusion<float> > buf_fusion = nullptr;
     
     Delivery& gDelivery;
     ConsistentHash& gConsistentHash;

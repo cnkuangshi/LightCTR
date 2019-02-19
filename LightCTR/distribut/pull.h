@@ -17,26 +17,42 @@
 #include "../common/thread_pool.h"
 #include "../common/barrier.h"
 #include "../common/network.h"
+#include "../common/buffer_fusion.h"
+#include "../util/matrix.h"
 
 // Pull params from PS
 template <class TKey, class TValue>
 class Pull {
     
 public:
-    Pull() : gDelivery(Delivery::Instance()),
+    Pull() = delete;
+    explicit Pull(char _headByte) :
+             headByte(_headByte),
+             gDelivery(Delivery::Instance()),
              gConsistentHash(ConsistentHash::Instance()) {
     }
+    
+    void registTensorFusion(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
+        assert(headByte == 'T');
+        buf_fusion = _buf_fusion;
+    }
+    
     // pull params used keys
-    size_t sync(std::unordered_map<TKey, TValue> &keys) {
+    // when headByte == 'N' means sparse vector, unordered_map<fid, float value>
+    // when headByte == 'T' means tensor vector, unordered_map<fid, offset>
+    size_t sync(std::unordered_map<TKey, TValue> &keys, size_t epoch) {
+        if (headByte == 'T')
+            assert(buf_fusion);
+        assert(epoch > 0);
         Barrier barrier;
-        size_t candidate_ps = 0;
+        int candidate_ps = 0;
         size_t recv_param_cnt = 0;
-        sendToPS(keys, candidate_ps, [this, &barrier, &candidate_ps, &recv_param_cnt](size_t inc) {
+        sendToPS(keys, candidate_ps, epoch,
+                 [&barrier, &candidate_ps, &recv_param_cnt](size_t inc) {
             recv_param_cnt += inc;
             candidate_ps--;
             assert(candidate_ps >= 0);
-            if (candidate_ps == 0) {
-                printf("[WORKER Pull] ----- %zu complete -----\n", pull_seq++);
+            if (candidate_ps <= 0) {
                 barrier.unblock();
             }
         });
@@ -44,20 +60,10 @@ public:
         return recv_param_cnt;
     }
     
-    void async(std::unordered_map<TKey, TValue> &keys) {
-        size_t candidate_ps = 0;
-        sendToPS(keys, candidate_ps, [this, &candidate_ps]() {
-            candidate_ps--;
-            assert(candidate_ps >= 0);
-            if (candidate_ps == 0) {
-                printf("[WORKER Pull] ----- %zu complete -----\n", pull_seq++);
-            }
-        });
-    }
-    
 private:
     void sendToPS(std::unordered_map<TKey, TValue> &keys,
-                  size_t& candidate_ps,
+                  int& candidate_ps,
+                  size_t epoch,
                   std::function<void(size_t)> callback) {
         auto& pull_map_ptr = *tl_map;
         if (pull_map_ptr == NULL) {
@@ -78,17 +84,39 @@ private:
         
         for (auto &item : pull_map) {
             const size_t to_id = item.first;
-            PackageDescript desc(REQUEST_PULL);
-            for (auto &key_it : item.second) {
+            PackageDescript desc(REQUEST_PULL, epoch);
+            desc.content << headByte;
+            for (auto &key : item.second) {
                 // pull VarUint keys
-                desc.content.appendVarUint(key_it);
+                desc.content.appendVarUint(key);
+                if (headByte == 'T') {
+                    auto memAddr = buf_fusion->getMemory((size_t)keys[key].w);
+                    desc.content.appendVarUint(memAddr.second);
+                }
             }
-            desc.callback = [&keys, callback](
+            desc.callback = [this, &keys, callback](
                             std::shared_ptr<PackageDescript> resp_package) {
                 std::pair<TKey, TValue> data_pair;
+                TKey length;
                 
                 size_t inc = 0;
                 while(!resp_package->content.readEOF()) {
+                    if (headByte == 'T') {
+                        resp_package->content.readVarUint(&data_pair.first);
+                        resp_package->content.readVarUint(&length);
+                        
+                        size_t offset = (size_t)keys[data_pair.first].w;
+                        auto memAddr = buf_fusion->getMemory(offset);
+                        assert(memAddr.second == length);
+                        
+                        for (size_t i = 0; i < length; i++) {
+                            resp_package->content.readHalfFloat(&data_pair.second);
+                            *(memAddr.first + i) = data_pair.second.w;
+                        }
+                        
+                        inc++;
+                        continue;
+                    }
                     // parsing pull response by VarUint & float16_t
                     resp_package->content.readVarUint(&data_pair.first);
                     resp_package->content.readHalfFloat(&data_pair.second);
@@ -110,12 +138,13 @@ private:
             gDelivery.send_async(desc, to_id);
         }
         
-        printf("[WORKER Pull] %zu Keys Sended\n", keys.size());
+        printf("[WORKER Pull] %zu %c Keys Sended\n", keys.size(), headByte);
     }
     
     ThreadLocal<std::map<size_t, std::vector<TKey> >*> tl_map;
     
-    std::atomic<size_t> pull_seq{0};
+    char headByte = 'N';
+    std::shared_ptr<BufferFusion<float> > buf_fusion = nullptr;
     
     Delivery& gDelivery;
     ConsistentHash& gConsistentHash;
