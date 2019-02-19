@@ -11,11 +11,14 @@
 
 #include <unordered_map>
 #include <string>
+#include <vector>
+#include <set>
 #include <cmath>
 #include "distribut/pull.h"
 #include "distribut/push.h"
 #include "util/random.h"
 #include "util/activations.h"
+#include "train/layer/fullyconnLayer.h"
 #include "common/thread_pool.h"
 
 #include "fm_algo_abst.h"
@@ -107,15 +110,18 @@ public:
         GradientUpdater::__global_bTraining = true;
         
         // init Buffer fusion
-        const size_t dense_dims = 200;
-        param_buf->registMemChunk(new float[dense_dims], dense_dims);
-        float* grad = new float[dense_dims];
-        for (size_t i = 0; i < dense_dims; i++) {
-            grad[i] = GaussRand();
+        for (size_t i = 0; i < field_cnt; i++) {
+            param_buf->registMemChunk(nullptr, factor_dim);
+            grad_buf->registMemChunk(nullptr, factor_dim);
         }
-        grad_buf->registMemChunk(grad, dense_dims);
+        param_buf->lazyAllocate();
+        
         worker.pull_tensor_op.registTensorFusion(param_buf);
         worker.push_tensor_op.registTensorFusion(grad_buf);
+        
+        inputLayer = new Fully_Conn_Layer<Tanh>(NULL, field_cnt * factor_dim, 50);
+        inputLayer->needInputDelta = true;
+        outputLayer = new Fully_Conn_Layer<Sigmoid>(inputLayer, 50, 1);
         
         vector<float> loss_curve, accuracy_curve;
         for (size_t i = 0; i < this->epoch; i++) {
@@ -155,23 +161,20 @@ public:
     void batchGradCompute(size_t epoch, size_t rbegin, size_t rend, bool predicting) {
         // TODO cache replacement and transmission algorithms
         pull_map.clear();
-        pull_tensor_map.clear();
+        tensor_map.clear();
         push_map.clear();
-        push_tensor_map.clear();
         
         for (size_t rid = rbegin; rid < rend; rid++) { // data row
             for (size_t i = 0; i < dataSet[rid].size(); i++) {
                 const size_t fid = dataSet[rid][i].first;
-                assert(fid < this->feature_cnt);
                 
                 if (pull_map.count(fid) == 0) { // keys need unique
                     // obsolete feature will be default 0
                     pull_map.insert(make_pair(fid, Value()));
+                    tensor_map.insert(make_pair(fid, dataSet[rid][i].field));
                 }
             }
         }
-        pull_tensor_map.insert(make_pair(0, 0));
-        worker.pull_tensor_op.sync(pull_tensor_map, epoch);
         
         // Pull lastest batch parameters from PS
         if (pull_map.size() > 0) {
@@ -183,22 +186,35 @@ public:
                     std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 }
             } while(res != pull_map.size());
+            
+            worker.pull_tensor_op.sync(tensor_map, epoch);
         }
         
         for (size_t rid = rbegin; rid < rend; rid++) { // data row
             float pred = 0.0f;
+            set<size_t> fields;
+            // wide part
             for (size_t i = 0; i < dataSet[rid].size(); i++) {
-                if (dataSet[rid][i].second == 0) {
-                    continue;
-                }
                 const size_t fid = dataSet[rid][i].first;
                 const Value param = pull_map[fid];
                 
                 const float X = dataSet[rid][i].second;
                 pred += param.w * X;
+                fields.insert(dataSet[rid][i].field);
             }
+            // deep part
+            Matrix deep_input(1, field_cnt * factor_dim);
+            deep_input.zeroInit();
+            for (auto it = fields.begin(); it != fields.end(); it++) {
+                auto memAddr = param_buf->getMemory(*it);
+                memcpy(deep_input.pointer()->data() + *it * factor_dim, memAddr.first, factor_dim);
+            }
+            vector<Matrix*> wrapper;
+            wrapper.resize(1);
+            wrapper[0] = &deep_input;
+            vector<float>* ans = inputLayer->forward(&wrapper);
             
-            float pCTR = sigmoid.forward(pred);
+            float pCTR = sigmoid.forward(pred + ans->at(0));
             train_loss += (int)this->label[rid] == 1 ?
                                     -log(pCTR) : -log(1.0 - pCTR);
             assert(!isnan(train_loss));
@@ -215,9 +231,6 @@ public:
             const float loss = pCTR - label[rid];
             
             for (size_t i = 0; i < dataSet[rid].size(); i++) {
-                if (dataSet[rid][i].second == 0) {
-                    continue;
-                }
                 const size_t fid = dataSet[rid][i].first;
                 const Value param = pull_map[fid];
                 const float X = dataSet[rid][i].second;
@@ -230,17 +243,24 @@ public:
                     push_map.insert(make_pair(fid, Value(gradW)));
                 } else {
                     Value grad(gradW);
-                    it->second + grad;
+                    it->second + grad; // TODO high frequency params accumulate more gradient
                     assert(it->second.checkValid());
                 }
             }
+            
+            Matrix deep_loss(1, 1);
+            *deep_loss.getEle(0, 0) = loss;
+            wrapper[0] = &deep_loss;
+            outputLayer->backward(&wrapper);
+            const Matrix* delta = this->inputLayer->inputDelta(); // get delta of deep_input
+            grad_buf->lazyAllocate(delta->pointer()->data());
         }
         
         // Push grads to PS
-        if (push_map.size() > 0)
+        if (push_map.size() > 0) {
             worker.push_op.sync(push_map, epoch);
-        push_tensor_map.insert(make_pair(0, 0));
-        worker.push_tensor_op.sync(push_tensor_map, epoch);
+            worker.push_tensor_op.sync(tensor_map, epoch);
+        }
     }
     
 private:
@@ -269,7 +289,8 @@ private:
                       sscanf(pline, "%zu:%zu:%f%n", &fieldid, &fid, &val, &nchar) >= 2){
                     pline += nchar + 1;
                     tmp.emplace_back(FMFeature(fid, val, fieldid));
-                    this->feature_cnt = max(this->feature_cnt, fid + 1);
+                    feature_cnt = max(feature_cnt, fid + 1);
+                    field_cnt = max(field_cnt, fieldid + 1);
                 }
             }
             if (tmp.empty()) {
@@ -283,25 +304,29 @@ private:
     vector<vector<FMFeature> > dataSet;
     vector<int> label;
     size_t feature_cnt{0};
+    size_t field_cnt{0};
     size_t dataRow_cnt{0};
     
     float L2Reg_ratio;
+    const size_t factor_dim = 4;
+    
+    Fully_Conn_Layer<Tanh>* inputLayer;
+    Fully_Conn_Layer<Sigmoid>* outputLayer;
+    Sigmoid sigmoid;
     
     Barrier terminate_barrier;
     
     unordered_map<Key, Value> pull_map;
-    unordered_map<Key, Value> pull_tensor_map;
     unordered_map<Key, Value> push_map;
-    unordered_map<Key, Value> push_tensor_map;
+    unordered_map<Key, Value> tensor_map;
     
-    std::shared_ptr<BufferFusion<float> > param_buf = std::make_shared<BufferFusion<float> >(true);
-    std::shared_ptr<BufferFusion<float> > grad_buf = std::make_shared<BufferFusion<float> >(true);
+    std::shared_ptr<BufferFusion<float> > param_buf = std::make_shared<BufferFusion<float> >(true, true);
+    std::shared_ptr<BufferFusion<float> > grad_buf = std::make_shared<BufferFusion<float> >(false, true);
     
     Worker<Key, Value> worker;
     
     float train_loss = 0;
     size_t accuracy{0};
-    Sigmoid sigmoid;
     
     size_t epoch;
     size_t batch_size;

@@ -88,7 +88,7 @@ private:
             for (auto &grad_pair : item.second) {
                 if (headByte == 'T') {
                     desc.content.appendVarUint(grad_pair.first);
-                    auto memAddr = buf_fusion->getMemory(grad_pair.first);
+                    auto memAddr = buf_fusion->getMemory((size_t)grad_pair.second.w);
                     desc.content.appendVarUint(memAddr.second);
                     
                     for (size_t i = 0; i < memAddr.second; i++) {

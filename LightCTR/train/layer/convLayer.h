@@ -90,10 +90,10 @@ public:
     
     void registerGradient(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
         FOR(i, filter_cnt) {
-            _buf_fusion->registMemChunk(filterDelta[i]->pointer(), filterDelta[i]->size());
+            _buf_fusion->registMemChunk(filterDelta[i]->pointer()->data(), filterDelta[i]->size());
         }
         FOR(i, filter_cnt) {
-            _buf_fusion->registMemChunk(biasDelta[i]->pointer(), biasDelta[i]->size());
+            _buf_fusion->registMemChunk(biasDelta[i]->pointer()->data(), biasDelta[i]->size());
         }
         if (this->nextLayer) {
             this->nextLayer->registerGradient(_buf_fusion);

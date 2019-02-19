@@ -16,12 +16,22 @@
 template <typename T>
 class BufferFusion {
 public:
-    explicit BufferFusion(bool _autoRelease): autoRelease(_autoRelease) {
+    BufferFusion(bool _autoRelease, bool _lazyMode):
+        autoRelease(_autoRelease), lazyMode(_lazyMode) {
         
     }
     
     ~BufferFusion() {
+        if (autoRelease && lazyMode && lazyModeMemory) {
+            delete lazyModeMemory;
+            lazyModeMemory = nullptr;
+            bufs_ptr_arr.clear();
+            bufs_size_arr.clear();
+            return;
+        }
         if (!autoRelease) {
+            bufs_ptr_arr.clear();
+            bufs_size_arr.clear();
             return;
         }
         for (size_t i = 0; i < bufs_ptr_arr.size(); i++) {
@@ -39,15 +49,32 @@ public:
         return std::make_pair(bufs_ptr_arr[index], bufs_size_arr[index]);
     }
     
-    void registMemChunk(vector<T>* ptr, size_t size) {
-        registMemChunk(ptr->data(), size);
+    void registMemChunk(T* ptr, size_t size) {
+        assert(size > 0);
+        if (ptr != nullptr) {
+            bufs_ptr_arr.push_back(ptr);
+            bufs_size_arr.push_back(size);
+            total_size += size;
+        } else {
+            assert(lazyMode);
+            // lazy mode
+            bufs_size_arr.push_back(size);
+            total_size += size;
+        }
     }
     
-    void registMemChunk(T* ptr, size_t size) {
-        assert(ptr != nullptr && size > 0);
-        bufs_ptr_arr.push_back(ptr);
-        bufs_size_arr.push_back(size);
-        total_size += size;
+    void lazyAllocate(float* allocatedMem = nullptr) {
+        if (allocatedMem) {
+            lazyModeMemory = allocatedMem;
+        } else {
+            lazyModeMemory = new T[total_size];
+        }
+        size_t inc_mem = 0;
+        for (size_t i = 0; i < bufs_size_arr.size(); i++) {
+            bufs_ptr_arr.push_back(lazyModeMemory + inc_mem);
+            inc_mem += bufs_size_arr[i];
+        }
+        assert(inc_mem == total_size);
     }
     
     size_t size() const {
@@ -161,6 +188,9 @@ public:
     
 private:
     bool autoRelease{false};
+    bool lazyMode{false};
+    T* lazyModeMemory = nullptr;
+    
     std::vector<T*> bufs_ptr_arr;
     std::vector<size_t> bufs_size_arr;
     size_t total_size = 0;
