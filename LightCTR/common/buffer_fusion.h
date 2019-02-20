@@ -68,6 +68,7 @@ public:
             lazyModeMemory = allocatedMem;
         } else {
             lazyModeMemory = new T[total_size];
+            memset(lazyModeMemory, 0, total_size * sizeof(float));
         }
         size_t inc_mem = 0;
         for (size_t i = 0; i < bufs_size_arr.size(); i++) {

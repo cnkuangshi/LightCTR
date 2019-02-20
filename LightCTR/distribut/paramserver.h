@@ -17,7 +17,7 @@
 #include "../util/gradientUpdater.h"
 #include "dist_machine_abst.h"
 
-const size_t kStalenessStepThreshold = 10;
+const size_t kStalenessStepThreshold = 5;
 
 enum UpdaterType {
     SGD = 0,
@@ -40,6 +40,7 @@ class ParamServer {
     struct TensorWrapper {
         TensorWrapper(size_t _len) {
             data.resize(_len);
+            std::fill(data.begin(), data.end(), 0);
         }
         vector<float> data;
     };
@@ -116,11 +117,14 @@ private:
         request_handler_t pull_handler = [this](
                                              std::shared_ptr<PackageDescript> request,
                                              PackageDescript& response) {
-            if (last_epoch_version + kStalenessStepThreshold <= request->epoch_version) {
-                // None values response indicate that worker should wait a moment
-                printf("[PS PULL] last version %zu but recv %zu\n",
-                       last_epoch_version, request->epoch_version);
-                return;
+            {
+                std::unique_lock<std::mutex> lock(step_lock);
+                if (last_epoch_version + kStalenessStepThreshold <= request->epoch_version) {
+                    // None values response indicate that worker should wait a moment
+                    printf("[PS PULL] last version %zu but recv %zu\n",
+                           last_epoch_version, request->epoch_version);
+                    return;
+                }
             }
             // Lock-free pulling based by Hogwild!
             TKey key, length;
@@ -173,13 +177,15 @@ private:
             const size_t worker_id = request->node_id - BEGIN_ID_OF_WORKER - 1;
             assert(worker_id < __global_cluster_worker_cnt);
             
-            if (last_epoch_version + kStalenessStepThreshold <= request->epoch_version) {
-                printf("[PS PUSH] last version %zu but recv %zu\n",
-                       last_epoch_version, request->epoch_version);
-                return;
+            {
+                std::unique_lock<std::mutex> lock(step_lock);
+                if (last_epoch_version + kStalenessStepThreshold <= request->epoch_version) {
+                    printf("[PS PUSH] last version %zu but recv %zu\n",
+                           last_epoch_version, request->epoch_version);
+                    return;
+                }
+                last_epoch_version = std::max(last_epoch_version, request->epoch_version);
             }
-            
-            last_epoch_version = std::max(last_epoch_version, request->epoch_version);
             
             TKey length;
             char headByte;
@@ -202,8 +208,8 @@ private:
                     assert(length == it->second.data.size());
                     
                     // simple SGD
-                    float scaler = - 1.0 * GradientUpdater::__global_minibatch_size
-                                    / GradientUpdater::__global_learning_rate;
+                    float scaler = - 1.0 * GradientUpdater::__global_learning_rate
+                                    / GradientUpdater::__global_minibatch_size;
                     avx_vecScale(values.data(), values.data(), length, scaler);
                     avx_vecAdd(it->second.data.data(), values.data(),
                                it->second.data.data(), length);
@@ -314,6 +320,7 @@ private:
     
     std::unordered_map<TKey, ValueWrapper> paramShardTable;
     std::unordered_map<TKey, TensorWrapper> tensorShardTable;
+    std::mutex step_lock;
     size_t last_epoch_version{0};
     
     UpdaterType updaterType;

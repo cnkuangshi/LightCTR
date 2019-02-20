@@ -133,7 +133,7 @@ public:
             for (size_t p = 0; p < minibatch_epoch; p++) {
                 size_t start_pos = p * batch_size;
                 
-                batchGradCompute(i * epoch + p + 1, start_pos,
+                batchGradCompute(i * minibatch_epoch + p + 1, start_pos,
                                  min(start_pos + batch_size, this->dataRow_cnt),
                                  false);
             }
@@ -161,7 +161,6 @@ public:
     void batchGradCompute(size_t epoch, size_t rbegin, size_t rend, bool predicting) {
         // TODO cache replacement and transmission algorithms
         pull_map.clear();
-        tensor_map.clear();
         push_map.clear();
         
         for (size_t rid = rbegin; rid < rend; rid++) { // data row
@@ -171,7 +170,6 @@ public:
                 if (pull_map.count(fid) == 0) { // keys need unique
                     // obsolete feature will be default 0
                     pull_map.insert(make_pair(fid, Value()));
-                    tensor_map.insert(make_pair(fid, dataSet[rid][i].field));
                 }
             }
         }
@@ -186,28 +184,37 @@ public:
                     std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 }
             } while(res != pull_map.size());
-            
-            worker.pull_tensor_op.sync(tensor_map, epoch);
         }
         
         for (size_t rid = rbegin; rid < rend; rid++) { // data row
+            tensor_map.clear();
+            
             float pred = 0.0f;
-            set<size_t> fields;
+            
             // wide part
+            set<size_t> feilds;
             for (size_t i = 0; i < dataSet[rid].size(); i++) {
                 const size_t fid = dataSet[rid][i].first;
                 const Value param = pull_map[fid];
                 
                 const float X = dataSet[rid][i].second;
                 pred += param.w * X;
-                fields.insert(dataSet[rid][i].field);
+                
+                if (feilds.count(dataSet[rid][i].field) == 0) {
+                    tensor_map.insert(make_pair(fid, dataSet[rid][i].field));
+                    feilds.insert(dataSet[rid][i].field);
+                }
             }
+            // pull dense model
+            worker.pull_tensor_op.sync(tensor_map, epoch);
+            
             // deep part
             Matrix deep_input(1, field_cnt * factor_dim);
             deep_input.zeroInit();
-            for (auto it = fields.begin(); it != fields.end(); it++) {
-                auto memAddr = param_buf->getMemory(*it);
-                memcpy(deep_input.pointer()->data() + *it * factor_dim, memAddr.first, factor_dim);
+            for (auto it = tensor_map.begin(); it != tensor_map.end(); it++) {
+                auto memAddr = param_buf->getMemory((size_t)it->second.w);
+                memcpy(deep_input.pointer()->data() + (size_t)it->second.w * factor_dim,
+                       memAddr.first, factor_dim * sizeof(float));
             }
             vector<Matrix*> wrapper;
             wrapper.resize(1);
@@ -254,13 +261,14 @@ public:
             outputLayer->backward(&wrapper);
             const Matrix* delta = this->inputLayer->inputDelta(); // get delta of deep_input
             grad_buf->lazyAllocate(delta->pointer()->data());
+            worker.push_tensor_op.sync(tensor_map, epoch);
         }
         
         // Push grads to PS
         if (push_map.size() > 0) {
             worker.push_op.sync(push_map, epoch);
-            worker.push_tensor_op.sync(tensor_map, epoch);
         }
+        inputLayer->applyBatchGradient();
     }
     
 private:
