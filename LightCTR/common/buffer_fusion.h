@@ -16,6 +16,7 @@
 template <typename T>
 class BufferFusion {
 public:
+    BufferFusion() = delete;
     BufferFusion(bool _autoRelease, bool _lazyMode):
         autoRelease(_autoRelease), lazyMode(_lazyMode) {
         
@@ -44,7 +45,7 @@ public:
         bufs_size_arr.clear();
     }
     
-    std::pair<T*, size_t> getMemory(size_t index) {
+    std::pair<T*, size_t> getMemory(size_t index) const {
         assert(index < bufs_size_arr.size());
         return std::make_pair(bufs_ptr_arr[index], bufs_size_arr[index]);
     }

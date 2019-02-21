@@ -101,13 +101,6 @@ public:
         
         L2Reg_ratio = 0.f;
         batch_size = GradientUpdater::__global_minibatch_size;
-    }
-    
-    ~Distributed_Algo_Abst() {
-    }
-    
-    void Train() {
-        GradientUpdater::__global_bTraining = true;
         
         // init Buffer fusion
         for (size_t i = 0; i < field_cnt; i++) {
@@ -122,6 +115,20 @@ public:
         inputLayer = new Fully_Conn_Layer<Tanh>(NULL, field_cnt * factor_dim, 50);
         inputLayer->needInputDelta = true;
         outputLayer = new Fully_Conn_Layer<Sigmoid>(inputLayer, 50, 1);
+    }
+    
+    ~Distributed_Algo_Abst() {
+        delete inputLayer;
+        delete outputLayer;
+        
+        worker.shutdown([this]() {
+            terminate_barrier.unblock();
+        });
+        terminate_barrier.block();
+    }
+    
+    void Train() {
+        GradientUpdater::__global_bTraining = true;
         
         vector<float> loss_curve, accuracy_curve;
         for (size_t i = 0; i < this->epoch; i++) {
@@ -151,11 +158,18 @@ public:
         
         puts("Train Task Complete");
         GradientUpdater::__global_bTraining = false;
+    }
+    
+    void Predict() {
+        GradientUpdater::__global_bTraining = false;
         
-        worker.shutdown([this]() {
-            terminate_barrier.unblock();
-        });
-        terminate_barrier.block();
+        train_loss = 0;
+        accuracy = 0;
+        
+        batchGradCompute(0x7fffffff, 0, this->dataRow_cnt, true);
+        
+        printf("[Worker Predict] loss = %f accuracy = %f\n",
+               train_loss, 1.0 * accuracy / dataRow_cnt);
     }
     
     // Async-SGD

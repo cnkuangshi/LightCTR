@@ -77,7 +77,7 @@ public:
     
     void applyBP(size_t epoch) const {
 #ifdef WORKER_RING
-        auto buf_fusion = std::make_shared<BufferFusion<float> >();
+        auto buf_fusion = std::make_shared<BufferFusion<float> >(false, false);
         this->inputLayer->registerGradient(buf_fusion);
         syncer->syncGradient(buf_fusion, epoch);
 #endif

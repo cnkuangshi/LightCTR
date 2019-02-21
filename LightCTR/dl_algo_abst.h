@@ -170,7 +170,7 @@ public:
                     }
                 }
                 threadpool->wait();
-                printf("\nepoch %zu Loss = %f correct = %.3f\n",
+                printf("Epoch %zu Loss = %f correct = %.3f\n",
                        p, loss.load(), 1.0f * correct / dataRow_cnt);
             }
         }
