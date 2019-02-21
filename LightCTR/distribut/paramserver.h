@@ -17,7 +17,7 @@
 #include "../util/gradientUpdater.h"
 #include "dist_machine_abst.h"
 
-const size_t kStalenessStepThreshold = 5;
+const size_t kStalenessStepThreshold = 10;
 
 enum UpdaterType {
     SGD = 0,
@@ -119,10 +119,13 @@ private:
                                              PackageDescript& response) {
             {
                 std::unique_lock<std::mutex> lock(step_lock);
-                if (last_epoch_version + kStalenessStepThreshold <= request->epoch_version) {
+                
+                if (request->epoch_version > last_epoch_version &&
+                    // TODO dynamic control waiting kStalenessStepThreshold
+                    staleness_epoch_version > kStalenessStepThreshold) {
                     // None values response indicate that worker should wait a moment
-                    printf("[PS PULL] last version %zu but recv %zu\n",
-                           last_epoch_version, request->epoch_version);
+                    printf("[PS PULL] staleness %zu but recv %zu\n",
+                           staleness_epoch_version, request->epoch_version);
                     return;
                 }
             }
@@ -179,8 +182,21 @@ private:
             
             {
                 std::unique_lock<std::mutex> lock(step_lock);
-                if (last_epoch_version + kStalenessStepThreshold <= request->epoch_version) {
-                    printf("[PS PUSH] last version %zu but recv %zu\n",
+                
+                if (staleness_epoch_version > 0 &&
+                    worker_id == staleness_workerid &&
+                    staleness_epoch_version > (int)last_epoch_version - (int)request->epoch_version) {
+                    // slowest node is catching up
+                    staleness_epoch_version = std::max(0,
+                                                       (int)last_epoch_version - (int)request->epoch_version);
+                }
+                if (staleness_epoch_version < (int)last_epoch_version - (int)request->epoch_version) {
+                    staleness_epoch_version = std::max(0,
+                                                       (int)last_epoch_version - (int)request->epoch_version);
+                    staleness_workerid = worker_id;
+                }
+                if (request->epoch_version + kStalenessStepThreshold < last_epoch_version) {
+                    printf("[PS PUSH] last version %zu but recv %zu, drop behindhand\n",
                            last_epoch_version, request->epoch_version);
                     return;
                 }
@@ -321,7 +337,9 @@ private:
     std::unordered_map<TKey, ValueWrapper> paramShardTable;
     std::unordered_map<TKey, TensorWrapper> tensorShardTable;
     std::mutex step_lock;
-    size_t last_epoch_version{0};
+    size_t last_epoch_version{1};
+    size_t staleness_epoch_version{0};
+    size_t staleness_workerid{0};
     
     UpdaterType updaterType;
     bool status_serving{false};

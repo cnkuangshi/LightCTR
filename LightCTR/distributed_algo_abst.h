@@ -138,7 +138,8 @@ public:
                                  false);
             }
             
-            printf("[Worker Train] epoch = %zu loss = %f\n", i, -train_loss);
+            printf("[Worker Train] epoch = %zu loss = %f accuracy = %f\n",
+                   i, train_loss, 1.0 * accuracy / dataRow_cnt);
             loss_curve.push_back(train_loss);
             accuracy_curve.push_back(1.0 * accuracy / dataRow_cnt);
         }
@@ -176,14 +177,7 @@ public:
         
         // Pull lastest batch parameters from PS
         if (pull_map.size() > 0) {
-            size_t res = 0;
-            do {
-                res = worker.pull_op.sync(pull_map, epoch);
-                if (res != pull_map.size()) {
-                    puts("wait for other workers");
-                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                }
-            } while(res != pull_map.size());
+            worker.pull_op.sync(pull_map, epoch);
         }
         
         for (size_t rid = rbegin; rid < rend; rid++) { // data row

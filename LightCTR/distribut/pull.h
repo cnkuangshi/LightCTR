@@ -40,24 +40,31 @@ public:
     // pull params used keys
     // when headByte == 'N' means sparse vector, unordered_map<fid, float value>
     // when headByte == 'T' means tensor vector, unordered_map<fid, offset>
-    size_t sync(std::unordered_map<TKey, TValue> &keys, size_t epoch) {
+    void sync(std::unordered_map<TKey, TValue> &keys, size_t epoch) {
         if (headByte == 'T')
             assert(buf_fusion);
         assert(epoch > 0);
-        Barrier barrier;
         int candidate_ps = 0;
+        
         size_t recv_param_cnt = 0;
-        sendToPS(keys, candidate_ps, epoch,
-                 [&barrier, &candidate_ps, &recv_param_cnt](size_t inc) {
-            recv_param_cnt += inc;
-            candidate_ps--;
-            assert(candidate_ps >= 0);
-            if (candidate_ps <= 0) {
-                barrier.unblock();
+        do {
+            Barrier barrier;
+            recv_param_cnt = 0;
+            sendToPS(keys, candidate_ps, epoch,
+                     [&barrier, &candidate_ps, &recv_param_cnt](size_t inc) {
+                         recv_param_cnt += inc;
+                         candidate_ps--;
+                         assert(candidate_ps >= 0);
+                         if (candidate_ps <= 0) {
+                             barrier.unblock();
+                         }
+                     });
+            barrier.block();
+            if (recv_param_cnt != keys.size()) {
+                puts("[WORKER PULL] Wait for other workers");
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
-        });
-        barrier.block();
-        return recv_param_cnt;
+        } while(recv_param_cnt != keys.size());
     }
     
 private:
@@ -137,8 +144,9 @@ private:
             };
             gDelivery.send_async(desc, to_id);
         }
-        
+#ifdef DEBUG
         printf("[WORKER Pull] %zu %c Keys Sended\n", keys.size(), headByte);
+#endif
     }
     
     ThreadLocal<std::map<size_t, std::vector<TKey> >*> tl_map;

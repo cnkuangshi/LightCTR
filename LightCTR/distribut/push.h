@@ -108,8 +108,9 @@ private:
             };
             gDelivery.send_async(desc, to_id);
         }
-        
+#ifdef DEBUG
         printf("[WORKER Push] %zu %c Grad-pairs Sended\n", grads.size(), headByte);
+#endif
     }
     
     ThreadLocal<std::map<size_t, std::vector<std::pair<TKey, TValue> > >*> tl_map;
