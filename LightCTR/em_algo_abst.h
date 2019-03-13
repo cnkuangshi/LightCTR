@@ -41,10 +41,10 @@ public:
                 lastLE = likelihood;
             } else {
                 cout << "have been converge" << endl;
-                printArguments();
                 break;
             }
         }
+        printArguments();
     }
     void saveModel(size_t epoch) {
         

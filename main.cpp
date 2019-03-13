@@ -180,7 +180,7 @@ int main(int argc, const char * argv[]) {
                          /*multiclass_output_cnt*/10);
     T = 1;
 #endif
-
+    clock_start();
     while (T--) {
         train->Train();
         
@@ -190,21 +190,23 @@ int main(int argc, const char * argv[]) {
 #endif
 #ifdef TEST_EMB
 //        train->loadPretrainFile("./output/word_embedding.txt");
+        const size_t cluster_cnt = 20;
         // Notice, word embedding vector multiply 10 to cluster
         EM_Algo_Abst<vector<float> > *cluster =
         new Train_GMM_Algo(
                         "./output/word_embedding.txt",
-                        50,
-                        50,
+                        100,
+                        cluster_cnt,
                         100,
                         /*scale*/10);
         train->Quantization(/*part_cnt*/20, /*cluster_cnt*/64);
         cluster->Train();
         shared_ptr<vector<int> > ans = cluster->Predict();
-        train->EmbeddingCluster(ans, 50);
+        train->EmbeddingCluster(ans, cluster_cnt);
 #endif
         cout << "------------" << endl;
     }
+    printf("Training Cost %fs\n", clock_cycles() * 1.0e-9);
     train->saveModel(0);
     delete train;
 #else

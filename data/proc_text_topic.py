@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 #
 #  proc_text_topic.py
 #  LightCTR
@@ -10,7 +11,7 @@ import sys
 
 stopset = {'a','the','of','to','an','but','or','its','about','would','and','in','that','is','are','be','been','will','this','was','for','on','as','from','at','by','with','have','which','has','had','were','it','not'}
 
-def generate(infile,word_id_file,training_file,vocab_size):
+def generate(infile,word_id_file_path,training_file_path,vocab_size):
 	term_dict = {}
 
 	infp = open(infile,'r')
@@ -29,9 +30,9 @@ def generate(infile,word_id_file,training_file,vocab_size):
 				term_dict[term] += 1
 			else:
 				term_dict[term] = 1
-	term_list = sorted(term_dict.items(),key=lambda x : x[1],reverse=True)	
+	term_list = sorted(term_dict.items(),key=lambda x : x[1],reverse=True)
 	print len(term_list)
-	term_list = term_list[:5000]
+	term_list = term_list[:int(vocab_size)]
 
 	termid_dict = {}
 	term_id = 0
@@ -41,13 +42,16 @@ def generate(infile,word_id_file,training_file,vocab_size):
 	orderitems=[[v[1],v[0]] for v in termid_dict.items()]
 	orderitems.sort()
 
-	outfp = open(word_id_file,'w')
+	outfp = open(word_id_file_path,'w')
 	for i in range(0, len(orderitems)):
 		outfp.write('%d %s %d\n'%(orderitems[i][0], orderitems[i][1], term_dict[orderitems[i][1]]))
 	outfp.close()
 
+	print("Vocab file generating complete")
+	# exit()
+
 	infp.seek(0,0)
-	outfp = open(training_file,'w')
+	outfp = open(training_file_path,'w')
 
 	for line in infp:
 		if line.find('<') != -1 and line.find('>') != -1:
@@ -82,6 +86,6 @@ def generate(infile,word_id_file,training_file,vocab_size):
 
 if __name__ == '__main__':
 	if len(sys.argv) != 3:
-		print >> sys.stderr,'Usage : [%s] [input data file]'%(sys.argv[0])
+		print >> sys.stderr,'Usage : [%s] [input data file] [vocab size]'%(sys.argv[0])
 		sys.exit(0)
 	generate(sys.argv[1],"./vocab.txt","./train_topic.csv",sys.argv[2])

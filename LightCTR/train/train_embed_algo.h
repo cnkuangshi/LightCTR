@@ -61,7 +61,7 @@ public:
     ~Train_Embed_Algo() {
         delete [] treeArry;
         delete [] negSampleTable;
-        delete [] negWeight;
+        negWeight.clear();
         word_embedding.clear();
         delete threadpool;
         threadpool = NULL;
@@ -150,18 +150,16 @@ private:
                 word_frequency.emplace_back(fre);
                 vocabTable[string(str)] = wid;
                 vocabString.emplace_back(string(str));
-                threadpool->addTask([&, wid]() {
-                    for (int i = 0; i < emb_dimention; i++) { // random init embedding
-                        float r = UniformNumRand() - 0.5f;
-                        word_embedding[wid * emb_dimention] = r / emb_dimention;
-                    }
-                });
+                
+                for (int i = 0; i < emb_dimention; i++) { // random init embedding
+                    float r = UniformNumRand() - 0.5f;
+                    word_embedding[wid * emb_dimention + i] = r / emb_dimention;
+                }
             }
             if (vocabTable.size() >= vocab_cnt) {
                 break;
             }
         }
-        threadpool->wait();
         assert(word_frequency.size() == vocab_cnt);
     }
     void loadTextFile(ifstream* _textStream) {
@@ -173,12 +171,9 @@ private:
     }
     
     void InitNegSampleTable() {
-        negWeight = new vector<float>[vocab_cnt];
-        for (size_t v = 0; v < vocab_cnt; v++) {
-            negWeight[v].resize(emb_dimention);
-            // negative sampling weight init with 0
-            fill(negWeight[v].begin(), negWeight[v].end(), 0);
-        }
+        negWeight.resize(vocab_cnt * emb_dimention);
+        // negative sampling weight init with 0
+        fill(negWeight.begin(), negWeight.end(), 0);
         
         int a;
         long long sum_word_pow = 0; // normalizer
@@ -208,7 +203,7 @@ private:
     const int negTable_size = 1e8;
     float subsampling;
     int* negSampleTable;
-    vector<float>* negWeight;
+    vector<float> negWeight;
     
     unordered_map<string, size_t> vocabTable; // hash vocab to id
     vector<string> vocabString; // id to string

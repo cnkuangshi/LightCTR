@@ -62,11 +62,12 @@ public:
         size_t part_dim_interval = dimention / part_cnt;
         
         vector<vector<CompressT> > quantizated_codes;
+        quantizated_codes.reserve(part_cnt);
         for (auto i = 0; i < part_cnt; i++) {
             auto part_centroids = centroids + i * cluster_cnt * part_dim_interval;
-            auto res = kmeans(data, len, i, part_centroids, part_dim_interval);
-            quantizated_codes.emplace_back(res);
-            printf("Finished %d part\n", i);
+            auto part_quancodes = std::vector<CompressT>(len);
+            kmeans(data, len, i, part_centroids, part_dim_interval, part_quancodes);
+            quantizated_codes.emplace_back(part_quancodes);
         }
         return quantizated_codes; // return local vector by RVO
     }
@@ -79,9 +80,9 @@ public:
     
 private:
     // get centroids of one part of dimention
-    std::vector<CompressT> kmeans(const RealT* data, size_t len,
+    void kmeans(const RealT* data, size_t len,
                 const size_t which_part, RealT* part_centroids,
-                size_t sub_dim) {
+                size_t sub_dim, std::vector<CompressT>& part_quancodes) {
         // random select one data row to be centroid
         std::vector<size_t> perm(len);
         std::iota(perm.begin(), perm.end(), 0);
@@ -93,7 +94,6 @@ private:
             memcpy(&part_centroids[i * sub_dim], x, sub_dim * sizeof(RealT));
         }
         // begin to train by kmeans
-        auto part_quancodes = std::vector<CompressT>(len);
         float preIntera = 0x0fffffff;
         for (auto i = 0; i < 100; i++) {
             auto intera = Estep(data, len, which_part, part_centroids,
@@ -104,8 +104,7 @@ private:
             preIntera = intera;
             MStep(data, len, which_part, part_centroids, part_quancodes.data(), sub_dim);
         }
-        printf("intera = %f\n", preIntera);
-        return part_quancodes;
+        printf("Finish part %zu intera = %f\n", which_part, preIntera);
     }
     
     float Estep(const RealT* data, size_t len,
@@ -148,18 +147,14 @@ private:
             ele_cnt[which_class]++;
             
             auto c = part_centroids + which_class * sub_dim;
-            for (auto j = 0; j < sub_dim; j++) {
-                c[j] += x[j];
-            }
+            avx_vecAdd(c, x, c, sub_dim);
         }
         
         for (auto k = 0; k < cluster_cnt; k++) {
             const size_t cnt = ele_cnt[k];
             auto c = part_centroids + k * sub_dim;
             if (cnt > 0) {
-                for (auto j = 0; j < sub_dim; j++) {
-                    c[j] /= cnt;
-                }
+                avx_vecScale(c, c, sub_dim, 1.0 / cnt);
             }
         }
         
