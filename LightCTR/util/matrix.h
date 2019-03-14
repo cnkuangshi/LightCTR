@@ -60,9 +60,9 @@ public:
         return x_len * y_len;
     }
     
-    inline const vector<float>::iterator getEle(size_t x, size_t y) const {
+    inline float* getEle(size_t x, size_t y) const {
         assert(x * y_len + y < size() && x < x_len);
-        return matrix->begin() + x * y_len + y;
+        return matrix->data() + x * y_len + y;
     }
     
     inline void debugPrint() const {

@@ -19,8 +19,6 @@ void Train_NFM_Algo::init() {
     sumVX = new float[this->dataRow_cnt * this->factor_cnt];
     memset(sumVX, 0, sizeof(float) * this->dataRow_cnt * this->factor_cnt);
     
-    printf("Training NFM dropout = %.2f\n", dropout.dropout_rate);
-    
     printf("-- Inner FC-1 ");
     this->inputLayer = new Fully_Conn_Layer<Sigmoid>(NULL, this->factor_cnt,
                                                      this->hidden_layer_size);
@@ -35,14 +33,13 @@ void Train_NFM_Algo::Train() {
     
     for (size_t i = 0; i < this->epoch; i++) {
         
+        loss = 0;
+        accuracy = 0;
         memset(sumVX, 0, sizeof(float) * this->dataRow_cnt * this->factor_cnt);
         
         size_t minibatch_epoch = (this->dataRow_cnt + this->batch_size - 1) / this->batch_size;
         
         for (size_t p = 0; p < minibatch_epoch; p++) {
-            // re-sample dropout
-            dropout.Mask(dropout_mask, this->factor_cnt);
-            
             memset(update_g, 0, sizeof(float) * learnable_params_cnt);
             
             size_t start_pos = p * batch_size;
@@ -50,6 +47,7 @@ void Train_NFM_Algo::Train() {
             // apply gradient
             ApplyGrad();
         }
+        printf("Epoch %zu loss = %f accuracy = %f\n", i, loss, 1.0 * accuracy / dataRow_cnt);
     }
     
     GradientUpdater::__global_bTraining = false;
@@ -76,30 +74,27 @@ void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
             fc_input_Matrix->zeroInit();
             float fm_pred = 0.0f;
             
+            vector<float> tmp_vec, tmp_vec2;
+            tmp_vec.resize(factor_cnt);
+            tmp_vec2.resize(factor_cnt);
+            
             for (size_t i = 0; i < dataSet[rid].size(); i++) {
                 const size_t fid = dataSet[rid][i].first;
                 assert(fid < this->feature_cnt);
                 
                 const float X = dataSet[rid][i].second;
-                fm_pred += W[fid] * X * dropout.rescale(); // wide part
+                fm_pred += W[fid] * X; // wide part
                 
-                for (size_t fac_itr = 0; fac_itr < this->factor_cnt; fac_itr++) {
-                    if (!dropout_mask[fac_itr]) { // apply dropout mask
-                        continue;
-                    }
-                    const float tmp = *getV(fid, fac_itr) * X;
-                    *getSumVX(rid, fac_itr) += tmp;
-                    *fc_input_Matrix->getEle(0, fac_itr) -= 0.5 * tmp * tmp * dropout.rescale();
-                }
+                avx_vecScale(getV(fid, 0), tmp_vec.data(), factor_cnt, X);
+                avx_vecAdd(getSumVX(rid, 0), tmp_vec.data(), getSumVX(rid, 0), factor_cnt);
+                avx_vecScale(tmp_vec.data(), tmp_vec2.data(), factor_cnt, -0.5);
+                avx_vecScalerAdd(fc_input_Matrix->getEle(0, 0),
+                                 tmp_vec.data(),
+                                 fc_input_Matrix->getEle(0, 0),
+                                 tmp_vec2.data(), factor_cnt);
             }
-            for (size_t fac_itr = 0; fac_itr < this->factor_cnt; fac_itr++) {
-                if (!dropout_mask[fac_itr]) { // apply dropout mask
-                    continue;
-                }
-                const float tmp = *getSumVX(rid, fac_itr);
-                assert(!isnan(tmp));
-                *fc_input_Matrix->getEle(0, fac_itr) += 0.5 * tmp * tmp * dropout.rescale();
-            }
+            avx_vecScale(getSumVX(rid, 0), tmp_vec.data(), factor_cnt, 0.5);
+            avx_vecScalerAdd(fc_input_Matrix->getEle(0, 0), getSumVX(rid, 0), fc_input_Matrix->getEle(0, 0), tmp_vec.data(), factor_cnt);
             
             // deep part
             wrapper->at(0) = fc_input_Matrix;
@@ -108,6 +103,13 @@ void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
 
             fm_pred += fc_pred->at(0);
             fm_pred = sigmoid.forward(fm_pred); // FM activate
+            
+            loss += (int)label[rid] == 1 ? -log(fm_pred) : -log(1.0 - fm_pred);
+            if (fm_pred > 0.5 && label[rid] == 1) {
+                accuracy++;
+            } else if (fm_pred < 0.5 && label[rid] == 0) {
+                accuracy++;
+            }
             
             // accumulate grad
             accumWideGrad(rid, fm_pred);
@@ -126,46 +128,35 @@ void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
 
 void Train_NFM_Algo::accumWideGrad(size_t rid, float pred) {
     const float target = label[rid];
-    size_t fid, x;
+    size_t fid;
+    float x;
     for (size_t i = 0; i < dataSet[rid].size(); i++) {
-        if (dataSet[rid][i].second == 0) {
-            continue;
-        }
         fid = dataSet[rid][i].first;
         assert(fid < this->feature_cnt);
         x = dataSet[rid][i].second;
         
-        {
-            unique_lock<SpinLock> glock(this->lock_w);
-            *update_W(fid) += LogisticGradW(pred, target, x) + L2Reg_ratio * W[fid];;
-        }
+        *update_W(fid) += LogisticGradW(pred, target, x) + L2Reg_ratio * W[fid];
     }
 }
 
 void Train_NFM_Algo::accumDeepGrad(size_t rid, vector<float>* delta) {
-    size_t fid, X;
+    size_t fid;
+    float X;
+    
+    vector<float> tmp_vec;
+    tmp_vec.resize(factor_cnt);
+    
     for (size_t i = 0; i < dataSet[rid].size(); i++) {
-        if (dataSet[rid][i].second == 0) {
-            continue;
-        }
         fid = dataSet[rid][i].first;
         assert(fid < this->feature_cnt);
         X = dataSet[rid][i].second;
 
-        for (size_t fac_itr = 0; fac_itr < this->factor_cnt; fac_itr++) {
-            if (!dropout_mask[fac_itr]) { // apply dropout mask
-                continue;
-            }
-            const float grad = delta->at(fac_itr) * X;
-            
-            const float sum = *getSumVX(rid, fac_itr);
-            const float v = *getV(fid, fac_itr);
-            
-            {
-                unique_lock<SpinLock> glock(this->lock_v);
-                *update_V(fid, fac_itr) += 0.1 * LogisticGradV(grad, sum, v, X) + L2Reg_ratio * v;
-            }
-        }
+        avx_vecScalerAdd(getSumVX(rid, 0), getV(fid, 0),
+                         tmp_vec.data(), -X, factor_cnt);
+        avx_vecScale(delta->data(), delta->data(), factor_cnt, X);
+        avx_vecScalerAdd(update_V(fid, 0), tmp_vec.data(),
+                         update_V(fid, 0), delta->data(), factor_cnt);
+        avx_vecScalerAdd(update_V(fid, 0), getV(fid, 0), update_V(fid, 0), L2Reg_ratio, factor_cnt);
     }
 }
 

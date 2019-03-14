@@ -59,7 +59,6 @@ private:
         return &update_g[fid];
     }
     inline float* update_V(size_t fid, size_t facid) const {
-        assert(this->feature_cnt + fid * this->factor_cnt + facid < this->feature_cnt * (this->factor_cnt + 1));
         return &update_g[this->feature_cnt + fid * this->factor_cnt + facid];
     }
     void ApplyGrad();

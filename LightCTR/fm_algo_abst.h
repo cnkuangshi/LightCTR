@@ -38,7 +38,7 @@ class FM_Algo_Abst {
 public:
     FM_Algo_Abst(string _dataPath, size_t _factor_cnt,
                  size_t _field_cnt = 0, size_t _feature_cnt = 0):
-    feature_cnt(_feature_cnt), field_cnt(_field_cnt), factor_cnt(_factor_cnt), dropout(0.2) {
+    feature_cnt(_feature_cnt), field_cnt(_field_cnt), factor_cnt(_factor_cnt) {
         proc_cnt = thread::hardware_concurrency();
         loadDataRow(_dataPath);
         init();
@@ -64,8 +64,6 @@ public:
             V[i] = GaussRand() * scale;
         }
         sumVX = NULL;
-        
-        dropout_mask = new bool[this->factor_cnt];
 #endif
     }
     
@@ -146,33 +144,26 @@ public:
     
     float *V, *sumVX;
     inline float* getV(size_t fid, size_t facid) const {
-        assert(this->field_cnt == 0);
-        assert(fid * this->factor_cnt + facid < this->feature_cnt * this->factor_cnt);
         return &V[fid * this->factor_cnt + facid];
     }
     inline float* getV_field(size_t fid, size_t fieldid, size_t facid) const {
-        assert(fid * this->factor_cnt + facid < this->feature_cnt * field_cnt * this->factor_cnt);
         return &V[fid * this->field_cnt * this->factor_cnt + fieldid * this->factor_cnt + facid];
     }
     inline float* getSumVX(size_t rid, size_t facid) const {
-        assert(rid * this->factor_cnt + facid < this->dataRow_cnt * this->factor_cnt);
         return &sumVX[rid * this->factor_cnt + facid];
     }
     
     vector<vector<FMFeature> > dataSet;
     
 protected:
-    DropoutUpdater dropout;
     inline float LogisticGradW(float pred, float label, float x) {
-        return (pred - label) * x * dropout.rescale();
+        return (pred - label) * x;
     }
     inline float LogisticGradV(float gradW, float sum, float v, float x) {
         return gradW * (sum - v * x);
     }
     
     AdagradUpdater_Num updater;
-    
-    bool* dropout_mask;
     
     vector<int> label;
     vector<set<int> > cross_field;

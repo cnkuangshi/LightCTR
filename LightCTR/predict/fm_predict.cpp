@@ -12,6 +12,10 @@
 void FM_Predict::Predict(string savePath) {
     vector<float> ans;
     int badcase = 0;
+    
+    vector<float> tmp_vec;
+    tmp_vec.resize(fm->factor_cnt);
+    
     for (size_t rid = 0; rid < this->test_dataRow_cnt; rid++) { // data row
         float fm_pred = 0.0f;
         if (fm->sumVX != NULL) {
@@ -21,18 +25,15 @@ void FM_Predict::Predict(string savePath) {
                 const float X = test_dataSet[rid][i].second;
                 fm_pred += fm->W[fid] * X;
 #ifdef FM
-                for (size_t fac_itr = 0; fac_itr < fm->factor_cnt; fac_itr++) {
-                    float tmp = *fm->getV(fid, fac_itr) * X;
-                    fm_pred -= 0.5 * tmp * tmp;
-                }
+                avx_vecScale(fm->getV(fid, 0), tmp_vec.data(), fm->factor_cnt, X);
+                fm_pred -= 0.5 * avx_dotProduct(tmp_vec.data(), tmp_vec.data(), fm->factor_cnt);
 #endif
             }
 #ifdef FM
-            for (size_t fac_itr = 0; fac_itr < fm->factor_cnt; fac_itr++) {
-                fm_pred += 0.5 * (*fm->getSumVX(rid, fac_itr)) * (*fm->getSumVX(rid, fac_itr));
-            }
+            fm_pred += 0.5 * avx_dotProduct(fm->getSumVX(rid, 0), fm->getSumVX(rid, 0), fm->factor_cnt);
 #endif
         } else {
+            // Field-aware FM
             for (size_t i = 0; i < test_dataSet[rid].size(); i++) {
                 const size_t fid = test_dataSet[rid][i].first;
                 const float X = test_dataSet[rid][i].second;
@@ -45,13 +46,9 @@ void FM_Predict::Predict(string savePath) {
                     const float X2 = test_dataSet[rid][j].second;
                     const size_t field2 = test_dataSet[rid][j].field;
                     
-                    float field_pred = 0;
-                    for (size_t fac_itr = 0; fac_itr < fm->factor_cnt; fac_itr++) {
-                        float v1 = *fm->getV_field(fid, field2, fac_itr);
-                        float v2 = *fm->getV_field(fid2, field, fac_itr);
-                        field_pred += v1 * v2;
-                    }
-                    fm_pred += field_pred * X * X2;
+                    float field_w = avx_dotProduct(fm->getV_field(fid, field2, 0),
+                                                   fm->getV_field(fid2, field, 0), fm->factor_cnt);
+                    fm_pred += field_w * X * X2;
                 }
             }
         }
@@ -71,7 +68,6 @@ void FM_Predict::Predict(string savePath) {
         int correct = 0;
         for (size_t i = 0; i < test_label.size(); i++) {
             loss += (int)this->test_label[i] == 1 ? -log(ans[i]) : -log(1.0 - ans[i]);
-            assert(!isnan(loss));
             if (ans[i] > 0.5 && this->test_label[i] == 1) {
                 correct++;
             } else if (ans[i] < 0.5 && this->test_label[i] == 0) {

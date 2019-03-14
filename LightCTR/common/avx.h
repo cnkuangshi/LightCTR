@@ -58,6 +58,30 @@ inline void avx_vecScalerAdd(const float* x, const float* y, float* res,
     }
 }
 
+inline void avx_vecScalerAdd(const float* x, const float* y, float* res,
+                             const float* y_scalar, size_t len) {
+    const __m256 _scalar = _mm256_loadu_ps(y_scalar);
+    if (len > 7) {
+        for (; len > 7; len -= 8) {
+            __m256 t = _mm256_add_ps(_mm256_loadu_ps(x),
+                                     _mm256_mul_ps(_mm256_loadu_ps(y), _scalar));
+            _mm256_store_ps(res, t);
+            x += 8;
+            y += 8;
+            y_scalar += 8;
+            res += 8;
+        }
+    }
+    // Don't forget the remaining values.
+    for (; len > 0; len--) {
+        *res = *x + *y * *y_scalar;
+        x++;
+        y++;
+        y_scalar++;
+        res++;
+    }
+}
+
 inline float hsum256_ps_avx(__m256 v) {
     const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(v, 1), _mm256_castps256_ps128(v));
     const __m128 x64 = _mm_add_ps(x128, _mm_movehl_ps(x128, x128));

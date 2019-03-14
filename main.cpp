@@ -100,20 +100,20 @@ int main(int argc, const char * argv[]) {
 #ifdef TEST_FM
     FM_Algo_Abst *train = new Train_FM_Algo(
                         "./data/train_sparse.csv",
-                        /*epoch*/30,
-                        /*factor_cnt*/10);
+                        /*epoch*/5,
+                        /*factor_cnt*/8);
     FM_Predict pred(train, "./data/train_sparse.csv", true);
 #elif defined TEST_FFM
     FM_Algo_Abst *train = new Train_FFM_Algo(
                                             "./data/train_sparse.csv",
-                                            /*epoch*/1,
-                                            /*factor_cnt*/4,
+                                            /*epoch*/5,
+                                            /*factor_cnt*/2,
                                             /*field*/68);
     FM_Predict pred(train, "./data/train_sparse.csv", true);
 #elif defined TEST_NFM
     FM_Algo_Abst *train = new Train_NFM_Algo(
                                              "./data/train_sparse.csv",
-                                             /*epoch*/3,
+                                             /*epoch*/5,
                                              /*factor_cnt*/10,
                                              /*hidden_layer_size*/32);
     FM_Predict pred(train, "./data/train_sparse.csv", true);
@@ -184,7 +184,7 @@ int main(int argc, const char * argv[]) {
     while (T--) {
         train->Train();
         
-#if (defined TEST_FM) || (defined TEST_FFM) || (defined TEST_NFM) || (defined TEST_GBM)
+#if (defined TEST_FM) || (defined TEST_FFM) || (defined TEST_GBM)
         // Notice whether the algorithm have Predictor, otherwise Annotate it.
         pred.Predict("");
 #endif

@@ -11,6 +11,7 @@
 
 #include <string.h>
 #include "matrix.h"
+#include "../common/avx.h"
 
 class GradientUpdater {
 public:
@@ -69,11 +70,10 @@ public:
     void learnable_params_cnt(size_t cnt) {
         __adagrad_params_cnt = cnt;
     }
-    void update(size_t offset, size_t len, float*& weight, float*& grad) {
-        for (size_t i = 0; i < len; i++) {
-            weight[i] -= __global_learning_rate * grad[i] / __global_minibatch_size;
-            grad[i] = 0.0f;
-        }
+    void update(size_t offset, size_t len, float* weight, float* grad) {
+        avx_vecScalerAdd(weight, grad, weight,
+                         -__global_learning_rate / __global_minibatch_size, len);
+        memset(grad, 0, len * sizeof(float));
     }
     void update(size_t offset, vector<Matrix*>& weight, vector<Matrix*>& grad) {
         for (size_t i = 0; i < weight.size(); i++) {
@@ -133,9 +133,7 @@ public:
         fill(__adagrad_accum.begin(), __adagrad_accum.end(), 0.0f);
     }
     void clear() {
-        for (size_t i = 0; i < __adagrad_params_cnt; i++) {
-            __adagrad_accum[i] = 0;
-        }
+        fill(__adagrad_accum.begin(), __adagrad_accum.end(), 0);
     }
     template<typename T>
     void update(size_t offset, size_t len, T& weight, T& grad) {
@@ -146,8 +144,8 @@ public:
                 __adagrad_accum[offset + i] += g * g;
                 weight[i] -= __global_learning_rate * g / sqrt(__adagrad_accum[offset + i] + 1e-12);
             }
-            grad[i] = 0.0f;
         }
+        memset(grad, 0, len * sizeof(float));
     }
 private:
     vector<float> __adagrad_accum;

@@ -55,8 +55,6 @@ private:
         return &update_g[fid];
     }
     inline float* update_V(size_t fid, size_t fieldid, size_t facid) {
-        assert(this->feature_cnt + fid * this->field_cnt * this->factor_cnt
-               + fieldid * this->factor_cnt + facid <= learnable_params_cnt);
         return &update_g[this->feature_cnt + fid * this->field_cnt * this->factor_cnt
                          + fieldid * this->factor_cnt + facid];
     }
@@ -65,7 +63,6 @@ private:
     AdagradUpdater_Num updater;
     
     ThreadPool *threadpool;
-    SpinLock lock_w, lock_v;
 };
 
 #endif /* train_ffm_algo_h */
