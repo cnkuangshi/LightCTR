@@ -148,7 +148,7 @@ int main(int argc, const char * argv[]) {
                        "./data/train_text.txt",
                        /*epoch*/50,
                        /*window_size*/6,
-                       /*emb_dimention*/100,
+                       /*emb_dimension*/100,
                        /*vocab_cnt*/5000);
     T = 1;
 #elif defined TEST_CNN

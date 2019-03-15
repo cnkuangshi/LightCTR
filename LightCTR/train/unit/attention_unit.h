@@ -17,14 +17,14 @@
 template <typename ActivationFunction>
 class Attention_Unit : public Layer_Base {
 public:
-    Attention_Unit(size_t _dimention, size_t _hidden_size, size_t _recurrent_cnt):
-    Layer_Base(NULL, _recurrent_cnt, _dimention), dimention(_dimention), batch_size(_recurrent_cnt) {
+    Attention_Unit(size_t _dimension, size_t _hidden_size, size_t _recurrent_cnt):
+    Layer_Base(NULL, _recurrent_cnt, _dimension), dimension(_dimension), batch_size(_recurrent_cnt) {
         this->activeFun = new ActivationFunction();
         
         printf("Attention-based Unit\n");
         // alpha transform is computed by DxH and Hx1 fc Layer
         printf("-- Attention Inner FC-1 ");
-        transformFunc = new Fully_Conn_Layer<Sigmoid>(NULL, _dimention, _hidden_size);
+        transformFunc = new Fully_Conn_Layer<Sigmoid>(NULL, _dimension, _hidden_size);
         transformFunc->needInputDelta = true;
         printf("-- Attention Inner FC-2 ");
         transformFunc_bp = new Fully_Conn_Layer<Sigmoid>(transformFunc, _hidden_size, 1);
@@ -48,7 +48,7 @@ public:
         }
         Matrix*& attentionOutput = *tl_attentionOutput;
         if (attentionOutput == NULL) {
-            attentionOutput = new Matrix(1, dimention);
+            attentionOutput = new Matrix(1, dimension);
         }
         Matrix*& fc_output_act = *tl_fc_output_act;
         if (fc_output_act == NULL) {
@@ -64,7 +64,7 @@ public:
         
         FOR(idx, prevLOutputMatrix->size()) {
             input->at(idx) = prevLOutputMatrix->at(idx)->copy(input->at(idx)); // 1xD
-            assert(input->at(idx)->size() == dimention);
+            assert(input->at(idx)->size() == dimension);
             wrapper->at(0) = input->at(idx);
             auto res = transformFunc->forward(wrapper);
             assert(res->size() == 1);
@@ -84,7 +84,7 @@ public:
     
     void backward(vector<Matrix*>* const outputDeltaMatrix) {
         Matrix* outputDelta = outputDeltaMatrix->at(0);
-        assert(outputDelta->size() == this->output_dimention);
+        assert(outputDelta->size() == this->output_dimension);
         
         // init threadlocal var
         vector<Matrix*>*& input = *tl_input;
@@ -157,7 +157,7 @@ public:
 private:
     Fully_Conn_Layer<Sigmoid> *transformFunc, *transformFunc_bp;
     Softmax softmax;
-    size_t batch_size, dimention;
+    size_t batch_size, dimension;
     
     ThreadLocal<vector<Matrix*>*> tl_input;
     ThreadLocal<Matrix*> tl_attentionOutput;

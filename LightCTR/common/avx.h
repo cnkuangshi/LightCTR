@@ -13,6 +13,7 @@
 #include <pmmintrin.h>
 #include <xmmintrin.h>
 
+#include <cmath>
 #include "float16.h"
 
 // AVX Support
@@ -59,11 +60,11 @@ inline void avx_vecScalerAdd(const float* x, const float* y, float* res,
 
 inline void avx_vecScalerAdd(const float* x, const float* y, float* res,
                              const float* y_scalar, size_t len) {
-    const __m256 _scalar = _mm256_loadu_ps(y_scalar);
     if (len > 7) {
         for (; len > 7; len -= 8) {
             __m256 t = _mm256_add_ps(_mm256_loadu_ps(x),
-                                     _mm256_mul_ps(_mm256_loadu_ps(y), _scalar));
+                                     _mm256_mul_ps(_mm256_loadu_ps(y),
+                                                   _mm256_loadu_ps(y_scalar)));
             _mm256_store_ps(res, t);
             x += 8;
             y += 8;
@@ -144,6 +145,54 @@ inline float avx_L1Norm(const float* x, size_t len) {
     return result;
 }
 
+inline void avx_vecSqrt(const float* x, float *res, size_t len) {
+    if (len > 7) {
+        for (; len > 7; len -= 8) {
+            __m256 t = _mm256_sqrt_ps(_mm256_loadu_ps(x));
+            _mm256_store_ps(res, t);
+            x += 8;
+            res += 8;
+        }
+    }
+    for (; len > 0; len--) {
+        *res = std::sqrt(*x);
+        x++;
+        res++;
+    }
+}
+
+inline void avx_vecRsqrt(const float* x, float *res, size_t len) {
+    if (len > 7) {
+        for (; len > 7; len -= 8) {
+            __m256 t = _mm256_rsqrt_ps(_mm256_loadu_ps(x));
+            _mm256_store_ps(res, t);
+            x += 8;
+            res += 8;
+        }
+    }
+    for (; len > 0; len--) {
+        *res = 1.0 / std::sqrt(*x);
+        x++;
+        res++;
+    }
+}
+
+inline void avx_vecRcp(const float* x, float *res, size_t len) {
+    if (len > 7) {
+        for (; len > 7; len -= 8) {
+            __m256 t = _mm256_rcp_ps(_mm256_loadu_ps(x));
+            _mm256_store_ps(res, t);
+            x += 8;
+            res += 8;
+        }
+    }
+    for (; len > 0; len--) {
+        *res = 1.0 / *x;
+        x++;
+        res++;
+    }
+}
+
 inline void avx_vecScale(const float* x, float *res, size_t len, float scalar) {
     const __m256 _scalar = _mm256_broadcast_ss(&scalar);
     if (len > 7) {
@@ -157,6 +206,24 @@ inline void avx_vecScale(const float* x, float *res, size_t len, float scalar) {
     for (; len > 0; len--) {
         *res = *x * scalar;
         x++;
+        res++;
+    }
+}
+
+inline void avx_vecScale(const float* x, float *res, size_t len, const float* scalar) {
+    if (len > 7) {
+        for (; len > 7; len -= 8) {
+            __m256 t = _mm256_mul_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(scalar));
+            _mm256_store_ps(res, t);
+            x += 8;
+            scalar += 8;
+            res += 8;
+        }
+    }
+    for (; len > 0; len--) {
+        *res = *x * *scalar;
+        x++;
+        scalar++;
         res++;
     }
 }
@@ -199,33 +266,35 @@ inline float avx_L2Distance(const float* x, const float *y, size_t f) {
     return result;
 }
 
-inline void Float16_sum(void* invec1, void* invec2, void* outvec, int len) {
+inline void Float16_sum(void* invec1, void* invec2, void* res, int len) {
     auto* in1 = (float16_t*)invec1;
     auto* in2 = (float16_t*)invec2;
-    auto* out = (float16_t*)outvec;
+    auto* outp = (float16_t*)res;
     
-#if __AVX__ && __F16C__
-    for (int i = 0; i < (len / 8) * 8; i += 8) {
+    for (; len > 7; len -= 8) {
         // convert in1 & in2 to m256
-        __m256 in_m256 = _mm256_cvtph_ps(_mm_loadu_si128((__m128i*)(in1 + i)));
+        __m256 in_m256 = _mm256_cvtph_ps(_mm_loadu_si128((__m128i*)in1));
         __m256 inout_m256 =
-        _mm256_cvtph_ps(_mm_loadu_si128((__m128i*)(in2 + i)));
+        _mm256_cvtph_ps(_mm_loadu_si128((__m128i*)in2));
         
         // add them together to new_inout_m256
         __m256 new_inout_m256 = _mm256_add_ps(in_m256, inout_m256);
         
         // convert back and store in out
         __m128i new_inout_m128i = _mm256_cvtps_ph(new_inout_m256, 0);
-        _mm_storeu_si128((__m128i*)(out + i), new_inout_m128i);
+        _mm_storeu_si128((__m128i*)outp, new_inout_m128i);
+        
+        in1 += 8;
+        in2 += 8;
+        outp += 8;
     }
-#else
-    for (int i = 0; i < len; ++i) {
-        auto x = Float16(*(in1 + i));
-        auto y = Float16(*(in2 + i));
+    for (; len > 0; len--) {
+        auto x = Float16(*in1);
+        auto y = Float16(*in2);
         auto res = Float16(x.float32_value() + y.float32_value());
-        *(out + i) = res.float16_value();
+        *outp = res.float16_value();
+        outp++;
     }
-#endif
 }
 
 #endif /* avx_h */

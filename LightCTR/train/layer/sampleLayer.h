@@ -15,10 +15,10 @@
 template <typename ActivationFunction>
 class Sample_Layer : public Layer_Base {
 public:
-    Sample_Layer(Layer_Base* _prevLayer, size_t _input_dimention):
-    Layer_Base(_prevLayer, _input_dimention, _input_dimention >> 1) {
-        assert((_input_dimention & 1) == 0);
-        gauss_cnt = _input_dimention >> 1;
+    Sample_Layer(Layer_Base* _prevLayer, size_t _input_dimension):
+    Layer_Base(_prevLayer, _input_dimension, _input_dimension >> 1) {
+        assert((_input_dimension & 1) == 0);
+        gauss_cnt = _input_dimension >> 1;
         noise = new float[gauss_cnt];
         FOR(i, gauss_cnt) {
             noise[i] = GaussRand(); // only generate noise for sampling init once
@@ -44,12 +44,12 @@ public:
     
     vector<float>* forward(vector<Matrix*>* prevLOutputMatrix) {
         vector<float>* prevLOutput = prevLOutputMatrix->at(0)->pointer();
-        assert(prevLOutput->size() == this->input_dimention);
+        assert(prevLOutput->size() == this->input_dimension);
         
         // init ThreadLocal var
         Matrix*& output_act = *tl_output_act;
         if (output_act == NULL) {
-            output_act = new Matrix(1, this->output_dimention);
+            output_act = new Matrix(1, this->output_dimension);
         }
         
         float gaussDelta = 0.0f;
@@ -85,14 +85,14 @@ public:
     void backward(vector<Matrix*>* outputDeltaMatrix) {
         assert(this->prevLayer);
         vector<float>* outputDelta = outputDeltaMatrix->at(0)->pointer();
-        assert(outputDelta->size() == this->output_dimention);
+        assert(outputDelta->size() == this->output_dimension);
         vector<float>* prev_output_act = this->prevLayer->output()->at(0)->pointer();
-        assert(prev_output_act->size() == this->input_dimention);
+        assert(prev_output_act->size() == this->input_dimension);
         
         // init ThreadLocal var
         Matrix*& input_delta = *tl_input_delta;
         if (input_delta == NULL) {
-            input_delta = new Matrix(1, this->input_dimention);
+            input_delta = new Matrix(1, this->input_dimension);
         }
         
         FOR(i, gauss_cnt) {

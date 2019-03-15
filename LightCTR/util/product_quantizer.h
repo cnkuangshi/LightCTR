@@ -47,19 +47,19 @@ RealT* lowbit_quantize(const RealT* vec, size_t len, int bitCount) {
 template <typename RealT, typename CompressT>
 class Product_quantizer {
 public:
-    Product_quantizer(size_t _dimention, size_t _part_cnt, CompressT _cluster_cnt)
-        : dimention(_dimention), part_cnt(_part_cnt), cluster_cnt(_cluster_cnt) {
+    Product_quantizer(size_t _dimension, size_t _part_cnt, CompressT _cluster_cnt)
+        : dimension(_dimension), part_cnt(_part_cnt), cluster_cnt(_cluster_cnt) {
             // by my experiment, 60 parts and 256 clusters show best performance
             assert(1 << 8 * sizeof(CompressT) >= static_cast<CompressT>(_cluster_cnt));
-            assert(_dimention % _part_cnt == 0);
-            centroids = new RealT[dimention * cluster_cnt];
+            assert(_dimension % _part_cnt == 0);
+            centroids = new RealT[dimension * cluster_cnt];
             assert(centroids);
     }
     
     vector<vector<CompressT> > train(const RealT* data, size_t len) {
         assert(len >= cluster_cnt);
         
-        size_t part_dim_interval = dimention / part_cnt;
+        size_t part_dim_interval = dimension / part_cnt;
         
         vector<vector<CompressT> > quantizated_codes;
         quantizated_codes.reserve(part_cnt);
@@ -73,13 +73,13 @@ public:
     }
     
     RealT* get_centroids(size_t which_part, CompressT which_class) {
-        size_t part_dim_interval = dimention / part_cnt;
+        size_t part_dim_interval = dimension / part_cnt;
         return centroids + which_part * cluster_cnt * part_dim_interval + \
                 which_class * part_dim_interval;
     }
     
 private:
-    // get centroids of one part of dimention
+    // get centroids of one part of dimension
     void kmeans(const RealT* data, size_t len,
                 const size_t which_part, RealT* part_centroids,
                 size_t sub_dim, std::vector<CompressT>& part_quancodes) {
@@ -89,7 +89,7 @@ private:
         std::shuffle(perm.begin(), perm.end(), rng);
         
         for (auto i = 0; i < cluster_cnt; i++) {
-            auto init_centroid = data + perm[i] * dimention;
+            auto init_centroid = data + perm[i] * dimension;
             auto x = init_centroid + which_part * sub_dim;
             memcpy(&part_centroids[i * sub_dim], x, sub_dim * sizeof(RealT));
         }
@@ -113,7 +113,7 @@ private:
         float interactive = 0;
         // loop all data rows
         for (auto i = 0; i < len; i++) {
-            auto row = data + i * dimention;
+            auto row = data + i * dimension;
             auto x = row + which_part * sub_dim;
             // comparing with each centroids to find closest centroid
             RealT dis = avx_L2Distance(x, part_centroids, sub_dim);
@@ -139,7 +139,7 @@ private:
         memset(part_centroids, 0, cluster_cnt * sub_dim * sizeof(RealT));
 
         for (auto i = 0; i < len; i++) {
-            auto row = data + i * dimention;
+            auto row = data + i * dimension;
             auto x = row + which_part * sub_dim;
             
             auto which_class = static_cast<CompressT>(part_quancodes[i]);
@@ -181,7 +181,7 @@ private:
         }
     }
     
-    size_t dimention;
+    size_t dimension;
     size_t part_cnt;
     CompressT cluster_cnt;
     RealT* centroids;

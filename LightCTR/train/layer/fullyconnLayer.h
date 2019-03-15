@@ -17,8 +17,8 @@ template <typename ActivationFunction>
 class Fully_Conn_Layer : public Layer_Base {
     
 public:
-    Fully_Conn_Layer(Layer_Base* _prevLayer, size_t _input_dimention, size_t _output_dimention):
-    Layer_Base(_prevLayer, _input_dimention, _output_dimention) {
+    Fully_Conn_Layer(Layer_Base* _prevLayer, size_t _input_dimension, size_t _output_dimension):
+    Layer_Base(_prevLayer, _input_dimension, _output_dimension) {
         init();
         printf("Fully Connected Layer\n");
     }
@@ -35,34 +35,34 @@ public:
     void init() {
         this->activeFun = new ActivationFunction();
         // allocate weight and bias's solver memory
-        updater.learnable_params_cnt(this->output_dimention * (this->input_dimention + 1));
+        updater.learnable_params_cnt(this->output_dimension * (this->input_dimension + 1));
         
         needInputDelta = false;
         error_clip_threshold = 15;
         
-        weight = new float[this->input_dimention * this->output_dimention];
-        bias = new float[this->output_dimention];
+        weight = new float[this->input_dimension * this->output_dimension];
+        bias = new float[this->output_dimension];
         
-        dropout_mask = new bool[this->output_dimention];
+        dropout_mask = new bool[this->output_dimension];
         
-        FOR(i, this->output_dimention) {
+        FOR(i, this->output_dimension) {
             bias[i] = UniformNumRand() - 0.5f;
             dropout_mask[i] = SampleBinary(GradientUpdater::__global_sparse_rate);
-            FOR(j, this->input_dimention) {
-                *getWeight(j, i) = UniformNumRand() - 0.5f;
+            FOR(j, this->input_dimension) {
+                *getWeight(i, j) = UniformNumRand() - 0.5f;
             }
         }
         
         // init for mini-batch
-        weightDelta =  new float[this->input_dimention * this->output_dimention];
-        memset(weightDelta, 0, this->input_dimention * this->output_dimention);
-        biasDelta = new float[this->output_dimention];
-        memset(biasDelta, 0, this->output_dimention);
+        weightDelta =  new float[this->input_dimension * this->output_dimension];
+        memset(weightDelta, 0, this->input_dimension * this->output_dimension);
+        biasDelta = new float[this->output_dimension];
+        memset(biasDelta, 0, this->output_dimension);
     }
     
     void registerGradient(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
-        _buf_fusion->registMemChunk(weightDelta, this->input_dimention * this->output_dimention);
-        _buf_fusion->registMemChunk(biasDelta, this->output_dimention);
+        _buf_fusion->registMemChunk(weightDelta, this->input_dimension * this->output_dimension);
+        _buf_fusion->registMemChunk(biasDelta, this->output_dimension);
         if (this->nextLayer) {
             this->nextLayer->registerGradient(_buf_fusion);
         }
@@ -74,32 +74,29 @@ public:
     vector<float>* forward(vector<Matrix*>* const prevLOutputMatrix) { // prevLOutput is acti( Z_(L-1) )
         assert(prevLOutputMatrix->size() == 1);
         vector<float>* prevLOutput = prevLOutputMatrix->at(0)->pointer();
-        assert(prevLOutput->size() == this->input_dimention);
+        assert(prevLOutput->size() == this->input_dimension);
         
         // init ThreadLocal var
         Matrix*& output_act = *tl_output_act;
         if (output_act == NULL) {
-            output_act = new Matrix(1, this->output_dimention);
+            output_act = new Matrix(1, this->output_dimension);
         }
         
         if (this->bInputLayer) { // storage input only for input layer
             vector<float>*& input = *tl_input;
             if (input == NULL) {
                 input = new vector<float>();
-                input->resize(this->input_dimention);
+                input->resize(this->input_dimension);
             }
             input->assign(prevLOutput->begin(), prevLOutput->end());
         }
         
-        FOR(i, this->output_dimention) {
+        FOR(i, this->output_dimension) {
             if (!dropout_mask[i] && this->nextLayer != NULL) { // apply dropout mask for output
                 *output_act->getEle(0, i) = 0.0f;
                 continue;
             }
-            float sum = 0.0f;
-            FOR(j, this->input_dimention) {
-                sum += prevLOutput->at(j) * (*getWeight(j, i));
-            }
+            float sum = avx_dotProduct(prevLOutput->data(), getWeight(i, 0), input_dimension);
             sum += bias[i];
             *output_act->getEle(0, i) = sum;
             assert(!isnan(sum));
@@ -124,12 +121,12 @@ public:
     
     void backward(vector<Matrix*>* const outputDeltaMatrix) { // outputDelta is Z_(L)
         vector<float>* outputDelta = outputDeltaMatrix->at(0)->pointer();
-        assert(outputDelta->size() == this->output_dimention);
+        assert(outputDelta->size() == this->output_dimension);
         
         // init ThreadLocal var
         Matrix*& input_delta = *tl_input_delta;
         if (input_delta == NULL) {
-            input_delta = new Matrix(1, this->input_dimention);
+            input_delta = new Matrix(1, this->input_dimension);
         }
         
         // grad clipping for gradient explosion
@@ -140,24 +137,24 @@ public:
         vector<float>* prev_output_act = NULL;
         // Z_(L) = W_(L) * acti( Z_(L-1) ) + b
         if (!this->bInputLayer || needInputDelta) {
-            FOR(i, this->input_dimention) {
+            FOR(i, this->input_dimension) {
                 float sum = 0.0f;
-                FOR(j, this->output_dimention) {
+                FOR(j, this->output_dimension) {
                     if (!dropout_mask[j] && this->nextLayer != NULL) {
                         // apply dropout mask for delta and re-scale
                         continue;
                     }
-                    sum += outputDelta->at(j) * (*getWeight(i, j));
+                    sum += outputDelta->at(j) * (*getWeight(j, i));
                 }
                 *input_delta->getEle(0, i) = sum;
             }
             if (!this->bInputLayer) {
                 assert(this->prevLayer);
                 prev_output_act = this->prevLayer->output()->at(0)->pointer();
-                assert(prev_output_act && prev_output_act->size() == this->input_dimention);
+                assert(prev_output_act && prev_output_act->size() == this->input_dimension);
                 
                 this->prevLayer->getActiveFun().backward(input_delta->pointer(), prev_output_act, input_delta->pointer());
-                assert(input_delta->pointer()->size() == this->input_dimention);
+                assert(input_delta->pointer()->size() == this->input_dimension);
                 
                 vector<Matrix*>*& wrapper = *tl_wrapper;
                 assert(wrapper);
@@ -171,16 +168,16 @@ public:
         // Asynchronous update weight and bias to minimize delta
         {
             unique_lock<SpinLock> glock(this->lock);
-            FOR(j, this->output_dimention) {
-                FOR(i, this->input_dimention) {
+            FOR(j, this->output_dimension) {
+                FOR(i, this->input_dimension) {
                     if (this->bInputLayer) {
                         vector<float>*& input = *tl_input;
                         assert(input);
-                        GradientUpdater::update(getWeightDelta(i, j),
+                        GradientUpdater::update(getWeightDelta(j, i),
                                                 outputDelta->at(j) * input->at(i));
                     } else {
                         assert(prev_output_act != NULL);
-                        GradientUpdater::update(getWeightDelta(i, j),
+                        GradientUpdater::update(getWeightDelta(j, i),
                                                 outputDelta->at(j) * prev_output_act->at(i));
                     }
                 }
@@ -204,8 +201,8 @@ public:
     }
     
     void applyBatchGradient() {
-        updater.update(0, this->output_dimention, bias, biasDelta);
-        updater.update(this->output_dimention, this->output_dimention * this->input_dimention,
+        updater.update(0, this->output_dimension, bias, biasDelta);
+        updater.update(this->output_dimension, this->output_dimension * this->input_dimension,
                        weight, weightDelta);
         
         if (this->nextLayer) {
@@ -216,15 +213,11 @@ public:
     bool needInputDelta;
     
 protected:
-    inline float* getWeight(size_t in_d, size_t out_d) const {
-        assert(in_d * this->output_dimention + out_d <
-               this->input_dimention * this->output_dimention);
-        return &weight[in_d * this->output_dimention + out_d];
+    inline float* getWeight(size_t out_d, size_t in_d) const {
+        return &weight[out_d * input_dimension + in_d];
     }
-    inline float* getWeightDelta(size_t in_d, size_t out_d) const {
-        assert(in_d * this->output_dimention + out_d <
-               this->input_dimention * this->output_dimention);
-        return &weightDelta[in_d * this->output_dimention + out_d];
+    inline float* getWeightDelta(size_t out_d, size_t in_d) const {
+        return &weightDelta[out_d * input_dimension + in_d];
     }
     
     float* weight;

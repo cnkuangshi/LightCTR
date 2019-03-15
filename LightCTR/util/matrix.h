@@ -12,6 +12,7 @@
 #include <cmath>
 #include <vector>
 #include "random.h"
+#include "../common/avx.h"
 #include "assert.h"
 using namespace std;
 
@@ -135,10 +136,8 @@ public:
     }
     
     inline Matrix* inverse() {
-        for (auto it = matrix->begin(); it != matrix->end(); it++) {
-            assert(*it != 0);
-            *it = 1.0 / *it;
-        }
+        float* ptr = matrix->data();
+        avx_vecRcp(ptr, ptr, size());
         return this;
     }
     
@@ -155,12 +154,10 @@ public:
     }
     
     inline Matrix* add(const Matrix* const another, float scale = 1.0, float self_scale = 1.0) {
-        assert(x_len == another->x_len);
-        assert(y_len == another->y_len);
-        for (auto it = matrix->begin(), it2 = another->pointer()->begin();
-             it != matrix->end(); it++, it2++) {
-            *it = self_scale * *it + scale * *it2;
-        }
+        assert(x_len == another->x_len && y_len == another->y_len);
+        float* ptr = matrix->data();
+        avx_vecScale(ptr, ptr, size(), self_scale);
+        avx_vecScalerAdd(ptr, another->pointer()->data(), ptr, scale, size());
         return this;
     }
     inline Matrix* add(float fac) {
@@ -171,12 +168,9 @@ public:
     }
     
     inline Matrix* subtract(const Matrix* const another, float scale = 1.0) {
-        assert(x_len == another->x_len);
-        assert(y_len == another->y_len);
-        for (auto it = matrix->begin(), it2 = another->pointer()->begin();
-             it != matrix->end(); it++, it2++) {
-            *it -= scale * *it2;
-        }
+        assert(x_len == another->x_len && y_len == another->y_len);
+        float* ptr = matrix->data();
+        avx_vecScalerAdd(ptr, another->pointer()->data(), ptr, -scale, size());
         return this;
     }
     inline Matrix* subtract(float delta) {
@@ -187,29 +181,31 @@ public:
     }
     
     inline Matrix* scale(float scale_fac) {
-        for (auto it = matrix->begin(); it != matrix->end(); it++) {
-            *it *= scale_fac;
-        }
+        float* ptr = matrix->data();
+        avx_vecScale(ptr, ptr, size(), scale_fac);
         return this;
     }
     
     inline Matrix* pow(float fac) {
-        for (auto it = matrix->begin(); it != matrix->end(); it++) {
-            *it = ::pow(*it, fac);
+        float* ptr = matrix->data();
+        if (fac == 0.5) {
+            avx_vecSqrt(ptr, ptr, size());
+        } else if (fac == -0.5) {
+            avx_vecRsqrt(ptr, ptr, size());
+        } else if (fac == 2) {
+            avx_vecScale(ptr, ptr, size(), ptr);
+        } else {
+            for (auto it = matrix->begin(); it != matrix->end(); it++) {
+                *it = ::pow(*it, fac);
+            }
         }
         return this;
     }
     
     inline Matrix* dotProduct(const Matrix* const another) {
-        assert(x_len == another->x_len);
-        assert(y_len == another->y_len);
-        for (auto it = matrix->begin(), it2 = another->pointer()->begin();
-             it != matrix->end(); it++, it2++) {
-            if (*it2 != 0) {
-                *it *= *it2;
-                assert(!isinf(*it));
-            }
-        }
+        assert(x_len == another->x_len && y_len == another->y_len);
+        float* ptr = matrix->data();
+        avx_vecScale(ptr, ptr, size(), another->pointer()->data());
         return this;
     }
     
@@ -227,9 +223,8 @@ public:
                 tmp = *getEle(i, k);
                 if (tmp == 0)
                     continue;
-                for (size_t j = 0; j < another->y_len; j++) {
-                    *ansM->getEle(i, j) += tmp * *another->getEle(k, j);
-                }
+                avx_vecScalerAdd(ansM->getEle(i, 0), another->getEle(k, 0),
+                                 ansM->getEle(i, 0), tmp, another->y_len);
             }
         }
         return ansM;

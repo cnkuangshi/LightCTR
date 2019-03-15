@@ -32,9 +32,9 @@ struct CNN_Config {
 template <typename ActivationFunction>
 class Conv_Layer : public Layer_Base {
 public:
-    Conv_Layer(Layer_Base* _prevLayer, size_t _input_dimention,
-               size_t _output_dimention, CNN_Config _config):
-    Layer_Base(_prevLayer, _input_dimention, _output_dimention), config(_config) {
+    Conv_Layer(Layer_Base* _prevLayer, size_t _input_dimension,
+               size_t _output_dimension, CNN_Config _config):
+    Layer_Base(_prevLayer, _input_dimension, _output_dimension), config(_config) {
         init();
         printf("Convolution Layer\n");
     }
@@ -45,7 +45,7 @@ public:
             delete filterArr[i];
         }
         filterArr.clear();
-        FOR(i, this->output_dimention) {
+        FOR(i, this->output_dimension) {
             delete bias[i];
         }
         bias.clear();
@@ -62,9 +62,9 @@ public:
     void init() {
         this->activeFun = new ActivationFunction();
         // allocate filter and bias's solver memory
-        updater.learnable_params_cnt(this->output_dimention * 2);
+        updater.learnable_params_cnt(this->output_dimension * 2);
         
-        filter_cnt = this->output_dimention;
+        filter_cnt = this->output_dimension;
         
         filterArr.resize(filter_cnt);
         FOR(i, filter_cnt) {
@@ -73,7 +73,7 @@ public:
         }
         
         bias.resize(filter_cnt);
-        FOR(i, this->output_dimention) { // lazy init because they depend on conv result size
+        FOR(i, this->output_dimension) { // lazy init because they depend on conv result size
             bias[i] = NULL;
         }
         // init for mini-batch
@@ -83,7 +83,7 @@ public:
             filterDelta[i]->zeroInit();
         }
         biasDelta.resize(filter_cnt);
-        FOR(i, this->output_dimention) {
+        FOR(i, this->output_dimension) {
             biasDelta[i] = NULL;
         }
     }
@@ -100,13 +100,13 @@ public:
     
     vector<float>* forward(vector<Matrix*>* prevLOutput) {
         assert(this->nextLayer);
-        assert(prevLOutput->size() == this->input_dimention);
+        assert(prevLOutput->size() == this->input_dimension);
         
         // init ThreadLocal var
         vector<Matrix*>*& output_act = *tl_output_act;
         if (output_act == NULL) {
             output_act = new vector<Matrix*>();
-            output_act->resize(this->output_dimention);
+            output_act->resize(this->output_dimension);
         }
         Matrix*& cache = *tl_cache;
         
@@ -114,9 +114,9 @@ public:
             vector<Matrix*>*& input = *tl_input;
             if (input == NULL) {
                 input = new vector<Matrix*>();
-                input->resize(this->input_dimention);
+                input->resize(this->input_dimension);
             }
-            FOR(i, this->input_dimention) {
+            FOR(i, this->input_dimension) {
                 input->at(i) = prevLOutput->at(i);
             }
         }
@@ -126,7 +126,7 @@ public:
             if (m_ptr) {
                 m_ptr->zeroInit();
             }
-            FOR(feamid, this->input_dimention) {
+            FOR(feamid, this->input_dimension) {
                 if (bConnect(feamid, filid)) {
                     if (m_ptr == NULL) {
                         prevLOutput->at(feamid)->convolution(m_ptr,
@@ -165,14 +165,14 @@ public:
     }
     
     void backward(vector<Matrix*>* outputDelta) {
-        assert(outputDelta->size() == this->output_dimention);
+        assert(outputDelta->size() == this->output_dimension);
         const vector<Matrix*> *prev_output_act = NULL;
         
         // init ThreadLocal var
         vector<Matrix*>*& input_delta = *tl_input_delta;
         if (input_delta == NULL) {
             input_delta = new vector<Matrix*>();
-            input_delta->resize(this->input_dimention);
+            input_delta->resize(this->input_dimension);
         }
         Matrix*& cache_bp = *tl_cache_bp;
 
@@ -180,12 +180,12 @@ public:
             assert(this->prevLayer);
             prev_output_act = this->prevLayer->output();
             
-            FOR(i, this->input_dimention) {
+            FOR(i, this->input_dimension) {
                 auto m_ptr = input_delta->at(i);
                 if (m_ptr) {
                     m_ptr->zeroInit();
                 }
-                FOR(j, this->output_dimention) {
+                FOR(j, this->output_dimension) {
                     if (bConnect(i, j)) {
                         // delta Z_(L) conv rot180 W_(L) * di-acti( Z_(L-1) )
                         if (m_ptr == NULL) {
@@ -215,7 +215,7 @@ public:
         {
             unique_lock<SpinLock> glock(this->lock);
             FOR(filid, filter_cnt) {
-                FOR(feamid, this->input_dimention) {
+                FOR(feamid, this->input_dimension) {
                     if (bConnect(feamid, filid)) {
                         // delta Z_(L) conv acti( Z_(L-1) )
                         if (this->bInputLayer) {
@@ -244,7 +244,7 @@ public:
     
     void applyBatchGradient() {
         updater.update(0, bias, biasDelta);
-        updater.update(this->output_dimention, filterArr, filterDelta);
+        updater.update(this->output_dimension, filterArr, filterDelta);
         
         if (this->nextLayer) {
             this->nextLayer->applyBatchGradient();
@@ -260,7 +260,7 @@ public:
     
 protected:
     bool bConnect(size_t input_fm_idx, size_t filter_idx) {
-        if (this->input_dimention == 6 && this->output_dimention == 16) {
+        if (this->input_dimension == 6 && this->output_dimension == 16) {
             assert(input_fm_idx * 16 + filter_idx < 6 * 16);
             return *(cnn_dropout_mask + input_fm_idx * 16 + filter_idx);
         }

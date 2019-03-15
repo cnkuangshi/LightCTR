@@ -24,18 +24,18 @@
 
 class Layer_Base {
 public:
-    Layer_Base(Layer_Base* _prevLayer, size_t _input_dimention, size_t _output_dimention):
-    input_dimention(_input_dimention), output_dimention(_output_dimention) {
+    Layer_Base(Layer_Base* _prevLayer, size_t _input_dimension, size_t _output_dimension):
+    input_dimension(_input_dimension), output_dimension(_output_dimension) {
         nextLayer = prevLayer = NULL;
         if (_prevLayer != NULL) {
-            assert(_prevLayer->output_dimention == this->input_dimention);
+            assert(_prevLayer->output_dimension == this->input_dimension);
             this->prevLayer = _prevLayer;
             _prevLayer->nextLayer = this;
             bInputLayer = false;
-            printf("Init %zux%zu ", _input_dimention, _output_dimention);
+            printf("Init %zux%zu ", _input_dimension, _output_dimension);
         } else {
             bInputLayer = true;
-            printf("Init Input %zux%zu ", _input_dimention, _output_dimention);
+            printf("Init Input %zux%zu ", _input_dimension, _output_dimension);
         }
     }
     Layer_Base() = delete;
@@ -65,7 +65,7 @@ public:
     
     Layer_Base *nextLayer, *prevLayer;
     
-    size_t input_dimention, output_dimention;
+    size_t input_dimension, output_dimension;
     
     bool bInputLayer;
     

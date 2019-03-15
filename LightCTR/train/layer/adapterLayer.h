@@ -16,9 +16,9 @@ template <typename ActivationFunction>
 class Adapter_Layer : public Layer_Base {
 public:
     Adapter_Layer(Layer_Base* _prevLayer, size_t flatten_cnt):
-    Layer_Base(_prevLayer, _prevLayer->output_dimention, _prevLayer->output_dimention) {
+    Layer_Base(_prevLayer, _prevLayer->output_dimension, _prevLayer->output_dimension) {
         this->activeFun = new ActivationFunction();
-        this->output_dimention *= flatten_cnt * flatten_cnt;
+        this->output_dimension *= flatten_cnt * flatten_cnt;
         
         printf("Adapter Layer\n");
     }
@@ -38,11 +38,11 @@ public:
         Matrix*& output_act = *tl_output_act;
         vector<Matrix*>*& input_delta = *tl_input_delta;
         if (output_act == NULL) { // indicate lazy init once
-            assert(this->output_dimention == prevLOutput->size() * prevLOutput->at(0)->size());
-            output_act = new Matrix(1, this->output_dimention);
+            assert(this->output_dimension == prevLOutput->size() * prevLOutput->at(0)->size());
+            output_act = new Matrix(1, this->output_dimension);
             input_delta = new vector<Matrix*>();
-            input_delta->resize(this->input_dimention);
-            FOR(i, this->input_dimention) {
+            input_delta->resize(this->input_dimension);
+            FOR(i, this->input_dimension) {
                 input_delta->at(i) =
                         new Matrix(prevLOutput->at(0)->x_len, prevLOutput->at(0)->y_len);
             }
@@ -71,12 +71,12 @@ public:
     
     void backward(vector<Matrix*>* outputDeltaMatrix) {
         vector<float>* outputDelta = outputDeltaMatrix->at(0)->pointer();
-        assert(outputDelta->size() == this->output_dimention);
+        assert(outputDelta->size() == this->output_dimension);
         
         vector<Matrix*>*& input_delta = *tl_input_delta;
         assert(input_delta);
         
-        FOR(i, this->input_dimention) {
+        FOR(i, this->input_dimension) {
             auto m_ptr = input_delta->at(i);
             assert(m_ptr);
             size_t offset = i * m_ptr->size();

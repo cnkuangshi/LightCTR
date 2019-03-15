@@ -21,10 +21,10 @@ struct Pool_Config {
 template <typename ActivationFunction>
 class Max_Pooling_Layer : public Layer_Base {
 public:
-    Max_Pooling_Layer(Layer_Base* _prevLayer, size_t _dimention, Pool_Config _config):
-    Layer_Base(_prevLayer, _dimention, _dimention), config(_config) {
+    Max_Pooling_Layer(Layer_Base* _prevLayer, size_t _dimension, Pool_Config _config):
+    Layer_Base(_prevLayer, _dimension, _dimension), config(_config) {
         this->activeFun = new ActivationFunction();
-        assert(this->input_dimention == this->output_dimention);
+        assert(this->input_dimension == this->output_dimension);
         
         printf("Pooling Layer\n");
     }
@@ -40,22 +40,22 @@ public:
     }
     
     vector<float>* forward(vector<Matrix*>* prevLOutput) {
-        assert(prevLOutput->size() == this->input_dimention);
+        assert(prevLOutput->size() == this->input_dimension);
         
         // init ThreadLocal var
         vector<Matrix*>*& output_act = *tl_output_act;
         if (output_act == NULL) {
             output_act = new vector<Matrix*>();
-            output_act->resize(this->output_dimention);
+            output_act->resize(this->output_dimension);
         }
         vector<Matrix*>*& input_delta = *tl_input_delta;
         if (input_delta == NULL) {
             input_delta = new vector<Matrix*>();
-            input_delta->resize(this->input_dimention);
+            input_delta->resize(this->input_dimension);
         }
         
         // do Max pooling
-        FOR(feamid, this->input_dimention) {
+        FOR(feamid, this->input_dimension) {
             Matrix* mat = prevLOutput->at(feamid);
             
             assert(mat->x_len >= config.size && mat->y_len >= config.size);
@@ -92,13 +92,13 @@ public:
     }
     
     void backward(vector<Matrix*>* outputDelta) {
-        assert(outputDelta->size() == this->output_dimention);
+        assert(outputDelta->size() == this->output_dimension);
         
         vector<Matrix*>*& input_delta = *tl_input_delta;
         assert(input_delta);
         
         // Unpooling
-        FOR(fid, this->input_dimention) {
+        FOR(fid, this->input_dimension) {
             Matrix* mat = input_delta->at(fid);
             for (size_t i = 0; i < mat->x_len - config.size + 1; i+= config.size) {
                 for (size_t j = 0; j < mat->y_len - config.size + 1; j+=config.size) {

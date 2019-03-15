@@ -46,10 +46,10 @@ class Train_Embed_Algo {
     };
 public:
     Train_Embed_Algo(string vocabFile, string _textFile, size_t _epoch,
-                     size_t _window_size, size_t _emb_dimention, size_t _vocab_cnt,
+                     size_t _window_size, size_t _emb_dimension, size_t _vocab_cnt,
                      float _subsampling = 1e-3):
     textFile(_textFile), epoch(_epoch), window_size(_window_size),
-    emb_dimention(_emb_dimention), vocab_cnt(_vocab_cnt), subsampling(_subsampling) {
+    emb_dimension(_emb_dimension), vocab_cnt(_vocab_cnt), subsampling(_subsampling) {
         threadpool = new ThreadPool(thread::hardware_concurrency());
         loadVocabFile(vocabFile); // import vocab word_id and frequency
         loadTextFile(&textStream); // import documents joined by word_id
@@ -92,7 +92,7 @@ public:
                 word_embedding.emplace_back(val);
             }
         }
-        assert(word_embedding.size() == vocab_cnt * emb_dimention);
+        assert(word_embedding.size() == vocab_cnt * emb_dimension);
     }
     
     void saveModel(size_t epoch) {
@@ -137,7 +137,7 @@ private:
         }
         
         total_words_cnt = 0;
-        word_embedding.resize(vocab_cnt * emb_dimention);
+        word_embedding.resize(vocab_cnt * emb_dimension);
         vocabTable.reserve(vocab_cnt);
         vocabString.reserve(vocab_cnt);
         while(!fin_.eof()){
@@ -151,9 +151,9 @@ private:
                 vocabTable[string(str)] = wid;
                 vocabString.emplace_back(string(str));
                 
-                for (int i = 0; i < emb_dimention; i++) { // random init embedding
+                for (int i = 0; i < emb_dimension; i++) { // random init embedding
                     float r = UniformNumRand() - 0.5f;
-                    word_embedding[wid * emb_dimention + i] = r / emb_dimention;
+                    word_embedding[wid * emb_dimension + i] = r / emb_dimension;
                 }
             }
             if (vocabTable.size() >= vocab_cnt) {
@@ -171,7 +171,7 @@ private:
     }
     
     void InitNegSampleTable() {
-        negWeight.resize(vocab_cnt * emb_dimention);
+        negWeight.resize(vocab_cnt * emb_dimension);
         // negative sampling weight init with 0
         fill(negWeight.begin(), negWeight.end(), 0);
         
@@ -197,7 +197,7 @@ private:
         }
     }
     
-    size_t vocab_cnt, emb_dimention, window_size, negSample_cnt;
+    size_t vocab_cnt, emb_dimension, window_size, negSample_cnt;
     size_t total_words_cnt;
     
     const int negTable_size = 1e8;
