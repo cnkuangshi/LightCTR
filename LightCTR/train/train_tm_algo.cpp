@@ -188,9 +188,9 @@ void Train_TM_Algo::printArguments() {
                 if (dataSet[docid][wid] == 0) {
                     continue;
                 }
-                sum_tmp += topics_of_docs[docid * topic_cnt + tid]
-                        * words_of_topics[tid * word_cnt + wid] / dataSet[docid][wid];
+                sum_tmp += topics_of_docs[docid * topic_cnt + tid] / dataSet[docid][wid];
             }
+            sum_tmp *= words_of_topics[tid * word_cnt + wid];
             if (sum_tmp > maxP) {
                 maxP = sum_tmp, whichTopic = (int)tid;
             }

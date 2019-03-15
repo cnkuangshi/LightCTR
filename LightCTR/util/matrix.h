@@ -240,15 +240,19 @@ public:
         }
         ansM->zeroInit();
         
+        vector<float> tmp_vec;
+        tmp_vec.resize(filter->size());
         for (size_t i = 0; i < recover_x + 2*padding - filter->x_len + 1; i+=stride) {
             for (size_t j = 0; j < recover_y + 2*padding - filter->y_len + 1; j+=stride) {
                 // loop filter size
+                const float tmp = *getEle(i / stride, j / stride);
+                avx_vecScale(filter->pointer()->data(), tmp_vec.data(), tmp_vec.size(), tmp);
                 for (size_t xc = 0; xc < filter->x_len; xc++) {
                     for (size_t yc = 0; yc < filter->y_len; yc++) {
                         if (i + xc < padding || j + yc < padding || i + xc >= padding + recover_x || j + yc >= padding + recover_x) {
                             continue;
                         }
-                        *ansM->getEle(i + xc, j + yc) += *getEle(i / stride, j / stride) * *filter->getEle(xc, yc);
+                        *ansM->getEle(i + xc, j + yc) += tmp_vec[xc * filter->y_len + yc];
                     }
                 }
             }
@@ -259,18 +263,24 @@ public:
         size_t recover_x = input->x_len;
         size_t recover_y = input->y_len;
         
+        vector<float> tmp_vec;
+        tmp_vec.resize(filterDelta->size());
         for (size_t i = 0; i < recover_x + 2*padding - filterDelta->x_len + 1; i+=stride) {
             for (size_t j = 0; j < recover_y + 2*padding - filterDelta->y_len + 1; j+=stride) {
                 // loop filterDelta size
+                const float tmp = *getEle(i / stride, j / stride);
+                std::fill(tmp_vec.begin(), tmp_vec.end(), 0);
                 for (size_t xc = 0; xc < filterDelta->x_len; xc++) {
                     for (size_t yc = 0; yc < filterDelta->y_len; yc++) {
                         if (i + xc < padding || j + yc < padding || i + xc >= padding + recover_x || j + yc >= padding + recover_x) {
                             continue;
                         }
-                        // Weight Gradient descent, scale is sensitive
-                        *filterDelta->getEle(xc, yc) += *getEle(i / stride, j / stride) * *input->getEle(i + xc, j + yc);
+                        // Weight Gradient descent
+                        tmp_vec[xc * filterDelta->y_len + yc] = *input->getEle(i + xc, j + yc);
                     }
                 }
+                avx_vecScalerAdd(filterDelta->pointer()->data(), tmp_vec.data(),
+                                 filterDelta->pointer()->data(), tmp, tmp_vec.size());
             }
         }
     }
@@ -284,19 +294,23 @@ public:
             ansM = new Matrix(new_x_len, new_y_len);
         }
         ansM->zeroInit();
+        
+        vector<float> tmp_vec;
+        tmp_vec.resize(filter->size());
         // left corner (-padding, -padding) to (xlen-1+padding, ylen-1+padding)
         for (size_t i = 0; i < x_len + 2 * padding - filter->x_len + 1; i+=stride) {
             for (size_t j = 0; j < y_len + 2 * padding - filter->y_len + 1; j+=stride) {
                 // loop filter size
-                float sum = 0.0f;
+                std::fill(tmp_vec.begin(), tmp_vec.end(), 0);
                 for (size_t xc = i; xc < i + filter->x_len; xc++) {
                     for (size_t yc = j; yc < j + filter->y_len; yc++) {
                         if (xc < padding || yc < padding || xc >= padding + x_len || yc >= padding + y_len) {
                             continue;
                         }
-                        sum += *getEle(xc - padding, yc - padding) * *filter->getEle(xc - i, yc - j);
+                        tmp_vec[(xc - i) * filter->y_len + yc - j] = *getEle(xc - padding, yc - padding);
                     }
                 }
+                float sum = avx_dotProduct(tmp_vec.data(), filter->pointer()->data(), tmp_vec.size());
                 assert(!isnan(sum));
                 *ansM->getEle(i / stride, j / stride) = sum;
             }
