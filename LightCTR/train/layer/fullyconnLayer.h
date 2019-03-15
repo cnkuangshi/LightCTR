@@ -168,21 +168,21 @@ public:
         // Asynchronous update weight and bias to minimize delta
         {
             unique_lock<SpinLock> glock(this->lock);
-            FOR(j, this->output_dimension) {
-                FOR(i, this->input_dimension) {
-                    if (this->bInputLayer) {
-                        vector<float>*& input = *tl_input;
-                        assert(input);
-                        GradientUpdater::update(getWeightDelta(j, i),
-                                                outputDelta->at(j) * input->at(i));
-                    } else {
-                        assert(prev_output_act != NULL);
-                        GradientUpdater::update(getWeightDelta(j, i),
-                                                outputDelta->at(j) * prev_output_act->at(i));
-                    }
+            if (this->bInputLayer) {
+                FOR(j, this->output_dimension) {
+                    vector<float>*& input = *tl_input;
+                    assert(input);
+                    avx_vecScalerAdd(getWeightDelta(j, 0), input->data(),
+                                     getWeightDelta(j, 0), outputDelta->at(j), input_dimension);
                 }
-                GradientUpdater::update(&biasDelta[j], outputDelta->at(j));
+            } else {
+                FOR(j, this->output_dimension) {
+                    assert(prev_output_act);
+                    avx_vecScalerAdd(getWeightDelta(j, 0), prev_output_act->data(),
+                                     getWeightDelta(j, 0), outputDelta->at(j), input_dimension);
+                }
             }
+            avx_vecAdd(biasDelta, outputDelta->data(), biasDelta, output_dimension);
         }
     }
     
