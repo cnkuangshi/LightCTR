@@ -20,7 +20,7 @@ using namespace std;
 #define PLSA
 
 // Topic Model impl by PLSA and Latent Dirichlet Allocation Algorithm
-class Train_TM_Algo : public EM_Algo_Abst<vector<vector<float>* > > {
+class Train_TM_Algo : public EM_Algo_Abst<vector<float> > {
 public:
     Train_TM_Algo(string _dataFile, string _vocabFile, size_t _epoch,
                   size_t _topic, size_t _words):
@@ -33,38 +33,13 @@ public:
     Train_TM_Algo() = delete;
     
     ~Train_TM_Algo() {
-#ifdef PLSA
-        FOR(docid, doc_cnt) {
-            FOR(wid, word_cnt) {
-                this->latentVar[docid]->at(wid)->clear();
-                delete [] this->latentVar[docid]->at(wid);
-            }
-            delete [] this->latentVar[docid];
-        }
-        FOR(docid, doc_cnt) {
-            topics_of_docs[docid].clear();
-        }
-        delete [] topics_of_docs;
-        FOR(tid, topic_cnt) {
-            words_of_topics[tid].clear();
-        }
-        delete [] words_of_topics;
-        wordCnt_of_doc.clear();
-        FOR(docid, doc_cnt) {
-            latent_word_sum[docid].clear();
-        }
-        delete [] latent_word_sum;
-        FOR(wid, word_cnt) {
-            latent_doc_sum[wid].clear();
-        }
-        delete [] latent_doc_sum;
-        latent_word_doc_sum.clear();
-#endif
+        delete threadpool;
+        threadpool = NULL;
     }
     
     void init();
-    vector<vector<float>* >** Train_EStep();
-    float Train_MStep(vector<vector<float>* >**);
+    vector<float>* Train_EStep();
+    float Train_MStep(const vector<float>*);
     
     void printArguments();
     shared_ptr<vector<int> > Predict();
@@ -96,13 +71,13 @@ public:
     ThreadPool *threadpool;
     
 #ifdef PLSA
-    vector<vector<float>* >* *latentVar;
-    vector<float>* topics_of_docs;
-    vector<float>* words_of_topics;
+    vector<float> latentVar;
+    vector<float> topics_of_docs;
+    vector<float> words_of_topics;
     vector<size_t> wordCnt_of_doc;
     // cache for algorithm
-    vector<float>* latent_word_sum; // word_sum[docid][tid] sum of all words
-    vector<float>* latent_doc_sum; // doc_sum[wid][tid] sum of all docs
+    vector<float> latent_word_sum; // word_sum[docid][tid] sum of all words
+    vector<float> latent_doc_sum; // doc_sum[wid][tid] sum of all docs
     vector<float> latent_word_doc_sum; // word_doc_sum[tid] sum of all docs and words
 #endif
 };

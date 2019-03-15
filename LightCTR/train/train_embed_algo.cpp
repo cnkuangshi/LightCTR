@@ -88,9 +88,9 @@ void Train_Embed_Algo::Train() {
     
     // Normalization
     for (size_t wid = 0; wid < vocab_cnt; wid++) {
-        auto norm = avx_L2Norm(&word_embedding[wid * emb_dimention], emb_dimention);
         float* wd_ptr = word_embedding.data() + wid * emb_dimention;
-        avx_vecScale(wd_ptr, wd_ptr, emb_dimention, 1.0 / norm);
+        auto norm = avx_L2Norm(wd_ptr, emb_dimention);
+        avx_vecScale(wd_ptr, wd_ptr, emb_dimention, 1.0 / std::sqrt(norm));
     }
     
     saveModel();

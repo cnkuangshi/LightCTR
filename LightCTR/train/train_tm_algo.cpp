@@ -9,61 +9,41 @@
 #include "train_tm_algo.h"
 #include <cmath>
 #include <stdlib.h>
+#include "../common/avx.h"
 
 void Train_TM_Algo::init() {
-    this->latentVar = new vector<vector<float>* >*[doc_cnt];
+    latentVar.resize(doc_cnt * word_cnt * topic_cnt);
+    
+    topics_of_docs.resize(doc_cnt * topic_cnt);
+    latent_word_sum.resize(doc_cnt * topic_cnt);
     
     FOR(docid, doc_cnt) {
         threadpool->addTask([&, docid]() {
-            this->latentVar[docid] = new vector<vector<float>* >();
-            this->latentVar[docid]->reserve(word_cnt);
-            FOR(wid, word_cnt) {
-                vector<float>* vec = new vector<float>();
-                this->latentVar[docid]->emplace_back(vec);
-                vec->resize(topic_cnt);
-            }
-            assert(this->latentVar[docid]->size() == word_cnt);
-        });
-    }
-    threadpool->wait();
-    topics_of_docs = new vector<float>[doc_cnt];
-    latent_word_sum = new vector<float>[doc_cnt];
-    
-    FOR(docid, doc_cnt) {
-        threadpool->addTask([&, docid]() {
-            latent_word_sum[docid].resize(topic_cnt);
-            
-            topics_of_docs[docid].reserve(topic_cnt);
             float sum_tmp = 0.0f;
             FOR(tid, topic_cnt) {
                 // if initialized with average 1.0f / topic_cnt, all topics_of_docs will be 0.1
                 float r = 1.0f + static_cast<float>(rand() % 128);
                 sum_tmp += r;
-                topics_of_docs[docid].emplace_back(r);
+                topics_of_docs[docid * topic_cnt + tid] = r;
             }
-            FOR(tid, topic_cnt) {
-                topics_of_docs[docid][tid] /= sum_tmp;
-            }
+            float* ptr = topics_of_docs.data() + docid * topic_cnt;
+            avx_vecScale(ptr, ptr, topic_cnt, 1.0 / sum_tmp);
         });
     }
-    words_of_topics = new vector<float>[topic_cnt];
-    latent_doc_sum = new vector<float>[word_cnt];
-    FOR(wid, word_cnt) {
-        latent_doc_sum[wid].resize(topic_cnt);
-    }
+    words_of_topics.resize(topic_cnt * word_cnt);
+    latent_doc_sum.resize(word_cnt * topic_cnt);
+    
     FOR(tid, topic_cnt) {
         threadpool->addTask([&, tid]() {
-            words_of_topics[tid].reserve(word_cnt);
             float sum_tmp = 0.0f;
             FOR(wid, word_cnt) {
                 // if initialized with average 1.0f / word_cnt, all words' topics can't change
                 float r = 1.0f + static_cast<float>(rand() % 128);
                 sum_tmp += r;
-                words_of_topics[tid].emplace_back(r);
+                words_of_topics[tid * word_cnt + wid] = r;
             }
-            FOR(wid, word_cnt) {
-                words_of_topics[tid][wid] /= sum_tmp;
-            }
+            float* ptr = words_of_topics.data() + tid * word_cnt;
+            avx_vecScale(ptr, ptr, topic_cnt, 1.0 / sum_tmp);
         });
     }
     threadpool->wait();
@@ -79,25 +59,20 @@ void Train_TM_Algo::init() {
     }
 }
 
-vector<vector<float>* >** Train_TM_Algo::Train_EStep() {
+vector<float>* Train_TM_Algo::Train_EStep() {
     FOR(docid, doc_cnt) {
         threadpool->addTask([&, docid]() {
             FOR(wid, word_cnt) {
-                if (dataSet[docid][wid] == 0) {
+                if (dataSet[docid][wid] == 0)
                     continue;
-                }
-                float topic_sum = 0.0f, tmp;
+                float* ptr = latentVar.data() + docid * word_cnt * topic_cnt + wid * topic_cnt;
                 FOR(tid, topic_cnt) {
-                    tmp = words_of_topics[tid][wid] * topics_of_docs[docid][tid];
-                    latentVar[docid]->at(wid)->at(tid) = tmp;
-                    topic_sum += tmp;
+                    *(ptr + tid) = words_of_topics[tid * word_cnt + wid]
+                                 * topics_of_docs[docid * topic_cnt + tid];
                 }
+                float topic_sum = avx_L1Norm(ptr, topic_cnt);
                 assert(topic_sum > 0);
-                FOR(tid, topic_cnt) {
-                    tmp = latentVar[docid]->at(wid)->at(tid) / topic_sum;
-                    assert(tmp >= 0 && tmp <= 1);
-                    latentVar[docid]->at(wid)->at(tid) = tmp;
-                }
+                avx_vecScale(ptr, ptr, topic_cnt, 1.0 / topic_sum);
             }
         });
     }
@@ -108,15 +83,14 @@ vector<vector<float>* >** Train_TM_Algo::Train_EStep() {
         threadpool->addTask([&, wid]() {
             FOR(tid, topic_cnt) {
                 float sum_tmp = 0.0f;
-                bool f = 0;
                 FOR(docid, doc_cnt) {
-                    if (dataSet[docid][wid] > 0) {
-                        f = 1;
-                        // sum of (latentVar multiply term's frequency)
-                        sum_tmp += latentVar[docid]->at(wid)->at(tid) * dataSet[docid][wid];
-                    }
+                    if (dataSet[docid][wid] == 0)
+                        continue;
+                    // sum of (latentVar multiply term's frequency)
+                    sum_tmp += dataSet[docid][wid]
+                            * latentVar[docid * word_cnt * topic_cnt + wid * topic_cnt + tid];
                 }
-                latent_doc_sum[wid][tid] = sum_tmp;
+                latent_doc_sum[wid * topic_cnt + tid] = sum_tmp;
             }
         });
     }
@@ -124,80 +98,50 @@ vector<vector<float>* >** Train_TM_Algo::Train_EStep() {
         threadpool->addTask([&, docid]() {
             FOR(tid, topic_cnt) {
                 float sum_tmp = 0.0f;
-                bool f = 0;
                 FOR(wid, word_cnt) {
-                    if (dataSet[docid][wid] > 0) {
-                        f = 1;
-                        sum_tmp += latentVar[docid]->at(wid)->at(tid) * dataSet[docid][wid];
-                    }
+                    if (dataSet[docid][wid] == 0)
+                        continue;
+                    sum_tmp += dataSet[docid][wid]
+                            * latentVar[docid * word_cnt * topic_cnt + wid * topic_cnt + tid];
                 }
-                latent_word_sum[docid][tid] = sum_tmp;
+                latent_word_sum[docid * topic_cnt + tid] = sum_tmp;
             }
         });
     }
     FOR(tid, topic_cnt) {
         threadpool->addTask([&, tid]() {
             float sum_tmp = 0.0f;
-            bool f = 0;
-            latent_word_doc_sum[tid] = 0;
             FOR(docid, doc_cnt) {
                 FOR(wid, word_cnt) {
-                    if (dataSet[docid][wid] > 0) {
-                        f = 1;
-                        sum_tmp += latentVar[docid]->at(wid)->at(tid) * dataSet[docid][wid];
-                    }
+                    if (dataSet[docid][wid] == 0)
+                        continue;
+                    sum_tmp += dataSet[docid][wid]
+                            * latentVar[docid * word_cnt * topic_cnt + wid * topic_cnt + tid];
                 }
             }
             latent_word_doc_sum[tid] = sum_tmp;
         });
     }
     threadpool->wait();
-    return latentVar;
+    return &latentVar;
 }
 
-float Train_TM_Algo::Train_MStep(vector<vector<float>* >**) {
+float Train_TM_Algo::Train_MStep(const vector<float>*) {
     FOR(docid, doc_cnt) {
-        threadpool->addTask([&, docid]() {
-            float tmp;
-            FOR(tid, topic_cnt) {
-                assert(wordCnt_of_doc[docid] > 0);
-                tmp = latent_word_sum[docid][tid] / wordCnt_of_doc[docid];
-                assert(tmp >= 0 && tmp <= 1);
-                topics_of_docs[docid][tid] = tmp;
-            }
-        });
+        const float tmp = 1.0 / wordCnt_of_doc[docid];
+        avx_vecScale(latent_word_sum.data() + docid * topic_cnt,
+                     topics_of_docs.data() + docid * topic_cnt, topic_cnt, tmp);
     }
     FOR(tid, topic_cnt) {
         threadpool->addTask([&, tid]() {
-            float tmp;
+            const float tmp = latent_word_doc_sum[tid];
             FOR(wid, word_cnt) {
-                assert(latent_word_doc_sum[tid] > 0);
-                tmp = latent_doc_sum[wid][tid] / latent_word_doc_sum[tid];
-                assert(tmp >= 0 && tmp <= 1);
-                words_of_topics[tid][wid] = tmp;
+                words_of_topics[tid * word_cnt + wid] = latent_doc_sum[wid * topic_cnt + tid] / tmp;
             }
         });
     }
     threadpool->wait();
-    
-    // check
-    FOR(tid, topic_cnt) {
-        float sum = 0.0f, tmp;
-        FOR(wid, word_cnt) {
-            tmp = words_of_topics[tid][wid];
-            sum += tmp;
-        }
-        assert(fabs(sum - 1.0f) < 1e-6);
-    }
-    FOR(docid, doc_cnt) {
-        float sum = 0.0f, tmp;
-        FOR(tid, topic_cnt) {
-            tmp = topics_of_docs[docid][tid];
-            sum += tmp;
-        }
-        assert(fabs(sum - 1.0f) < 1e-6);
-    }
-    
+
     // compute log likelihood ELOB
     float LogLKH = 0.0f;
     FOR(docid, doc_cnt) {
@@ -205,12 +149,14 @@ float Train_TM_Algo::Train_MStep(vector<vector<float>* >**) {
             if (dataSet[docid][wid] > 0) {
                 float sum_tmp = 0.0f, tmp;
                 FOR(tid, topic_cnt) {
-                    float t1 = words_of_topics[tid][wid];
-                    float t2 = topics_of_docs[docid][tid];
+                    float t1 = words_of_topics[tid * word_cnt + wid];
+                    float t2 = topics_of_docs[docid * topic_cnt + tid];
                     assert(t1 >= 0 && t1 <= 1 && t2 >= 0 && t2 <= 1);
-                    tmp = log(words_of_topics[tid][wid] + 1e-12) + log(topics_of_docs[docid][tid] + 1e-12);
+                    tmp = log(words_of_topics[tid * word_cnt + wid] + 1e-12)
+                        + log(topics_of_docs[docid * topic_cnt + tid] + 1e-12);
                     assert(!isnan(tmp));
-                    sum_tmp += latentVar[docid]->at(wid)->at(tid) * tmp;
+                    sum_tmp += tmp
+                            * latentVar[docid * word_cnt * topic_cnt + wid * topic_cnt + tid];
                 }
                 sum_tmp *= dataSet[docid][wid];
                 LogLKH += sum_tmp;
@@ -242,7 +188,8 @@ void Train_TM_Algo::printArguments() {
                 if (dataSet[docid][wid] == 0) {
                     continue;
                 }
-                sum_tmp += topics_of_docs[docid][tid] * words_of_topics[tid][wid] / dataSet[docid][wid];
+                sum_tmp += topics_of_docs[docid * topic_cnt + tid]
+                        * words_of_topics[tid * word_cnt + wid] / dataSet[docid][wid];
             }
             if (sum_tmp > maxP) {
                 maxP = sum_tmp, whichTopic = (int)tid;
@@ -254,11 +201,16 @@ void Train_TM_Algo::printArguments() {
             topicSet[whichTopic]->emplace_back(vocab[wid]);
         }
     }
+    ofstream md("./output/topic_class.txt");
+    if(!md.is_open()){
+        cout<<"save model open file error" << endl;
+        exit(1);
+    }
     FOR(tid, topic_cnt) {
-        cout << "Topic " << tid << ":";
+        md << "Topic " << tid << ":";
         for (auto it = topicSet[tid]->begin(); it != topicSet[tid]->end(); it++) {
-            cout << " " << *it;
+            md << " " << *it;
         }
-        puts("");
+        md << endl;
     }
 }

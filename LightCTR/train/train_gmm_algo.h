@@ -47,14 +47,13 @@ public:
             delete [] gaussModels[i].mu;
         }
         delete [] gaussModels;
-        delete [] latentVar;
         delete threadpool;
         threadpool = NULL;
     }
 
     void init();
-    vector<float>** Train_EStep();
-    float Train_MStep(vector<float>**);
+    vector<float>* Train_EStep();
+    float Train_MStep(const vector<float>*);
     shared_ptr<vector<int> > Predict();
     
     float GaussianLPDF(size_t gasid, size_t rid);
@@ -65,7 +64,7 @@ public:
 private:
     float scale;
     Gauss *gaussModels;
-    vector<float>* *latentVar;
+    vector<float> latentVar;
     
     ThreadPool *threadpool;
 };

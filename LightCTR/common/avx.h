@@ -49,7 +49,6 @@ inline void avx_vecScalerAdd(const float* x, const float* y, float* res,
             res += 8;
         }
     }
-    // Don't forget the remaining values.
     for (; len > 0; len--) {
         *res = *x + *y * y_scalar;
         x++;
@@ -72,7 +71,6 @@ inline void avx_vecScalerAdd(const float* x, const float* y, float* res,
             res += 8;
         }
     }
-    // Don't forget the remaining values.
     for (; len > 0; len--) {
         *res = *x + *y * *y_scalar;
         x++;
@@ -101,7 +99,6 @@ inline float avx_dotProduct(const float* x, const float* y, size_t len) {
         // Sum all floats in dot register.
         result += hsum256_ps_avx(d);
     }
-    // Don't forget the remaining values.
     for (; len > 0; len--) {
         result += *x * *y;
         x++;
@@ -127,6 +124,26 @@ inline float avx_L2Norm(const float* x, size_t f) {
     return result;
 }
 
+inline float avx_L1Norm(const float* x, size_t len) {
+    float a = 1.0;
+    const __m256 one = _mm256_broadcast_ss(&a);
+    float result = 0;
+    if (len > 7) {
+        __m256 d = _mm256_setzero_ps();
+        for (; len > 7; len -= 8) {
+            d = _mm256_add_ps(d, _mm256_mul_ps(_mm256_loadu_ps(x), one));
+            x += 8;
+        }
+        // Sum all floats in dot register.
+        result += hsum256_ps_avx(d);
+    }
+    for (; len > 0; len--) {
+        result += *x;
+        x++;
+    }
+    return result;
+}
+
 inline void avx_vecScale(const float* x, float *res, size_t len, float scalar) {
     const __m256 _scalar = _mm256_broadcast_ss(&scalar);
     if (len > 7) {
@@ -137,10 +154,27 @@ inline void avx_vecScale(const float* x, float *res, size_t len, float scalar) {
             res += 8;
         }
     }
-    // Don't forget the remaining values.
     for (; len > 0; len--) {
         *res = *x * scalar;
         x++;
+        res++;
+    }
+}
+
+inline void avx_vecDiv(const float* x, const float* y, float* res, size_t len) {
+    if (len > 7) {
+        for (; len > 7; len -= 8) {
+            __m256 t = _mm256_div_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y));
+            _mm256_store_ps(res, t);
+            x += 8;
+            y += 8;
+            res += 8;
+        }
+    }
+    for (; len > 0; len--) {
+        *res = *x / *y;
+        x++;
+        y++;
         res++;
     }
 }

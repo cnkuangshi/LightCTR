@@ -28,7 +28,7 @@ inline float log_sum(float a, float b) {
 
 void Train_GMM_Algo::init() {
     gaussModels = new Gauss[cluster_cnt];
-    latentVar = new vector<float>*[dataRow_cnt];
+    latentVar.resize(dataRow_cnt * cluster_cnt);
     FOR(i,cluster_cnt) {
         gaussModels[i].mu = new float[feature_cnt];
         gaussModels[i].sigma = new float[feature_cnt];
@@ -38,10 +38,6 @@ void Train_GMM_Algo::init() {
             gaussModels[i].sigma[fid] = 5.0f;
         }
         gaussModels[i].weight = 1.0f / cluster_cnt;
-    }
-    FOR(rid, dataRow_cnt) {
-        latentVar[rid] = new vector<float>();
-        latentVar[rid]->resize(cluster_cnt);
     }
 }
 
@@ -59,7 +55,7 @@ float Train_GMM_Algo::GaussianLPDF(size_t gasid, size_t rid) {
     return tmp;
 }
 
-vector<float>** Train_GMM_Algo::Train_EStep() {
+vector<float>* Train_GMM_Algo::Train_EStep() {
     FOR(rid,dataRow_cnt) {
         float LogSumPDF = 0;
         FOR(gasid,cluster_cnt) {
@@ -75,20 +71,21 @@ vector<float>** Train_GMM_Algo::Train_EStep() {
         FOR(gasid,cluster_cnt) {
             float tmp = exp(gaussModels[gasid].pdf_tmp - LogSumPDF);
             assert(tmp <= 1);
-            latentVar[rid]->at(gasid) = tmp;
+            latentVar[rid * cluster_cnt + gasid] = tmp;
             expSum += tmp;
         }
-        avx_vecScale(latentVar[rid]->data(), latentVar[rid]->data(), cluster_cnt, 1.0 / expSum);
+        float* ptr = latentVar.data() + rid * cluster_cnt;
+        avx_vecScale(ptr, ptr, cluster_cnt, 1.0 / expSum);
     }
-    return latentVar;
+    return &latentVar;
 }
 
-float Train_GMM_Algo::Train_MStep(vector<float>** latentVar) {
+float Train_GMM_Algo::Train_MStep(const vector<float>* latentVar) {
     FOR(gasid, cluster_cnt) {
         threadpool->addTask([&, gasid]() {
             float sumWeight = 0;
             FOR(rid,dataRow_cnt) {
-                sumWeight += latentVar[rid]->at(gasid);
+                sumWeight += latentVar->at(rid * cluster_cnt + gasid);
             }
             assert(sumWeight > 0 && sumWeight < dataRow_cnt);
             gaussModels[gasid].sumRid_tmp = sumWeight;
@@ -105,9 +102,9 @@ float Train_GMM_Algo::Train_MStep(vector<float>** latentVar) {
             FOR(fid, feature_cnt) {
                 float sum_mu = 0.0f, sum_sigma = 0.0f;
                 FOR(rid, dataRow_cnt) {
-                    sum_mu += latentVar[rid]->at(gasid) * dataSet[rid][fid] * scale;
+                    sum_mu += latentVar->at(rid * cluster_cnt + gasid) * dataSet[rid][fid] * scale;
                     const float t = dataSet[rid][fid] * scale - model.mu[fid];
-                    sum_sigma += latentVar[rid]->at(gasid) * t * t;
+                    sum_sigma += latentVar->at(rid * cluster_cnt + gasid) * t * t;
                 }
                 model.mu[fid] = sum_mu / model.sumRid_tmp;
                 model.sigma[fid] = sum_sigma / model.sumRid_tmp;

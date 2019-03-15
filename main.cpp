@@ -133,12 +133,12 @@ int main(int argc, const char * argv[]) {
                       /*feature_cnt*/10);
     T = 1;
 #elif defined TEST_TM
-    EM_Algo_Abst<vector<vector<float>* > > *train =
+    EM_Algo_Abst<vector<float> > *train =
     new Train_TM_Algo(
                    "./data/train_topic.csv",
                    "./data/vocab.txt",
-                   /*epoch*/50,
-                   /*topic*/5,
+                   /*epoch*/200,
+                   /*topic*/24,
                    /*word*/5000);
     T = 1;
 #elif defined TEST_EMB
@@ -190,12 +190,12 @@ int main(int argc, const char * argv[]) {
 #endif
 #ifdef TEST_EMB
 //        train->loadPretrainFile("./output/word_embedding.txt");
-        const size_t cluster_cnt = 20;
+        const size_t cluster_cnt = 50;
         // Notice, word embedding vector multiply 10 to cluster
         EM_Algo_Abst<vector<float> > *cluster =
         new Train_GMM_Algo(
                         "./output/word_embedding.txt",
-                        100,
+                        200,
                         cluster_cnt,
                         100,
                         /*scale*/10);

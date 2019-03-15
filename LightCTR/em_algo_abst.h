@@ -33,14 +33,14 @@ public:
     void Train() {
         float lastLE = 0;
         for (size_t i = 0; i < this->epoch; i++) {
-            T** latentVar = Train_EStep();
+            T* latentVar = Train_EStep();
             float likelihood = Train_MStep(latentVar);
             assert(!isnan(likelihood));
-            cout << "epoch " << i << " log likelihood ELOB = " << likelihood << endl;
+            printf("Epoch %zu log likelihood ELOB = %.3f\n", i, likelihood);
             if (i == 0 || fabs(likelihood - lastLE) > 1e-3) {
                 lastLE = likelihood;
             } else {
-                cout << "have been converge" << endl;
+                puts("have been converge");
                 break;
             }
         }
@@ -51,8 +51,8 @@ public:
     }
     
     virtual void init() = 0;
-    virtual T** Train_EStep() = 0;
-    virtual float Train_MStep(T**) = 0;
+    virtual T* Train_EStep() = 0;
+    virtual float Train_MStep(const T*) = 0;
     virtual void printArguments() = 0;
     virtual shared_ptr<vector<int> > Predict() = 0;
     

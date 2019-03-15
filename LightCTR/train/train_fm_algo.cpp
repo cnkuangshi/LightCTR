@@ -36,6 +36,7 @@ void Train_FM_Algo::flash() {
 void Train_FM_Algo::Train() {
     
     GradientUpdater::__global_bTraining = true;
+    GradientUpdater::__global_minibatch_size = dataRow_cnt;
     
     for (size_t i = 0; i < this->epoch_cnt; i++) {
         
