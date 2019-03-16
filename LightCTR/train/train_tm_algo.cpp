@@ -174,7 +174,7 @@ shared_ptr<vector<int> > Train_TM_Algo::Predict() {
 
 void Train_TM_Algo::printArguments() {
     vector<vector<string> > topicSet;
-    topicSet.reserve(topic_cnt);
+    topicSet.resize(topic_cnt);
     
     FOR(wid, word_cnt) {
         int whichTopic = -1;

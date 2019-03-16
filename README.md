@@ -1,8 +1,31 @@
 ![Alt text -w135](./LightCTR_LOGO.png)
 ## LightCTR Overview
-LightCTR is a lightweight and scalable framework that combines mainstream algorithms of Click-Through-Rate prediction Based Machine Learning, Deep Learning and Philosophy of Parameter Server or Ring-Reduce Collective communication. The library is suitable for sparse data and designed for Large-scale Distributed Model Training.
+LightCTR is a lightweight and scalable framework that combines mainstream algorithms of Click-Through-Rate prediction Based Machine Learning, Philosophy of Parameter Server and Ring-Reduce collective communication. The library is suitable for sparse data and designed for large-scale distributed model training.
 
-Meanwhile, LightCTR is also an open source project that oriented to code readers. The clear execute logic will be of significance to leaners on Machine-Learning-related field.
+Meanwhile, LightCTR is also an open source project that oriented to code readers. The clear execution logic will be of significance to leaners on Machine-Learning related field.
+
+## Features
+* Distributed training based on Parameter Server and Ring-Reduce collective communication
+* Gradient clipping, stale synchronous parallel(SSP) and Asynchronous SGD with Delay compensation
+* Compressing Neural Network with Half precision and Quantization
+* Shared parameters Key-Value pairs store in physical nodes by DHT in Shared memory
+* Lock-free Multi-threaded training and SIMD operations
+* Optimizer implemented by Mini-Batch GD, Adagrad, FTRL, Adam, etc
+
+## List of Implemented Algorithms
+
+* Wide & Deep Model
+* Factorization Machine
+* Field-aware Factorization Machine
+* Neural Factorization Machine
+* Gradient Boosting Tree Model
+* Gaussian Mixture Clustering Model
+* Topic Model PLSA
+* Embedding Model
+* Ngram Convolution Neural Network
+* Self-Attention Recurrent Neural Network
+* Variational AutoEncoder
+* Approximate Nearest Neighbors Retrieval
 
 #### 用于群体发现
 点击率预估即是给合适的用户群体投放合适的内容，以达成促进广告收益或交易转化率的目的。具体操作来说，将收集到的用户点击与行为数据，用离散值与连续值结构化描述特征、归一化与De-bias等处理后，就要选择合适的模型，来对用户是否会对某一内容感兴趣并带来商业转化的概率进行评估；通常可将所有特征组合输入集成树模型`LightCTR::GBM`预先找群体，训练得到的每个叶子节点代表一个用户群，再使用`LightCTR::LR`或`LightCTR::MLP`对树模型建立的低维0/1群体特征做进一步分类。
@@ -21,46 +44,18 @@ Meanwhile, LightCTR is also an open source project that oriented to code readers
 更复杂的模型带来更好的表征能力，但同时也加大了计算时间消耗，响应时间与点击率呈强负相关，为了兼顾线上点击率预估的性能与效果，可使用不同模型逐层预测，如第一层采用在线学习、并引入稀疏解的简单模型`LightCTR::FTRL_LR`，第二层采用上文提到的输入层局部连接的`LightCTR::MLP`、或`LightCTR::NFM`等复杂模型进行精细预测。在系统层面，抽取并缓存DNN模型中最后一组全连接层权值或输出，作为用户或商品的固定表达，使用`LightCTR::ANN`近邻向量检索的TopN结果作为推荐召回，在最大化CTR/ROI的同时，降低线上推理的平均响应时间。此外，LightCTR在探索通过模型参数分位点压缩、二值网络等方法，在不损失预测精度前提下大幅提升计算效率。
 
 #### 多机多线程并行计算
-当模型参数量超过单机内存容量、或单机训练效率达不到时效性要求时，LightCTR基于参数服务器与异步梯度下降理论，支持可扩展性的模型参数集群训练。集群分为Master, ParamServer与Worker三种角色；一个集群有一个Master负责集群启动与运行状态的维护，大规模模型参数以DHT散布在多个ParamServer上，与多个负责模型数据并行梯度运算的Worker协同，每轮训练都先从ParamServer拉取(Pull)一个样本Batch的参数，运算得到的参数梯度推送(Push)到ParamServer进行梯度汇总，ParamServer通过梯度截断、延迟梯度补偿、动量修正等手段，异步无锁的迭代更新参数。参数在ParamServer上紧凑存储、变长压缩传输，通过特征命中率与权值大小进行特征优选与淘汰，提升集群内通信效率。LightCTR分布式集群采取心跳监控、消息重传等容错方式。同时，LightCTR也包含基于Ring-Reduce集合通信的去中心化梯度同步方案，每个节点存储全量模型可单独提供推断预测能力，训练过程通过有限次迭代获取其他节点梯度结果，在一定集群规模下可实现线性加速比。
-
-## List of Implemented Algorithms
-
-* Factorization Machine
-* Field-aware Factorization Machine
-* Wide&Deep Neural Factorization Machine
-* Gradient Boosting Tree Model
-* Gaussian Mixture Clustering Model
-* Topic Model PLSA
-* Embedding Model
-* Multi-Layer Perception
-* Dilated Convolution Neural Network
-* Self-Attention Recurrent Neural Network
-* Variational AutoEncoder
-* Approximate Nearest Neighbors Retrieval
-
-## Features
-* Optimizer implemented by Mini-Batch GD, Negative sampling, Adagrad, FTRL, RMSprop, Adam, etc
-* Regularization: L1, L2, Dropout, Partially connected
-* Template-customized Activation and Loss function
-* Evaluate methods including F1, AUC
-* Compressing Neural Network with Pruning, Half precision and Quantization
-* Support distributed model training based on Parameter Server or Ring-Reduce Collective communication
-* Gradient clipping, momentum correction and Asynchronous SGD with Delay compensation
-* Shared parameters Key-Value pairs store in physical nodes by DHT in Shared memory
-* Lock-free Multi-threaded training and Vectorized compiling (AVX)
+当模型参数量超过单机内存容量、或单机训练效率达不到时效性要求时，LightCTR基于参数服务器、Ring-Reduce与异步梯度下降理论，支持可扩展性的模型参数集群训练。参数服务器模式下集群分为Master, ParamServer与Worker三种角色；一个集群有一个Master负责集群启动与运行状态的维护，大规模模型参数以DHT散布在多个ParamServer上，与多个负责模型数据并行梯度运算的Worker协同，每轮训练都先从ParamServer拉取(Pull)一个样本Batch的参数，运算得到的参数梯度推送(Push)到ParamServer进行梯度汇总，ParamServer通过梯度截断、延迟梯度补偿等手段，异步无锁的半同步更新参数。参数在ParamServer上紧凑存储、变长压缩传输，通过特征命中率与权值大小进行特征优选与淘汰，提升集群内通信效率。Ring-Reduce模式下，集群基于集合通信去中心化的同步梯度，每个节点存储全量模型可单独提供推理预测能力，训练过程通过有限次迭代获取其他节点梯度结果，在一定集群规模下可实现线性加速比。LightCTR分布式集群采取心跳监控、消息重传等容错方式。
 
 ## Quick Start
 * LightCTR depends on C++11 and ZeroMQ only
 * Change configuration (e.g. Learning Rate, Data source) in `main.cpp`
-* run `./build.sh` to start training task
+* run `./build.sh` to start training task on Parameter Server mode or `./build_ring.sh` to start on Ring-Reduce mode
 * Current CI Status: [![Build Status](https://travis-ci.org/cnkuangshi/LightCTR.svg?branch=master)](https://travis-ci.org/cnkuangshi/LightCTR)
 
 ## Welcome to Contribute
-* Welcome everyone interested in machine learning or distributed system to contribute code, create issues or pull requests of new features.
+* Welcome everyone interested in intersection of machine learning and scalable systems to contribute code, create issues or pull requests.
 * LightCTR is released under the Apache License, Version 2.0.
 
 ## Disclaimer
 * Please note that LightCTR is still undergoing and it does not give any warranties, as to the suitability or usability.
 
-## Community
-* Contact: kuangshi@kuangshi.info
