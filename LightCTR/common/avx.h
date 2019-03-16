@@ -37,9 +37,27 @@ inline void avx_vecAdd(const float* x, const float* y, float* res, size_t len) {
     }
 }
 
+inline void avx_vecAdd(const float* x, const float const_delta, float* res, size_t len) {
+    const __m256 delta = _mm256_broadcast_ss(&const_delta);
+    if (len > 7) {
+        for (; len > 7; len -= 8) {
+            __m256 t = _mm256_add_ps(_mm256_loadu_ps(x), delta);
+            _mm256_store_ps(res, t);
+            x += 8;
+            res += 8;
+        }
+    }
+    // Don't forget the remaining values.
+    for (; len > 0; len--) {
+        *res = *x + const_delta;
+        x++;
+        res++;
+    }
+}
+
 inline void avx_vecScalerAdd(const float* x, const float* y, float* res,
-                             float y_scalar, size_t len) {
-    const __m256 _scalar = _mm256_broadcast_ss(&y_scalar);
+                             float const_y_scalar, size_t len) {
+    const __m256 _scalar = _mm256_broadcast_ss(&const_y_scalar);
     if (len > 7) {
         for (; len > 7; len -= 8) {
             __m256 t = _mm256_add_ps(_mm256_loadu_ps(x),
@@ -51,7 +69,7 @@ inline void avx_vecScalerAdd(const float* x, const float* y, float* res,
         }
     }
     for (; len > 0; len--) {
-        *res = *x + *y * y_scalar;
+        *res = *x + *y * const_y_scalar;
         x++;
         y++;
         res++;
@@ -126,17 +144,12 @@ inline float avx_L2Norm(const float* x, size_t f) {
 }
 
 inline float avx_L1Norm(const float* x, size_t len) {
-    float a = 1.0;
-    const __m256 one = _mm256_broadcast_ss(&a);
     float result = 0;
     if (len > 7) {
-        __m256 d = _mm256_setzero_ps();
         for (; len > 7; len -= 8) {
-            d = _mm256_add_ps(d, _mm256_mul_ps(_mm256_loadu_ps(x), one));
+            result += hsum256_ps_avx(_mm256_loadu_ps(x));
             x += 8;
         }
-        // Sum all floats in dot register.
-        result += hsum256_ps_avx(d);
     }
     for (; len > 0; len--) {
         result += *x;

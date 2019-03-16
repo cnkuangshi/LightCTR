@@ -49,7 +49,6 @@
 using namespace std;
 
 // Attention to check config in GradientUpdater
-//#define TEST_CNN
 
 /* Recommend Configuration
  * Distributed LR lr=0.1

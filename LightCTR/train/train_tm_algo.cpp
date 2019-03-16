@@ -173,12 +173,9 @@ shared_ptr<vector<int> > Train_TM_Algo::Predict() {
 }
 
 void Train_TM_Algo::printArguments() {
-    vector<vector<string>* > topicSet;
+    vector<vector<string> > topicSet;
     topicSet.reserve(topic_cnt);
-    FOR(tid, topic_cnt) {
-        topicSet.emplace_back(new vector<string>);
-        topicSet[tid]->reserve(word_cnt / topic_cnt);
-    }
+    
     FOR(wid, word_cnt) {
         int whichTopic = -1;
         float maxP = 0.0f;
@@ -198,7 +195,7 @@ void Train_TM_Algo::printArguments() {
         if (whichTopic == -1) {
 //            cout << "word " << vocab[wid] << " not exist" << endl;
         } else {
-            topicSet[whichTopic]->emplace_back(vocab[wid]);
+            topicSet[whichTopic].emplace_back(vocab[wid]);
         }
     }
     ofstream md("./output/topic_class.txt");
@@ -208,7 +205,7 @@ void Train_TM_Algo::printArguments() {
     }
     FOR(tid, topic_cnt) {
         md << "Topic " << tid << ":";
-        for (auto it = topicSet[tid]->begin(); it != topicSet[tid]->end(); it++) {
+        for (auto it = topicSet[tid].begin(); it != topicSet[tid].end(); it++) {
             md << " " << *it;
         }
         md << endl;

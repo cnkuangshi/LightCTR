@@ -37,7 +37,7 @@ ring_master :
 	$(CXX) $(CFLAGS) -Xlinker $(ZMQ_LIB) $(LDFLAGS) -o LightCTR_BIN_Ring_Master $(filter %.cpp %.o %.c, $^) -D MASTER_RING
 
 ring_worker :
-	$(CXX) $(CFLAGS) -Xlinker $(ZMQ_LIB) $(LDFLAGS) -o LightCTR_BIN_Ring_Worker $(filter %.cpp %.o %.c, $^) -D WORKER_RING
+	$(CXX) $(CFLAGS) -Xlinker $(ZMQ_LIB) $(LDFLAGS) -o LightCTR_BIN_Ring_Worker $(filter %.cpp %.o %.c, $^) -DWORKER_RING -DTEST_CNN
 
 $(OBJ) :
 	$(CXX) -c $(CFLAGS) -o $@ $(firstword $(filter %.cpp %.c, $^) )

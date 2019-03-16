@@ -43,11 +43,11 @@ public:
         weight = new float[this->input_dimension * this->output_dimension];
         bias = new float[this->output_dimension];
         
-        dropout_mask = new bool[this->output_dimension];
+        dropout_mask = new float[this->output_dimension];
         
         FOR(i, this->output_dimension) {
             bias[i] = UniformNumRand() - 0.5f;
-            dropout_mask[i] = SampleBinary(GradientUpdater::__global_sparse_rate);
+            dropout_mask[i] = SampleBinary(GradientUpdater::__global_sparse_rate) ? 1. : 0.;
             FOR(j, this->input_dimension) {
                 *getWeight(i, j) = UniformNumRand() - 0.5f;
             }
@@ -92,7 +92,7 @@ public:
         }
         
         FOR(i, this->output_dimension) {
-            if (!dropout_mask[i] && this->nextLayer != NULL) { // apply dropout mask for output
+            if (this->nextLayer != NULL && !dropout_mask[i]) { // apply dropout mask for output
                 *output_act->getEle(0, i) = 0.0f;
                 continue;
             }
@@ -137,16 +137,17 @@ public:
         vector<float>* prev_output_act = NULL;
         // Z_(L) = W_(L) * acti( Z_(L-1) ) + b
         if (!this->bInputLayer || needInputDelta) {
+            vector<float> tmp_vec;
+            tmp_vec.resize(output_dimension);
+            
             FOR(i, this->input_dimension) {
-                float sum = 0.0f;
                 FOR(j, this->output_dimension) {
-                    if (!dropout_mask[j] && this->nextLayer != NULL) {
-                        // apply dropout mask for delta and re-scale
-                        continue;
-                    }
-                    sum += outputDelta->at(j) * (*getWeight(j, i));
+                    tmp_vec[j] = *getWeight(j, i);
                 }
-                *input_delta->getEle(0, i) = sum;
+                if (this->nextLayer != NULL) { // apply dropout mask
+                    avx_vecScale(tmp_vec.data(), tmp_vec.data(), output_dimension, dropout_mask);
+                }
+                *input_delta->getEle(0, i) = avx_dotProduct(tmp_vec.data(), outputDelta->data(), output_dimension);
             }
             if (!this->bInputLayer) {
                 assert(this->prevLayer);
@@ -161,8 +162,6 @@ public:
                 wrapper->at(0) = input_delta;
                 this->prevLayer->backward(wrapper);
             }
-        } else {
-//            printf("Backward complete.\n");
         }
         
         // Asynchronous update weight and bias to minimize delta
@@ -226,7 +225,7 @@ protected:
     float* weightDelta;
     float* biasDelta;
     
-    bool* dropout_mask;
+    float* dropout_mask;
     
     ThreadLocal<Matrix*> tl_output_act; // wx + b with activation
     ThreadLocal<Matrix*> tl_input_delta; // delta of prevLayer wx+b Z_(L-1)

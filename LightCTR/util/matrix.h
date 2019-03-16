@@ -160,10 +160,8 @@ public:
         avx_vecScalerAdd(ptr, another->pointer()->data(), ptr, scale, size());
         return this;
     }
-    inline Matrix* add(float fac) {
-        for (auto it = matrix->begin(); it != matrix->end(); it++) {
-            *it += fac;
-        }
+    inline Matrix* add(float delta) {
+        avx_vecAdd(matrix->data(), delta, matrix->data(), size());
         return this;
     }
     
@@ -174,9 +172,7 @@ public:
         return this;
     }
     inline Matrix* subtract(float delta) {
-        for (auto it = matrix->begin(); it != matrix->end(); it++) {
-            *it -= delta;
-        }
+        avx_vecAdd(matrix->data(), -delta, matrix->data(), size());
         return this;
     }
     
