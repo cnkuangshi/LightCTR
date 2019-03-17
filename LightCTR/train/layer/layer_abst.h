@@ -48,7 +48,17 @@ public:
     
     virtual const vector<Matrix*>* output() = 0;
     
-    virtual void registerGradient(std::shared_ptr<BufferFusion<float> > _buf_fusion) = 0;
+    virtual void registerInitializer(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
+        if (this->nextLayer) {
+            this->nextLayer->registerInitializer(_buf_fusion);
+        }
+    }
+    
+    virtual void registerGradient(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
+        if (this->nextLayer) {
+            this->nextLayer->registerGradient(_buf_fusion);
+        }
+    }
     
     virtual void applyBatchGradient() { // for each mini-batch gradient batch update stage
         if (nextLayer) {

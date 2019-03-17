@@ -46,7 +46,7 @@ public:
         dropout_mask = new float[this->output_dimension];
         
         FOR(i, this->output_dimension) {
-            bias[i] = UniformNumRand() - 0.5f;
+            bias[i] = 0.0;
             dropout_mask[i] = SampleBinary(GradientUpdater::__global_sparse_rate) ? 1. : 0.;
             FOR(j, this->input_dimension) {
                 *getWeight(i, j) = UniformNumRand() - 0.5f;
@@ -60,9 +60,15 @@ public:
         memset(biasDelta, 0, this->output_dimension);
     }
     
+    void registerInitializer(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
+        _buf_fusion->registMemChunk(weight, input_dimension * output_dimension);
+        if (this->nextLayer) {
+            this->nextLayer->registerInitializer(_buf_fusion);
+        }
+    }
     void registerGradient(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
-        _buf_fusion->registMemChunk(weightDelta, this->input_dimension * this->output_dimension);
-        _buf_fusion->registMemChunk(biasDelta, this->output_dimension);
+        _buf_fusion->registMemChunk(weightDelta, input_dimension * output_dimension);
+        _buf_fusion->registMemChunk(biasDelta, output_dimension);
         if (this->nextLayer) {
             this->nextLayer->registerGradient(_buf_fusion);
         }

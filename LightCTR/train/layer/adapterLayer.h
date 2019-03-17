@@ -27,12 +27,6 @@ public:
     ~Adapter_Layer() {
     }
     
-    void registerGradient(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
-        if (this->nextLayer) {
-            this->nextLayer->registerGradient(_buf_fusion);
-        }
-    }
-    
     vector<float>* forward(vector<Matrix*>* prevLOutput) {
         // init ThreadLocal var
         Matrix*& output_act = *tl_output_act;

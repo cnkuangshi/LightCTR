@@ -67,24 +67,28 @@ public:
         filter_cnt = this->output_dimension;
         
         filterArr.resize(filter_cnt);
+        filterDelta.resize(filter_cnt);
         FOR(i, filter_cnt) {
             filterArr[i] = new Matrix(config.filter_size, config.filter_size);
             filterArr[i]->randomInit();
-        }
-        
-        bias.resize(filter_cnt);
-        FOR(i, this->output_dimension) { // lazy init because they depend on conv result size
-            bias[i] = NULL;
-        }
-        // init for mini-batch
-        filterDelta.resize(filter_cnt);
-        FOR(i, filter_cnt) {
             filterDelta[i] = new Matrix(config.filter_size, config.filter_size);
             filterDelta[i]->zeroInit();
         }
+        
+        bias.resize(filter_cnt);
         biasDelta.resize(filter_cnt);
-        FOR(i, this->output_dimension) {
+        FOR(i, filter_cnt) { // lazy init because they depend on conv result size
+            bias[i] = NULL;
             biasDelta[i] = NULL;
+        }
+    }
+    
+    void registerInitializer(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
+        FOR(i, filter_cnt) {
+            _buf_fusion->registMemChunk(filterArr[i]->pointer()->data(), filterArr[i]->size());
+        }
+        if (this->nextLayer) {
+            this->nextLayer->registerInitializer(_buf_fusion);
         }
     }
     
@@ -143,11 +147,11 @@ public:
                     
                 }
             }
-            if (bias[filid] == NULL) { // Asynchronous to lazy init
+            if (bias[filid] == NULL) { // lazy init
                 unique_lock<SpinLock> glock(this->lock);
-                if (bias[filid] == NULL) { // float check
+                if (bias[filid] == NULL) { // double check
                     bias[filid] = new Matrix(m_ptr->x_len, m_ptr->y_len);
-                    bias[filid]->randomInit();
+                    bias[filid]->zeroInit();
                     biasDelta[filid] = new Matrix(m_ptr->x_len, m_ptr->y_len);
                     biasDelta[filid]->zeroInit();
                 }
@@ -207,8 +211,6 @@ public:
                 input_delta->at(i) = m_ptr;
             }
             this->prevLayer->backward(input_delta);
-        } else {
-//            printf("Backward complete.\n");
         }
         
         // Asynchronous update filter weight and bias to minimize delta

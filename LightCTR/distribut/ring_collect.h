@@ -23,7 +23,7 @@ class Worker_RingReduce : public Dist_Machine_Abst {
 public:
     explicit Worker_RingReduce(size_t ring_size) : _ring_size(ring_size) {
         
-        cur_node_id = Rank() - 1; // begin from 0
+        cur_node_id = Worker_RingReduce::Rank(); // begin from 0
         assert(cur_node_id >= 0);
         recv_from_id = BEGIN_ID_OF_WORKER + 1 + (cur_node_id + _ring_size - 1) % _ring_size;
         send_to_id = BEGIN_ID_OF_WORKER + 1 + (cur_node_id + 1 + _ring_size) % _ring_size;
@@ -45,13 +45,71 @@ public:
     
     void syncGradient(std::shared_ptr<BufferFusion<T> > _buf_fusion,
                       size_t epoch,
-                      bool do_Average = true,
-                      std::function<void(size_t)> reduce_callback = NULL,
-                      std::function<void(size_t)> gather_callback = NULL) {
+                      bool do_Average = true) {
         init(_buf_fusion);
         step_version = epoch * (2 * _ring_size - 2);
         
         // Firstly do all-reduce
+        reduce_step(_buf_fusion);
+        
+        // Secondly do all-gather
+        gather_step(_buf_fusion);
+        
+        // Finally
+        if (likely(do_Average)) {
+            const float scalar = 1.0 / _ring_size;
+            _buf_fusion->transform(0,
+                                  _buf_fusion->size(),
+                                  [scalar](T* begin, T* end) {
+                                      avx_vecScale(begin, begin, end - begin, scalar);
+                                  });
+        }
+#ifdef DEBUG
+        printf("[RING] **** Epoch %zu synchronizer completed ****\n", epoch);
+#endif
+    }
+    
+    void syncInitializer(std::shared_ptr<BufferFusion<T> > _buf_fusion) {
+        init(_buf_fusion);
+        step_version = _ring_size - 1;
+        
+        gather_step(_buf_fusion);
+    }
+    
+    inline size_t Rank() const { // Rank begin from 0
+        return Dist_Machine_Abst::Rank() - 1;
+    }
+    
+private:
+    void init(std::shared_ptr<BufferFusion<T> > _buf_fusion) {
+        assert(_ring_size > 0);
+        if (unlikely(_param_size != _buf_fusion->size())) {
+        
+            _param_size = _buf_fusion->size();
+            assert(_param_size > 0);
+            
+            segment_size_arr.resize(_ring_size);
+            segment_end_arr.resize(_ring_size);
+            const size_t seg_size = _param_size / _ring_size;
+            const size_t seg_res = _param_size % _ring_size;
+            
+            for (size_t i = 0; i < _ring_size; i++) {
+                segment_size_arr[i] = seg_size;
+                if (i < seg_res) {
+                    segment_size_arr[i]++;
+                }
+                if (i == 0) {
+                    segment_end_arr[0] = segment_size_arr[0];
+                } else {
+                    segment_end_arr[i] = segment_end_arr[i - 1] + segment_size_arr[i];
+                }
+            }
+        }
+        
+        regist_reduce_gather_handler(_buf_fusion);
+    }
+    
+    void reduce_step(std::shared_ptr<BufferFusion<T> > _buf_fusion) {
         for (size_t i = 0; i < _ring_size - 1; i++) {
             const size_t send_segment_id = (cur_node_id + _ring_size - i) % _ring_size;
             recv_segment_id = (cur_node_id + _ring_size - i - 1) % _ring_size;
@@ -99,13 +157,10 @@ public:
             } while(!send_status);
             
             step_barrier.block();
-            
-            if (unlikely(reduce_callback)) {
-                reduce_callback(i);
-            }
         }
-        
-        // Secondly do all-gather
+    }
+    
+    void gather_step(std::shared_ptr<BufferFusion<T> > _buf_fusion) {
         for (size_t i = 0; i < _ring_size - 1; i++) {
             const size_t send_segment_id = (cur_node_id + 1 + _ring_size - i) % _ring_size;
             recv_segment_id = (cur_node_id + _ring_size - i) % _ring_size;
@@ -153,53 +208,7 @@ public:
             } while(!send_status);
             
             step_barrier.block();
-            
-            if (unlikely(gather_callback)) {
-                gather_callback(i);
-            }
         }
-        
-        // Finally
-        if (likely(do_Average)) {
-            const float scalar = 1.0 / _ring_size;
-            _buf_fusion->transform(0,
-                                  _buf_fusion->size(),
-                                  [scalar](T* begin, T* end) {
-                                      avx_vecScale(begin, begin, end - begin, scalar);
-                                  });
-        }
-#ifdef DEBUG
-        printf("[RING] **** Epoch %zu synchronizer completed ****\n", epoch);
-#endif
-    }
-    
-private:
-    void init(std::shared_ptr<BufferFusion<T> > _buf_fusion) {
-        assert(_ring_size > 0);
-        if (unlikely(_param_size != _buf_fusion->size())) {
-        
-            _param_size = _buf_fusion->size();
-            assert(_param_size > 0);
-            
-            segment_size_arr.resize(_ring_size);
-            segment_end_arr.resize(_ring_size);
-            const size_t seg_size = _param_size / _ring_size;
-            const size_t seg_res = _param_size % _ring_size;
-            
-            for (size_t i = 0; i < _ring_size; i++) {
-                segment_size_arr[i] = seg_size;
-                if (i < seg_res) {
-                    segment_size_arr[i]++;
-                }
-                if (i == 0) {
-                    segment_end_arr[0] = segment_size_arr[0];
-                } else {
-                    segment_end_arr[i] = segment_end_arr[i - 1] + segment_size_arr[i];
-                }
-            }
-        }
-        
-        regist_reduce_gather_handler(_buf_fusion);
     }
     
     void _do_reduce(std::shared_ptr<BufferFusion<T> > _buf_fusion, Buffer& data) {

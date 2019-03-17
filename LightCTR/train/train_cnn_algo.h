@@ -35,9 +35,6 @@ public:
     }
     
     void init(size_t hidden_size) {
-#ifdef WORKER_RING
-        syncer = new Worker_RingReduce<float>(__global_cluster_worker_cnt);
-#endif
         // Net structure of 28x28: 5x5 12 pool 6 3x3 4 3x3 2 flatten fc-100
         this->inputLayer = new Conv_Layer<ActivationFunction>(NULL, 1, 6, CNN_Config{5, 0, 2});
         Max_Pooling_Layer<Identity>* poolLayer =
@@ -52,6 +49,13 @@ public:
         this->outputLayer =
             new Fully_Conn_Layer<ActivationFunction>(fcLayer, hidden_size,
                                                      this->multiclass_output_cnt);
+#ifdef WORKER_RING
+        syncer = new Worker_RingReduce<float>(__global_cluster_worker_cnt);
+        auto buf_fusion = std::make_shared<BufferFusion<float> >(false, false);
+        this->inputLayer->registerInitializer(buf_fusion);
+        syncer->syncInitializer(buf_fusion);
+        puts("[RING] Sync initializer complete");
+#endif
     }
     
     vector<float>* Predict(size_t rid, vector<vector<float> >* const dataRow) {

@@ -33,12 +33,6 @@ public:
     ~Max_Pooling_Layer() {
     }
     
-    void registerGradient(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
-        if (this->nextLayer) {
-            this->nextLayer->registerGradient(_buf_fusion);
-        }
-    }
-    
     vector<float>* forward(vector<Matrix*>* prevLOutput) {
         assert(prevLOutput->size() == this->input_dimension);
         
