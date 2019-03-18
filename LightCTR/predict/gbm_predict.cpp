@@ -39,8 +39,8 @@ void GBM_Predict::Predict(string savePath) {
             pCTR = sigmoid.forward(tmp[0]);
             pLabel.emplace_back(pCTR > 0.5 ? 1 : 0);
         } else {
-            softmax.forward(&tmp);
-            size_t idx = softmax.forward_max(&tmp);
+            softmax.forward(tmp.data(), tmp.size());
+            size_t idx = softmax.forward_max(tmp.data(), tmp.size());
             pCTR = tmp[idx];
             pLabel.emplace_back(idx);
         }

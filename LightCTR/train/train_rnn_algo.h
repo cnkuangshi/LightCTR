@@ -47,11 +47,9 @@ public:
     vector<float>& Predict(size_t rid, vector<vector<float> >& dataRow) {
         static Matrix* dataRow_Matrix = new Matrix(1, 28);
         static Matrix* dataRow_Matrix_fc = new Matrix(1, hidden_size, 0);
-        static vector<Matrix*> *tmp = new vector<Matrix*>();
-        tmp->resize(1);
-        
-        vector<float> *pred = NULL;
-        tmp->at(0) = dataRow_Matrix;
+        static vector<Matrix*> tmp;
+        tmp.resize(1);
+        tmp[0] = dataRow_Matrix;
         
         auto begin = dataRow[rid].begin();
         auto end = begin;
@@ -59,17 +57,17 @@ public:
             begin = dataRow[rid].begin() + i * 28;
             end = dataRow[rid].begin() + (i + 1) * 28;
             dataRow_Matrix->pointer()->assign(begin, end);
-            pred = this->inputLayer->forward(*tmp);
+            this->inputLayer->forward(tmp);
         }
         assert(end == dataRow[rid].end());
         
         // Attention Unit
-        pred = attentionLayer->forward(*inputLayer->seq_output());
+        vector<float> pred = attentionLayer->forward(inputLayer->seq_output());
         
-        assert(pred && pred->size() == hidden_size);
-        dataRow_Matrix_fc->loadDataPtr(pred);
-        tmp->at(0) = dataRow_Matrix_fc;
-        return this->fcLayer->forward(*tmp);
+        assert(pred.size() == hidden_size);
+        dataRow_Matrix_fc->loadDataPtr(&pred);
+        tmp[0] = dataRow_Matrix_fc;
+        return this->fcLayer->forward(tmp);
     }
     
     void BP(size_t rid, const vector<Matrix*>& grad) {

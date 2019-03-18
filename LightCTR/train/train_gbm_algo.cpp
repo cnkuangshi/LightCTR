@@ -77,7 +77,7 @@ void Train_GBM_Algo::flash(RegTreeNode *root, size_t inClass) { // run per gbm t
             tmp->assign(&dataSet_Pred[rid * multiclass],
                         &dataSet_Pred[rid * multiclass + multiclass]);
             assert(tmp->size() == multiclass);
-            softmax.forward(tmp);
+            softmax.forward(tmp->data(), tmp->size());
             for (size_t c = 0; c < multiclass; c++) {
                 float grad_t = tmp->at(c);
                 float hess_t = grad_t * (1.0 - grad_t) * 2.0;

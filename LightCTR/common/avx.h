@@ -206,7 +206,7 @@ inline void avx_vecRcp(const float* x, float *res, size_t len) {
     }
 }
 
-inline void avx_vecScale(const float* x, float *res, size_t len, float scalar) {
+inline void avx_vecScale(const float* x, float *res, size_t len, const float scalar) {
     const __m256 _scalar = _mm256_broadcast_ss(&scalar);
     if (len > 7) {
         for (; len > 7; len -= 8) {

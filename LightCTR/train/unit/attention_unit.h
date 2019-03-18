@@ -65,7 +65,7 @@ public:
             *fc_output_act->getEle(0, idx) = res[0];
         }
         // Softmax normalization
-        softmax.forward(fc_output_act->pointer());
+        softmax.forward(fc_output_act->pointer()->data(), fc_output_act->size());
         
         attentionOutput->zeroInit();
         FOR(idx, prevLOutputMatrix.size()) {
@@ -103,7 +103,8 @@ public:
             assert(res->size() == 1);
             scaleDelta[idx] = *cache_bp->getEle(0, 0);
         }
-        softmax.backward(&scaleDelta, fc_output_act->pointer(), &scaleDelta);
+        softmax.backward(scaleDelta.data(), fc_output_act->pointer()->data(),
+                         scaleDelta.data(), scaleDelta.size());
         // update transformFunc
         FOR(idx, input.size()) {
             *cache_bp->getEle(0, 0) = scaleDelta[idx];

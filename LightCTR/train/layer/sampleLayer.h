@@ -99,7 +99,10 @@ public:
             
             assert(!isinf(*sigmaPtr));
         }
-        this->prevLayer->getActiveFun().backward(input_delta.pointer(), prev_output_act, input_delta.pointer());
+        this->prevLayer->getActiveFun().backward(input_delta.pointer()->data(),
+                                                 prev_output_act->data(),
+                                                 input_delta.pointer()->data(),
+                                                 input_delta.size());
         
         vector<Matrix*>& wrapper = *tl_wrapper;
         wrapper[0] = &input_delta;

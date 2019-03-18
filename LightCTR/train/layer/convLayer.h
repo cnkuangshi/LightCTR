@@ -155,7 +155,7 @@ public:
             // apply Activation Function
             m_ptr->operate([this](vector<float>* matrix) {
                 assert(matrix);
-                this->getActiveFun().forward(matrix);
+                this->getActiveFun().forward(matrix->data(), matrix->size());
             });
             output_act[filid] = m_ptr;
         }
@@ -196,8 +196,9 @@ public:
                     }
                 }
                 m_ptr->operate([&, i](vector<float>* matrix) {
-                    this->prevLayer->getActiveFun().backward(matrix,
-                            this->prevLayer->output()[i]->pointer(), matrix);
+                    this->prevLayer->getActiveFun().backward(matrix->data(),
+                                            this->prevLayer->output()[i]->pointer()->data(),
+                                            matrix->data(), matrix->size());
                 });
                 input_delta[i] = m_ptr;
             }

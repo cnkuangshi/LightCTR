@@ -136,7 +136,7 @@ public:
         fill(__adagrad_accum.begin(), __adagrad_accum.end(), 0);
     }
     template<typename T>
-    void update(size_t offset, size_t len, T& weight, T& grad) {
+    void update(size_t offset, size_t len, T* weight, T* grad) {
         assert(offset + len <= __adagrad_params_cnt);
         avx_vecScale(grad, grad, len, 1.0 / __global_minibatch_size);
         for (size_t i = 0; i < len; i++) {
@@ -210,7 +210,7 @@ public:
         }
     }
     template<typename T>
-    void update(size_t offset, size_t len, T& weight, T& grad) {
+    void update(size_t offset, size_t len, T* weight, T* grad) {
         assert(offset + len <= __rms_params_cnt);
         for (size_t i = 0; i < len; i++) {
             float g = grad[i] / __global_minibatch_size, tmp;

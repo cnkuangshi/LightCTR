@@ -33,9 +33,9 @@ using namespace std;
                        x##_h_grad_w->zeroInit();   \
                        x##_grad_b->zeroInit();
 
-#define UPDATE(x) updater_##x##_b.update(0, hidden_size, x##_b->reference(), x##_grad_b->reference()); \
-                  updater_##x##_w.update(0, dimension * hidden_size, x##_w->reference(), x##_grad_w->reference()); \
-                  updater_##x##_h_w.update(0, hidden_size * hidden_size, x##_h_w->reference(), x##_h_grad_w->reference());
+#define UPDATE(x) updater_##x##_b.update(0, hidden_size, x##_b->pointer()->data(), x##_grad_b->pointer()->data()); \
+                  updater_##x##_w.update(0, dimension * hidden_size, x##_w->pointer()->data(), x##_grad_w->pointer()->data()); \
+                  updater_##x##_h_w.update(0, hidden_size * hidden_size, x##_h_w->pointer()->data(), x##_h_grad_w->pointer()->data());
 
 // Bidirectional Recurrent Cell impl by Long Short Term Memory
 template <typename ActivationFunction>
@@ -139,7 +139,7 @@ public:
         }
         // apply ouput gate after do tanh
         cache = c_state[cur_seqid]->copy(cache);
-        inner_activeFun.forward(cache->pointer());
+        inner_activeFun.forward(cache->pointer()->data(), cache->size());
         c_state_act[cur_seqid] = cache->copy(c_state_act[cur_seqid]);
         h_output[cur_seqid] = cache->copy(h_output[cur_seqid])->dotProduct(oup_gate[cur_seqid]);
         
@@ -182,7 +182,10 @@ public:
             
             { // output gate weight
                 oup_gate_delta = h_output_delta->copy(oup_gate_delta)->dotProduct(c_state_act[seqid]);
-                sigmoid.backward(oup_gate_delta->pointer(), oup_gate[seqid]->pointer(), oup_gate_delta->pointer());
+                sigmoid.backward(oup_gate_delta->pointer()->data(),
+                                 oup_gate[seqid]->pointer()->data(),
+                                 oup_gate_delta->pointer()->data(),
+                                 oup_gate_delta->size());
                 
                 accumGrad(oup_grad_w, oup_gate_delta, input[seqid]);
                 if (seqid > 0) {
@@ -200,11 +203,17 @@ public:
                 if (seqid < (int)cur_seqid - 1) { // accumulate the last time c_state's delta and h_output's delta
                     assert(c_state_delta[seqid]);
                     cache = h_output_delta->copy(cache)->dotProduct(oup_gate[seqid]);
-                    inner_activeFun.backward(cache->pointer(), c_state_act[seqid]->pointer(), cache->pointer());
+                    inner_activeFun.backward(cache->pointer()->data(),
+                                             c_state_act[seqid]->pointer()->data(),
+                                             cache->pointer()->data(),
+                                             cache->size());
                     c_state_delta[seqid]->add(cache);
                 } else { // for the first time of bp, clear memory
                     c_state_delta[seqid] = h_output_delta->copy(c_state_delta[seqid])->dotProduct(oup_gate[seqid]);
-                    inner_activeFun.backward(c_state_delta[seqid]->pointer(), c_state_act[seqid]->pointer(), c_state_delta[seqid]->pointer());
+                    inner_activeFun.backward(c_state_delta[seqid]->pointer()->data(),
+                                             c_state_act[seqid]->pointer()->data(),
+                                             c_state_delta[seqid]->pointer()->data(),
+                                             c_state_delta[seqid]->size());
                 }
                 
                 { // delta of c_state in t-1, forget gate weight and delta of extra_info
@@ -214,7 +223,10 @@ public:
                         // clear prev-time memory
                         c_state_delta[seqid - 1] = c_state_delta[seqid]->copy(c_state_delta[seqid - 1])->dotProduct(fg_gate[seqid]);
                         fg_gate_delta = c_state_delta[seqid]->copy(fg_gate_delta)->dotProduct(c_state[seqid - 1]);
-                        sigmoid.backward(fg_gate_delta->pointer(), fg_gate[seqid]->pointer(), fg_gate_delta->pointer());
+                        sigmoid.backward(fg_gate_delta->pointer()->data(),
+                                         fg_gate[seqid]->pointer()->data(),
+                                         fg_gate_delta->pointer()->data(),
+                                         fg_gate_delta->size());
                         
                         accumGrad(fg_grad_w, fg_gate_delta, input[seqid]);
                         accumGrad(fg_h_grad_w, fg_gate_delta, h_output[seqid - 1]);
@@ -227,7 +239,10 @@ public:
                         
                         // input gate weight
                         inp_gate_delta = c_state_delta[seqid]->copy(inp_gate_delta)->dotProduct(info[seqid]);
-                        sigmoid.backward(inp_gate_delta->pointer(), inp_gate[seqid]->pointer(), inp_gate_delta->pointer());
+                        sigmoid.backward(inp_gate_delta->pointer()->data(),
+                                         inp_gate[seqid]->pointer()->data(),
+                                         inp_gate_delta->pointer()->data(),
+                                         inp_gate_delta->size());
                         
                         accumGrad(inp_grad_w, inp_gate_delta, input[seqid]);
                         if (seqid > 0) {
@@ -241,7 +256,10 @@ public:
                         
                         // delta of input_act transform
                         input_act_delta = c_state_delta[seqid]->copy(input_act_delta)->dotProduct(inp_gate[seqid]);
-                        inner_activeFun.backward(input_act_delta->pointer(), info[seqid]->pointer(), input_act_delta->pointer());
+                        inner_activeFun.backward(input_act_delta->pointer()->data(),
+                                                 info[seqid]->pointer()->data(),
+                                                 input_act_delta->pointer()->data(),
+                                                 input_act_delta->size());
                         // input gate weight
                         accumGrad(info_grad_w, input_act_delta, input[seqid]);
                         if (seqid > 0) {
@@ -262,9 +280,9 @@ public:
         wrapper[0] = h_output[cur_seqid - 1];
         return wrapper;
     }
-    vector<Matrix*>* seq_output() { // get rnn encoder output sequence for attention decoder
+    const vector<Matrix*>& seq_output() { // get rnn encoder output sequence for attention decoder
         assert(cur_seqid == batch_size);
-        return &h_output;
+        return h_output;
     }
     
     void applyBatchGradient() {
@@ -311,7 +329,8 @@ private:
             target->at(cur_seqid)->add(cache);
         }
         target->at(cur_seqid)->add(bias);
-        actFun->forward(target->at(cur_seqid)->pointer());
+        actFun->forward(target->at(cur_seqid)->pointer()->data(),
+                        target->at(cur_seqid)->size());
     }
     
     size_t cur_seqid;

@@ -108,7 +108,7 @@ public:
         wrapper.resize(1);
         
         if (this->nextLayer) {
-            this->getActiveFun().forward(output_act.pointer());
+            this->getActiveFun().forward(output_act.pointer()->data(), output_act.size());
             wrapper[0] = &output_act;
             return this->nextLayer->forward(wrapper);
         } else {
@@ -150,7 +150,10 @@ public:
                 prev_output_act = this->prevLayer->output()[0]->pointer();
                 assert(prev_output_act && prev_output_act->size() == this->input_dimension);
                 
-                this->prevLayer->getActiveFun().backward(input_delta.pointer(), prev_output_act, input_delta.pointer());
+                this->prevLayer->getActiveFun().backward(input_delta.pointer()->data(),
+                                                         prev_output_act->data(),
+                                                         input_delta.pointer()->data(),
+                                                         input_delta.size());
                 assert(input_delta.pointer()->size() == this->input_dimension);
                 
                 vector<Matrix*>& wrapper = *tl_wrapper;

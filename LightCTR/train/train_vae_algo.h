@@ -68,11 +68,11 @@ public:
                 dataRow_Matrix->loadDataPtr(&dataSet[rid]);
                 tmp[0] = dataRow_Matrix;
                 vector<float>& pred = this->encodeLayer->forward(tmp);
-                outputActivFun.forward(&pred);
+                outputActivFun.forward(pred.data(), pred.size());
                 assert(pred.size() == feature_cnt);
                 grad.resize(pred.size());
-                lossFun.gradient(&pred, &dataSet[rid], &grad);
-                outputActivFun.backward(&grad, &pred, &grad);
+                lossFun.gradient(pred.data(), dataSet[rid].data(), grad.data(), grad.size());
+                outputActivFun.backward(grad.data(), pred.data(), grad.data(), grad.size());
                 // if LossFunction is Logistic, annotation last line
                 grad_Matrix->loadDataPtr(&grad);
                 tmp[0] = grad_Matrix;
@@ -91,19 +91,10 @@ public:
                     dataRow_Matrix->loadDataPtr(&dataSet[rid]);
                     tmp[0] = dataRow_Matrix;
                     vector<float> pred = this->encodeLayer->forward(tmp);
-                    outputActivFun.forward(&pred);
-                    loss += lossFun.loss(&pred, &dataSet[rid]);
-                    if (rid == 4 || rid == 8) { // look like number 4 or 5
-                        for (size_t i = 0; i < feature_cnt; i++) {
-                            cout.width(3);
-                            cout << int(pred[i] * 255) << ",";
-                            if ((i + 1) % 28 == 0) {
-                                cout << endl;
-                            }
-                        }
-                    }
+                    outputActivFun.forward(pred.data(), pred.size());
+                    loss += lossFun.loss(pred.data(), dataSet[rid].data(), pred.size());
                 }
-                printf("\nepoch %zu Loss = %f\n", p, loss);
+                printf("Epoch %zu Loss = %f\n", p, loss);
             }
         }
     }
@@ -171,21 +162,6 @@ public:
         }
         this->dataRow_cnt = this->dataSet.size();
         assert(this->dataRow_cnt > 0);
-        
-        for (size_t i = 0; i < feature_cnt; i++) {
-            cout.width(3);
-            cout << int(dataSet[4][i] * 255) << ",";
-            if ((i + 1) % 28 == 0) {
-                cout << endl;
-            }
-        }
-        for (size_t i = 0; i < feature_cnt; i++) {
-            cout.width(3);
-            cout << int(dataSet[8][i] * 255) << ",";
-            if ((i + 1) % 28 == 0) {
-                cout << endl;
-            }
-        }
     }
     
 private:

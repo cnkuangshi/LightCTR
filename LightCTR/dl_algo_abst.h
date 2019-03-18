@@ -64,7 +64,7 @@ public:
                     vector<float> pred = Predict(rid, dataSet);
                     
                     assert(pred.size() == multiclass_output_cnt);
-                    outputActivFun.forward(&pred);
+                    outputActivFun.forward(pred.data(), pred.size());
                     
                     // init threadLocal var
                     vector<float>& grad = *tl_grad;
@@ -84,11 +84,12 @@ public:
                     } else {
                         onehot[label[rid]] = 1; // label should begin from 0
                     }
-                    lossFun.gradient(&pred, &onehot, &grad);
+                    lossFun.gradient(pred.data(), onehot.data(), grad.data(), pred.size());
                     if (multiclass_output_cnt > 1) {
                         // Notice when LossFunction is Logistic annotation next line,
                         // otherwise run this line like square + softmax
-                        outputActivFun.backward(&grad, &pred, &grad);
+                        outputActivFun.backward(grad.data(), pred.data(),
+                                                grad.data(), grad.size());
                     }
                     grad_Matrix->loadDataPtr(&grad);
                     wrapper[0] = grad_Matrix;
@@ -112,13 +113,13 @@ public:
                 GradientUpdater::__global_bTraining = false;
                 
                 // Validate Loss
-                std::atomic<float> loss(0.0f);
-                std::atomic<int> correct(0);
+                float loss = 0.0f;
+                int correct = 0;
                 for (size_t rid = 0; rid < dataRow_cnt; rid++) {
                     auto task = [&, rid]() {
                         vector<float> pred = Predict(rid, dataSet);
                         
-                        outputActivFun.forward(&pred);
+                        outputActivFun.forward(pred.data(), pred.size());
                         
                         // init threadLocal var
                         vector<float>& grad = *tl_grad;
@@ -137,7 +138,7 @@ public:
                         } else {
                             onehot[label[rid]] = 1; // label should begin from 0
                         }
-                        loss = loss + lossFun.loss(&pred, &onehot);
+                        loss += lossFun.loss(pred.data(), onehot.data(), pred.size());
                     };
                     if (dl_algo == RNN) {
                         task();
@@ -147,7 +148,7 @@ public:
                 }
                 threadpool->wait();
                 printf("Epoch %zu Loss = %f correct = %.3f\n",
-                       p, loss.load(), 1.0f * correct / dataRow_cnt);
+                       p, loss, 1.0f * correct / dataRow_cnt);
             }
         }
     }
