@@ -44,7 +44,7 @@ public:
             new Fully_Conn_Layer<ActivationFunction>(fcLayer, 72, this->multiclass_output_cnt);
     }
     
-    vector<float>* Predict(size_t rid, vector<vector<float> >* const dataRow) {
+    vector<float>& Predict(size_t rid, vector<vector<float> >& dataRow) {
         static Matrix* dataRow_Matrix = new Matrix(1, 28);
         static Matrix* dataRow_Matrix_fc = new Matrix(1, hidden_size, 0);
         static vector<Matrix*> *tmp = new vector<Matrix*>();
@@ -53,29 +53,29 @@ public:
         vector<float> *pred = NULL;
         tmp->at(0) = dataRow_Matrix;
         
-        auto begin = dataRow->at(rid).begin();
+        auto begin = dataRow[rid].begin();
         auto end = begin;
         FOR(i, batch_size) {
-            begin = dataRow->at(rid).begin() + i * 28;
-            end = dataRow->at(rid).begin() + (i + 1) * 28;
+            begin = dataRow[rid].begin() + i * 28;
+            end = dataRow[rid].begin() + (i + 1) * 28;
             dataRow_Matrix->pointer()->assign(begin, end);
-            pred = this->inputLayer->forward(tmp);
+            pred = this->inputLayer->forward(*tmp);
         }
-        assert(end == dataRow->at(rid).end());
+        assert(end == dataRow[rid].end());
         
         // Attention Unit
-        pred = attentionLayer->forward(this->inputLayer->seq_output());
+        pred = attentionLayer->forward(*inputLayer->seq_output());
         
         assert(pred && pred->size() == hidden_size);
         dataRow_Matrix_fc->loadDataPtr(pred);
         tmp->at(0) = dataRow_Matrix_fc;
-        return this->fcLayer->forward(tmp);
+        return this->fcLayer->forward(*tmp);
     }
     
-    void BP(size_t rid, vector<Matrix*>* grad) {
+    void BP(size_t rid, const vector<Matrix*>& grad) {
         assert(GradientUpdater::__global_bTraining);
         this->outputLayer->backward(grad);
-        this->inputLayer->backward(this->attentionLayer->inputDelta());
+        this->inputLayer->backward(attentionLayer->inputDelta());
     }
     
     void applyBP(size_t epoch) const {

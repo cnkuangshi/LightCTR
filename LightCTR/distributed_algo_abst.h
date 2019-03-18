@@ -227,9 +227,9 @@ public:
             vector<Matrix*> wrapper;
             wrapper.resize(1);
             wrapper[0] = &deep_input;
-            vector<float>* ans = inputLayer->forward(&wrapper);
+            vector<float> ans = inputLayer->forward(wrapper);
             
-            float pCTR = sigmoid.forward(pred + ans->at(0));
+            float pCTR = sigmoid.forward(pred + ans[0]);
             train_loss += (int)this->label[rid] == 1 ?
                                     -log(pCTR) : -log(1.0 - pCTR);
             assert(!isnan(train_loss));
@@ -266,9 +266,9 @@ public:
             Matrix deep_loss(1, 1);
             *deep_loss.getEle(0, 0) = loss;
             wrapper[0] = &deep_loss;
-            outputLayer->backward(&wrapper);
-            const Matrix* delta = this->inputLayer->inputDelta(); // get delta of deep_input
-            grad_buf->lazyAllocate(delta->pointer()->data());
+            outputLayer->backward(wrapper);
+            const Matrix& delta = this->inputLayer->inputDelta(); // get delta of deep_input
+            grad_buf->lazyAllocate(delta.pointer()->data());
             worker.push_tensor_op.sync(tensor_map, epoch);
         }
         

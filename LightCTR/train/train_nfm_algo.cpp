@@ -65,11 +65,8 @@ void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
             if (fc_bp_Matrix == NULL) {
                 fc_bp_Matrix = new Matrix(1, 1);
             }
-            vector<Matrix*>*& wrapper = *tl_wrapper;
-            if (wrapper == NULL) {
-                wrapper = new vector<Matrix*>();
-                wrapper->resize(1);
-            }
+            vector<Matrix*>& wrapper = *tl_wrapper;
+            wrapper.resize(1);
             
             fc_input_Matrix->zeroInit();
             float fm_pred = 0.0f;
@@ -97,11 +94,11 @@ void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
             avx_vecScalerAdd(fc_input_Matrix->getEle(0, 0), getSumVX(rid, 0), fc_input_Matrix->getEle(0, 0), tmp_vec.data(), factor_cnt);
             
             // deep part
-            wrapper->at(0) = fc_input_Matrix;
-            const vector<float> *fc_pred = this->inputLayer->forward(wrapper);
-            assert(fc_pred && fc_pred->size() == 1);
+            wrapper[0] = fc_input_Matrix;
+            vector<float> fc_pred = this->inputLayer->forward(wrapper);
+            assert(fc_pred.size() == 1);
 
-            fm_pred += fc_pred->at(0);
+            fm_pred += fc_pred[0];
             fm_pred = sigmoid.forward(fm_pred); // FM activate
             
             loss += (int)label[rid] == 1 ? -log(fm_pred) : -log(1.0 - fm_pred);
@@ -116,11 +113,11 @@ void Train_NFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
             
             // FC backward
             *fc_bp_Matrix->getEle(0, 0) = fm_pred - label[rid];
-            wrapper->at(0) = fc_bp_Matrix;
+            wrapper[0] = fc_bp_Matrix;
             this->outputLayer->backward(wrapper);
-            const Matrix* delta = this->inputLayer->inputDelta(); // get delta of VX
-            assert(delta->size() == factor_cnt);
-            accumDeepGrad(rid, delta->pointer());
+            const Matrix& delta = this->inputLayer->inputDelta(); // get delta of VX
+            assert(delta.size() == factor_cnt);
+            accumDeepGrad(rid, delta.reference());
         });
     }
     threadpool->wait();
@@ -139,12 +136,13 @@ void Train_NFM_Algo::accumWideGrad(size_t rid, float pred) {
     }
 }
 
-void Train_NFM_Algo::accumDeepGrad(size_t rid, vector<float>* delta) {
+void Train_NFM_Algo::accumDeepGrad(size_t rid, const vector<float>& delta) {
     size_t fid;
     float X;
     
-    vector<float> tmp_vec;
+    vector<float> tmp_vec, tmp_vec2;
     tmp_vec.resize(factor_cnt);
+    tmp_vec2.resize(factor_cnt);
     
     for (size_t i = 0; i < dataSet[rid].size(); i++) {
         fid = dataSet[rid][i].first;
@@ -153,9 +151,9 @@ void Train_NFM_Algo::accumDeepGrad(size_t rid, vector<float>* delta) {
 
         avx_vecScalerAdd(getSumVX(rid, 0), getV(fid, 0),
                          tmp_vec.data(), -X, factor_cnt);
-        avx_vecScale(delta->data(), delta->data(), factor_cnt, X);
+        avx_vecScale(delta.data(), tmp_vec2.data(), factor_cnt, X);
         avx_vecScalerAdd(update_V(fid, 0), tmp_vec.data(),
-                         update_V(fid, 0), delta->data(), factor_cnt);
+                         update_V(fid, 0), tmp_vec2.data(), factor_cnt);
         avx_vecScalerAdd(update_V(fid, 0), getV(fid, 0), update_V(fid, 0), L2Reg_ratio, factor_cnt);
     }
 }

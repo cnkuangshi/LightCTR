@@ -135,7 +135,7 @@ public:
         pthread_key_delete(threadSpecificKey_);
     }
     
-    // get thread local object, T expect to be a pointer
+    // get thread local object
     inline T* get(bool createLocal = true) {
         T* p = (T*)pthread_getspecific(threadSpecificKey_);
         if (!p && createLocal) {

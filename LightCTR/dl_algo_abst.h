@@ -43,15 +43,15 @@ public:
         this->outputLayer = new Fully_Conn_Layer<ActivationFunction>(inputLayer, hidden_size, multiclass_output_cnt);
     }
     
-    virtual vector<float>* Predict(size_t, vector<vector<float> >* const) = 0;
-    virtual void BP(size_t, vector<Matrix*>*) = 0;
+    virtual const vector<float>& Predict(size_t, vector<vector<float> >&) = 0;
+    virtual void BP(size_t, const vector<Matrix*>&) = 0;
     virtual void applyBP(size_t epoch) const = 0;
     
     void Train() {
-        static ThreadLocal<vector<float>* > tl_grad;
-        static ThreadLocal<vector<int>* > tl_onehot;
+        static ThreadLocal<vector<float> > tl_grad;
+        static ThreadLocal<vector<int> > tl_onehot;
         static ThreadLocal<Matrix*> tl_grad_Matrix;
-        static ThreadLocal<vector<Matrix*>* > tl_tmp;
+        static ThreadLocal<vector<Matrix*> > tl_wrapper;
         
         for (size_t p = 0; p < epoch; p++) {
             
@@ -61,48 +61,39 @@ public:
             for (size_t rid = 0; rid < dataRow_cnt; rid++) {
                 
                 auto task = [&, rid]() {
-                    vector<float> *pred = Predict(rid, &dataSet);
+                    vector<float> pred = Predict(rid, dataSet);
                     
-                    assert(pred->size() == multiclass_output_cnt);
-                    outputActivFun.forward(pred);
+                    assert(pred.size() == multiclass_output_cnt);
+                    outputActivFun.forward(&pred);
                     
                     // init threadLocal var
-                    vector<float>*& grad = *tl_grad;
-                    if (grad == NULL) {
-                        grad = new vector<float>();
-                        grad->resize(multiclass_output_cnt);
-                    }
-                    vector<int>*& onehot = *tl_onehot;
-                    if (onehot == NULL) {
-                        onehot = new vector<int>();
-                        onehot->resize(multiclass_output_cnt);
-                    }
+                    vector<float>& grad = *tl_grad;
+                    grad.resize(multiclass_output_cnt);
+                    vector<int>& onehot = *tl_onehot;
+                    onehot.resize(multiclass_output_cnt);
                     Matrix*& grad_Matrix = *tl_grad_Matrix;
                     if (grad_Matrix == NULL) {
                         grad_Matrix = new Matrix(1, multiclass_output_cnt, 0);
                     }
-                    vector<Matrix*>*& tmp = *tl_tmp;
-                    if (tmp == NULL) {
-                        tmp = new vector<Matrix*>();
-                        tmp->resize(1);
-                    }
+                    vector<Matrix*>& wrapper = *tl_wrapper;
+                    wrapper.resize(1);
                     
-                    fill(onehot->begin(), onehot->end(), 0);
+                    fill(onehot.begin(), onehot.end(), 0);
                     if (multiclass_output_cnt == 1) {
-                        onehot->at(0) = label[rid];
+                        onehot[0] = label[rid];
                     } else {
-                        onehot->at(label[rid]) = 1; // label should begin from 0
+                        onehot[label[rid]] = 1; // label should begin from 0
                     }
-                    lossFun.gradient(pred, onehot, grad);
+                    lossFun.gradient(&pred, &onehot, &grad);
                     if (multiclass_output_cnt > 1) {
                         // Notice when LossFunction is Logistic annotation next line,
                         // otherwise run this line like square + softmax
-                        outputActivFun.backward(grad, pred, grad);
+                        outputActivFun.backward(&grad, &pred, &grad);
                     }
-                    grad_Matrix->loadDataPtr(grad);
-                    tmp->at(0) = grad_Matrix;
+                    grad_Matrix->loadDataPtr(&grad);
+                    wrapper[0] = grad_Matrix;
                     
-                    BP(rid, tmp);
+                    BP(rid, wrapper);
                 };
                 if (dl_algo == RNN) {
                     task(); // force RNN into serialization
@@ -125,43 +116,28 @@ public:
                 std::atomic<int> correct(0);
                 for (size_t rid = 0; rid < dataRow_cnt; rid++) {
                     auto task = [&, rid]() {
-                        vector<float> *pred = Predict(rid, &dataSet);
+                        vector<float> pred = Predict(rid, dataSet);
                         
-                        outputActivFun.forward(pred);
+                        outputActivFun.forward(&pred);
                         
                         // init threadLocal var
-                        vector<float>*& grad = *tl_grad;
-                        if (grad == NULL) {
-                            grad = new vector<float>();
-                            grad->resize(multiclass_output_cnt);
-                        }
-                        vector<int>*& onehot = *tl_onehot;
-                        if (onehot == NULL) {
-                            onehot = new vector<int>();
-                            onehot->resize(multiclass_output_cnt);
-                        }
-                        Matrix*& grad_Matrix = *tl_grad_Matrix;
-                        if (grad_Matrix == NULL) {
-                            grad_Matrix = new Matrix(1, multiclass_output_cnt, 0);
-                        }
-                        vector<Matrix*> *tmp = *tl_tmp;
-                        if (tmp == NULL) {
-                            tmp = new vector<Matrix*>();
-                            tmp->resize(1);
-                        }
+                        vector<float>& grad = *tl_grad;
+                        grad.resize(multiclass_output_cnt);
+                        vector<int>& onehot = *tl_onehot;
+                        onehot.resize(multiclass_output_cnt);
                         
-                        auto idx = max_element(pred->begin(), pred->end()) - pred->begin();
+                        auto idx = max_element(pred.begin(), pred.end()) - pred.begin();
                         assert(idx >= 0);
                         if (idx == label[rid]) {
                             correct++;
                         }
-                        fill(onehot->begin(), onehot->end(), 0);
+                        fill(onehot.begin(), onehot.end(), 0);
                         if (multiclass_output_cnt == 1) {
-                            onehot->at(0) = label[rid];
+                            onehot[0] = label[rid];
                         } else {
-                            onehot->at(label[rid]) = 1; // label should begin from 0
+                            onehot[label[rid]] = 1; // label should begin from 0
                         }
-                        loss = loss + lossFun.loss(pred, onehot);
+                        loss = loss + lossFun.loss(&pred, &onehot);
                     };
                     if (dl_algo == RNN) {
                         task();

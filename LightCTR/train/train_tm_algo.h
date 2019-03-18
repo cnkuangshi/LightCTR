@@ -42,7 +42,7 @@ public:
     float Train_MStep(const vector<float>*);
     
     void printArguments();
-    shared_ptr<vector<int> > Predict();
+    vector<int> Predict();
     
     size_t word_cnt, topic_cnt, doc_cnt;
     vector<string> vocab;

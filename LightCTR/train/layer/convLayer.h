@@ -102,45 +102,39 @@ public:
         }
     }
     
-    vector<float>* forward(vector<Matrix*>* prevLOutput) {
+    vector<float>& forward(const vector<Matrix*>& prevLOutput) {
         assert(this->nextLayer);
-        assert(prevLOutput->size() == this->input_dimension);
+        assert(prevLOutput.size() == this->input_dimension);
         
         // init ThreadLocal var
-        vector<Matrix*>*& output_act = *tl_output_act;
-        if (output_act == NULL) {
-            output_act = new vector<Matrix*>();
-            output_act->resize(this->output_dimension);
-        }
+        vector<Matrix*>& output_act = *tl_output_act;
+        output_act.resize(this->output_dimension);
         Matrix*& cache = *tl_cache;
         
         if (this->bInputLayer) { // storage input only for input layer
-            vector<Matrix*>*& input = *tl_input;
-            if (input == NULL) {
-                input = new vector<Matrix*>();
-                input->resize(this->input_dimension);
-            }
+            vector<Matrix*>& input = *tl_input;
+            input.resize(this->input_dimension);
             FOR(i, this->input_dimension) {
-                input->at(i) = prevLOutput->at(i);
+                input[i] = prevLOutput[i];
             }
         }
         
         FOR(filid, filter_cnt) {
-            auto m_ptr = output_act->at(filid);
+            auto m_ptr = output_act[filid];
             if (m_ptr) {
                 m_ptr->zeroInit();
             }
             FOR(feamid, this->input_dimension) {
                 if (bConnect(feamid, filid)) {
                     if (m_ptr == NULL) {
-                        prevLOutput->at(feamid)->convolution(m_ptr,
-                                                             filterArr[filid],
-                                                             config.padding, config.stride);
+                        prevLOutput[feamid]->convolution(m_ptr,
+                                                         filterArr[filid],
+                                                         config.padding, config.stride);
                         assert(m_ptr);
                     } else {
-                        prevLOutput->at(feamid)->convolution(cache,
-                                                             filterArr[filid],
-                                                             config.padding, config.stride);
+                        prevLOutput[feamid]->convolution(cache,
+                                                         filterArr[filid],
+                                                         config.padding, config.stride);
                         assert(cache);
                         m_ptr->add(cache);
                     }
@@ -163,21 +157,18 @@ public:
                 assert(matrix);
                 this->getActiveFun().forward(matrix);
             });
-            output_act->at(filid) = m_ptr;
+            output_act[filid] = m_ptr;
         }
         return this->nextLayer->forward(output_act);
     }
     
-    void backward(vector<Matrix*>* outputDelta) {
-        assert(outputDelta->size() == this->output_dimension);
-        const vector<Matrix*> *prev_output_act = NULL;
+    void backward(const vector<Matrix*>& outputDelta) {
+        assert(outputDelta.size() == this->output_dimension);
+        vector<Matrix*> prev_output_act;
         
         // init ThreadLocal var
-        vector<Matrix*>*& input_delta = *tl_input_delta;
-        if (input_delta == NULL) {
-            input_delta = new vector<Matrix*>();
-            input_delta->resize(this->input_dimension);
-        }
+        vector<Matrix*>& input_delta = *tl_input_delta;
+        input_delta.resize(this->input_dimension);
         Matrix*& cache_bp = *tl_cache_bp;
 
         if (!this->bInputLayer) {
@@ -185,7 +176,7 @@ public:
             prev_output_act = this->prevLayer->output();
             
             FOR(i, this->input_dimension) {
-                auto m_ptr = input_delta->at(i);
+                auto m_ptr = input_delta[i];
                 if (m_ptr) {
                     m_ptr->zeroInit();
                 }
@@ -193,11 +184,11 @@ public:
                     if (bConnect(i, j)) {
                         // delta Z_(L) conv rot180 W_(L) * di-acti( Z_(L-1) )
                         if (m_ptr == NULL) {
-                            outputDelta->at(j)->deconvolution_Delta(m_ptr, filterArr[j],
+                            outputDelta[j]->deconvolution_Delta(m_ptr, filterArr[j],
                                                                     config.padding, config.stride);
                             assert(m_ptr);
                         } else {
-                            outputDelta->at(j)->deconvolution_Delta(cache_bp, filterArr[j],
+                            outputDelta[j]->deconvolution_Delta(cache_bp, filterArr[j],
                                                                     config.padding, config.stride);
                             assert(cache_bp);
                             m_ptr->add(cache_bp);
@@ -206,9 +197,9 @@ public:
                 }
                 m_ptr->operate([&, i](vector<float>* matrix) {
                     this->prevLayer->getActiveFun().backward(matrix,
-                            this->prevLayer->output()->at(i)->pointer(), matrix);
+                            this->prevLayer->output()[i]->pointer(), matrix);
                 });
-                input_delta->at(i) = m_ptr;
+                input_delta[i] = m_ptr;
             }
             this->prevLayer->backward(input_delta);
         }
@@ -221,26 +212,23 @@ public:
                     if (bConnect(feamid, filid)) {
                         // delta Z_(L) conv acti( Z_(L-1) )
                         if (this->bInputLayer) {
-                            vector<Matrix*>*& input = *tl_input;
-                            assert(input);
-                            outputDelta->at(filid)->deconvolution_Filter(filterDelta[filid],
-                                    input->at(feamid), config.padding, config.stride);
+                            vector<Matrix*>& input = *tl_input;
+                            outputDelta[filid]->deconvolution_Filter(filterDelta[filid],
+                                    input[feamid], config.padding, config.stride);
                         } else {
-                            assert(prev_output_act != NULL);
-                            outputDelta->at(filid)->deconvolution_Filter(filterDelta[filid],
-                                    this->prevLayer->output()->at(feamid),
+                            outputDelta[filid]->deconvolution_Filter(filterDelta[filid],
+                                    this->prevLayer->output()[feamid],
                                     config.padding, config.stride);
                         }
                     }
                 }
-                biasDelta[filid]->add(outputDelta->at(filid));
+                biasDelta[filid]->add(outputDelta[filid]);
             }
         }
     }
     
-    const vector<Matrix*>* output() {
-        vector<Matrix*>*& output_act = *tl_output_act;
-        assert(output_act);
+    const vector<Matrix*>& output() {
+        vector<Matrix*>& output_act = *tl_output_act;
         return output_act;
     }
     
@@ -278,9 +266,9 @@ protected:
     vector<Matrix*> filterDelta;
     vector<Matrix*> biasDelta;
     
-    ThreadLocal<vector<Matrix*>*> tl_output_act;
-    ThreadLocal<vector<Matrix*>*> tl_input_delta;
-    ThreadLocal<vector<Matrix*>*> tl_input;
+    ThreadLocal<vector<Matrix*> > tl_output_act;
+    ThreadLocal<vector<Matrix*> > tl_input_delta;
+    ThreadLocal<vector<Matrix*> > tl_input;
     
     ThreadLocal<Matrix*> tl_cache, tl_cache_bp;
     

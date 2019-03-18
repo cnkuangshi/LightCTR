@@ -49,7 +49,7 @@ private:
     
     void batchGradCompute(size_t, size_t);
     void accumWideGrad(size_t, float);
-    void accumDeepGrad(size_t, vector<float>*);
+    void accumDeepGrad(size_t, const vector<float>&);
     
     float *update_g;
     inline float* update_W(size_t fid) {
@@ -65,7 +65,7 @@ private:
     AdagradUpdater_Num updater;
     
     ThreadLocal<Matrix*> tl_fc_input_Matrix, tl_fc_bp_Matrix;
-    ThreadLocal<vector<Matrix*>*> tl_wrapper;
+    ThreadLocal<vector<Matrix*> > tl_wrapper;
     
     ThreadPool *threadpool;
 };

@@ -54,7 +54,7 @@ public:
     virtual T* Train_EStep() = 0;
     virtual float Train_MStep(const T*) = 0;
     virtual void printArguments() = 0;
-    virtual shared_ptr<vector<int> > Predict() = 0;
+    virtual vector<int> Predict() = 0;
     
     void loadDataRow(string dataPath) {
         dataSet.clear();

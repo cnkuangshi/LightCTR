@@ -13,7 +13,7 @@
 
 #define FOR(i,n) for(size_t i = 0;i < n;i++)
 const float PI = acos(-1);
-const float LogPI = log(2 * PI);
+const float Log2PI = log(2 * PI);
 
 // log(exp(a) + exp(b))
 inline float log_sum(float a, float b) {
@@ -50,7 +50,7 @@ float Train_GMM_Algo::GaussianLPDF(size_t gasid, size_t rid) {
         LogDetSigma += log(gaussModels[gasid].sigma[fid]);
     }
     assert(!isnan(expN) && !isinf(expN) && !isnan(LogDetSigma) && !isinf(LogDetSigma));
-    tmp = log(gaussModels[gasid].weight) - 0.5 * (expN + LogDetSigma + feature_cnt * LogPI);
+    tmp = log(gaussModels[gasid].weight) - 0.5 * (expN + LogDetSigma + feature_cnt * Log2PI);
 //    assert(tmp < 0);
     return tmp;
 }
@@ -133,9 +133,9 @@ float Train_GMM_Algo::Train_MStep(const vector<float>* latentVar) {
     return likelihood;
 }
 
-shared_ptr<vector<int> > Train_GMM_Algo::Predict() {
-    shared_ptr<vector<int> > ans = std::make_shared<vector<int> >();
-    ans->reserve(dataRow_cnt);
+vector<int> Train_GMM_Algo::Predict() {
+    vector<int> ans = vector<int>();
+    ans.reserve(dataRow_cnt);
     FOR(rid,dataRow_cnt) {
         int whichTopic = -1;
         float maxP = 0.0f, tmp;
@@ -145,7 +145,7 @@ shared_ptr<vector<int> > Train_GMM_Algo::Predict() {
                 maxP = tmp, whichTopic = (int)gasid;
             }
         }
-        ans->emplace_back(whichTopic);
+        ans.emplace_back(whichTopic);
     }
     return ans;
 }

@@ -42,11 +42,11 @@ public:
     virtual ~Layer_Base() {
     }
     
-    virtual vector<float>* forward(vector<Matrix*>* const prevLOutputMatrix) = 0;
+    virtual vector<float>& forward(const vector<Matrix*>& prevLOutputMatrix) = 0;
     
-    virtual void backward(vector<Matrix*>* const outputDeltaMatrix) = 0;
+    virtual void backward(const vector<Matrix*>& outputDeltaMatrix) = 0;
     
-    virtual const vector<Matrix*>* output() = 0;
+    virtual const vector<Matrix*>& output() = 0;
     
     virtual void registerInitializer(std::shared_ptr<BufferFusion<float> > _buf_fusion) {
         if (this->nextLayer) {

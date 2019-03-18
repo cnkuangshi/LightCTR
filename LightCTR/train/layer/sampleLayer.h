@@ -33,18 +33,16 @@ public:
     }
     Sample_Layer() = delete;
     ~Sample_Layer() {
-        delete noise;
+        delete[] noise;
     }
     
-    vector<float>* forward(vector<Matrix*>* prevLOutputMatrix) {
-        vector<float>* prevLOutput = prevLOutputMatrix->at(0)->pointer();
+    vector<float>& forward(const vector<Matrix*>& prevLOutputMatrix) {
+        vector<float>* prevLOutput = prevLOutputMatrix[0]->pointer();
         assert(prevLOutput->size() == this->input_dimension);
         
         // init ThreadLocal var
-        Matrix*& output_act = *tl_output_act;
-        if (output_act == NULL) {
-            output_act = new Matrix(1, this->output_dimension);
-        }
+        Matrix& output_act = *tl_output_act;
+        output_act.reset(1, this->output_dimension);
         
         float gaussDelta = 0.0f;
         FOR(i, gauss_cnt) {
@@ -57,42 +55,36 @@ public:
             assert(!isinf(gaussDelta));
             
             // standard deviation equal to exp(0.5 * logSigma2)
-            *output_act->getEle(0, i) = exp(inner_scale * 0.5f * logSigma2) * noise[i] + mu;
-            assert(!isinf(*output_act->getEle(0, i)));
+            *output_act.getEle(0, i) = exp(inner_scale * 0.5f * logSigma2) * noise[i] + mu;
+            assert(!isinf(*output_act.getEle(0, i)));
         }
         gaussDelta *= 0.5f;
 //        cout << endl << endl << "gaussDelta = " << gaussDelta << endl << endl;
         if (bEncoding) {
-            return output_act->pointer();
+            return output_act.reference();
         }
         // init threadlocal wrapper
-        vector<Matrix*>*& wrapper = *tl_wrapper;
-        if (wrapper == NULL) {
-            wrapper = new vector<Matrix*>();
-            wrapper->resize(1);
-        }
-        
-        wrapper->at(0) = output_act;
+        vector<Matrix*>& wrapper = *tl_wrapper;
+        wrapper.resize(1);
+        wrapper[0] = &output_act;
         return this->nextLayer->forward(wrapper);
     }
     
-    void backward(vector<Matrix*>* outputDeltaMatrix) {
+    void backward(const vector<Matrix*>& outputDeltaMatrix) {
         assert(this->prevLayer);
-        vector<float>* outputDelta = outputDeltaMatrix->at(0)->pointer();
+        vector<float>* outputDelta = outputDeltaMatrix[0]->pointer();
         assert(outputDelta->size() == this->output_dimension);
-        vector<float>* prev_output_act = this->prevLayer->output()->at(0)->pointer();
+        vector<float>* prev_output_act = this->prevLayer->output()[0]->pointer();
         assert(prev_output_act->size() == this->input_dimension);
         
         // init ThreadLocal var
-        Matrix*& input_delta = *tl_input_delta;
-        if (input_delta == NULL) {
-            input_delta = new Matrix(1, this->input_dimension);
-        }
+        Matrix& input_delta = *tl_input_delta;
+        input_delta.reset(1, this->input_dimension);
         
         FOR(i, gauss_cnt) {
             assert(!isnan(outputDelta->at(i)));
-            auto muPtr = input_delta->getEle(0, i);
-            auto sigmaPtr = input_delta->getEle(0, i + gauss_cnt);
+            auto muPtr = input_delta.getEle(0, i);
+            auto sigmaPtr = input_delta.getEle(0, i + gauss_cnt);
             
             // Target Loss about mu and log(sigma^2)
             auto sigmaGrad = 0.5f * exp(inner_scale * 0.5f * prev_output_act->at(i + gauss_cnt)) * noise[i];
@@ -107,31 +99,28 @@ public:
             
             assert(!isinf(*sigmaPtr));
         }
-        this->prevLayer->getActiveFun().backward(input_delta->pointer(), prev_output_act, input_delta->pointer());
+        this->prevLayer->getActiveFun().backward(input_delta.pointer(), prev_output_act, input_delta.pointer());
         
-        vector<Matrix*>*& wrapper = *tl_wrapper;
-        assert(wrapper);
-        wrapper->at(0) = input_delta;
+        vector<Matrix*>& wrapper = *tl_wrapper;
+        wrapper[0] = &input_delta;
         this->prevLayer->backward(wrapper);
     }
     
-    const vector<Matrix*>* output() {
-        Matrix*& output_act = *tl_output_act;
-        assert(output_act);
+    const vector<Matrix*>& output() {
+        Matrix& output_act = *tl_output_act;
         
-        vector<Matrix*>*& wrapper = *tl_wrapper;
-        assert(wrapper);
-        wrapper->at(0) = output_act;
+        vector<Matrix*>& wrapper = *tl_wrapper;
+        wrapper[0] = &output_act;
         return wrapper;
     }
     
     bool bEncoding; // mark for forward encode
     
 private:
-    ThreadLocal<vector<Matrix*>*> tl_wrapper;
+    ThreadLocal<vector<Matrix*> > tl_wrapper;
     
-    ThreadLocal<Matrix*> tl_output_act; // wx + b with activation
-    ThreadLocal<Matrix*> tl_input_delta; // delta of prevLayer wx+b Z_(L-1)
+    ThreadLocal<Matrix> tl_output_act; // wx + b with activation
+    ThreadLocal<Matrix> tl_input_delta; // delta of prevLayer wx+b Z_(L-1)
     
     float inner_scale;
     

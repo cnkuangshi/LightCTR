@@ -77,67 +77,57 @@ public:
     // Attention fc layer's input vector only have one matrix to save memory,
     // so we need an adapter layer to convert between
     // matrix's vector[1x1, 1x1, ...N] and one matrix[N]
-    vector<float>* forward(vector<Matrix*>* const prevLOutputMatrix) { // prevLOutput is acti( Z_(L-1) )
-        assert(prevLOutputMatrix->size() == 1);
-        vector<float>* prevLOutput = prevLOutputMatrix->at(0)->pointer();
-        assert(prevLOutput->size() == this->input_dimension);
+    vector<float>& forward(const vector<Matrix*>& prevLOutputMatrix) { // prevLOutput is acti( Z_(L-1) )
+        assert(prevLOutputMatrix.size() == 1);
+        const vector<float>* prevLOutput = prevLOutputMatrix[0]->pointer();
+        assert(prevLOutputMatrix[0]->size() == this->input_dimension);
         
         // init ThreadLocal var
-        Matrix*& output_act = *tl_output_act;
-        if (output_act == NULL) {
-            output_act = new Matrix(1, this->output_dimension);
-        }
+        Matrix& output_act = *tl_output_act;
+        output_act.reset(1, this->output_dimension);
         
         if (this->bInputLayer) { // storage input only for input layer
-            vector<float>*& input = *tl_input;
-            if (input == NULL) {
-                input = new vector<float>();
-                input->resize(this->input_dimension);
-            }
-            input->assign(prevLOutput->begin(), prevLOutput->end());
+            vector<float>& input = *tl_input;
+            input.resize(this->input_dimension);
+            input.assign(prevLOutput->begin(), prevLOutput->end());
         }
         
         FOR(i, this->output_dimension) {
             if (this->nextLayer != NULL && !dropout_mask[i]) { // apply dropout mask for output
-                *output_act->getEle(0, i) = 0.0f;
+                *output_act.getEle(0, i) = 0.0f;
                 continue;
             }
             float sum = avx_dotProduct(prevLOutput->data(), getWeight(i, 0), input_dimension);
             sum += bias[i];
-            *output_act->getEle(0, i) = sum;
+            *output_act.getEle(0, i) = sum;
             assert(!isnan(sum));
         }
         
         // init threadlocal wrapper
-        vector<Matrix*>*& wrapper = *tl_wrapper;
-        if (wrapper == NULL) {
-            wrapper = new vector<Matrix*>();
-            wrapper->resize(1);
-        }
+        vector<Matrix*>& wrapper = *tl_wrapper;
+        wrapper.resize(1);
         
         if (this->nextLayer) {
-            this->getActiveFun().forward(output_act->pointer());
-            wrapper->at(0) = output_act;
+            this->getActiveFun().forward(output_act.pointer());
+            wrapper[0] = &output_act;
             return this->nextLayer->forward(wrapper);
         } else {
 //            printf("Forward complete.\n");
-            return output_act->pointer(); // output layer return wx+b without activator
+            return output_act.reference(); // output layer return wx+b without activator
         }
     }
     
-    void backward(vector<Matrix*>* const outputDeltaMatrix) { // outputDelta is Z_(L)
-        vector<float>* outputDelta = outputDeltaMatrix->at(0)->pointer();
+    void backward(const vector<Matrix*>& outputDeltaMatrix) { // outputDelta is Z_(L)
+        vector<float>* outputDelta = outputDeltaMatrix[0]->pointer();
         assert(outputDelta->size() == this->output_dimension);
         
         // init ThreadLocal var
-        Matrix*& input_delta = *tl_input_delta;
-        if (input_delta == NULL) {
-            input_delta = new Matrix(1, this->input_dimension);
-        }
+        Matrix& input_delta = *tl_input_delta;
+        input_delta.reset(1, this->input_dimension);
         
         // grad clipping for gradient explosion
         if (error_clip_threshold != 0) {
-            outputDeltaMatrix->at(0)->clipping(error_clip_threshold);
+            outputDeltaMatrix[0]->clipping(error_clip_threshold);
         }
         
         vector<float>* prev_output_act = NULL;
@@ -153,19 +143,18 @@ public:
                 if (this->nextLayer != NULL) { // apply dropout mask
                     avx_vecScale(tmp_vec.data(), tmp_vec.data(), output_dimension, dropout_mask);
                 }
-                *input_delta->getEle(0, i) = avx_dotProduct(tmp_vec.data(), outputDelta->data(), output_dimension);
+                *input_delta.getEle(0, i) = avx_dotProduct(tmp_vec.data(), outputDelta->data(), output_dimension);
             }
             if (!this->bInputLayer) {
                 assert(this->prevLayer);
-                prev_output_act = this->prevLayer->output()->at(0)->pointer();
+                prev_output_act = this->prevLayer->output()[0]->pointer();
                 assert(prev_output_act && prev_output_act->size() == this->input_dimension);
                 
-                this->prevLayer->getActiveFun().backward(input_delta->pointer(), prev_output_act, input_delta->pointer());
-                assert(input_delta->pointer()->size() == this->input_dimension);
+                this->prevLayer->getActiveFun().backward(input_delta.pointer(), prev_output_act, input_delta.pointer());
+                assert(input_delta.pointer()->size() == this->input_dimension);
                 
-                vector<Matrix*>*& wrapper = *tl_wrapper;
-                assert(wrapper);
-                wrapper->at(0) = input_delta;
+                vector<Matrix*>& wrapper = *tl_wrapper;
+                wrapper[0] = &input_delta;
                 this->prevLayer->backward(wrapper);
             }
         }
@@ -175,9 +164,8 @@ public:
             unique_lock<SpinLock> glock(this->lock);
             if (this->bInputLayer) {
                 FOR(j, this->output_dimension) {
-                    vector<float>*& input = *tl_input;
-                    assert(input);
-                    avx_vecScalerAdd(getWeightDelta(j, 0), input->data(),
+                    vector<float>& input = *tl_input;
+                    avx_vecScalerAdd(getWeightDelta(j, 0), input.data(),
                                      getWeightDelta(j, 0), outputDelta->at(j), input_dimension);
                 }
             } else {
@@ -191,23 +179,21 @@ public:
         }
     }
     
-    const vector<Matrix*>* output() {
-        Matrix*& output_act = *tl_output_act;
-        assert(output_act);
+    const vector<Matrix*>& output() {
+        Matrix& output_act = *tl_output_act;
         
-        vector<Matrix*>*& wrapper = *tl_wrapper;
-        assert(wrapper);
-        wrapper->at(0) = output_act;
+        vector<Matrix*>& wrapper = *tl_wrapper;
+        wrapper[0] = &output_act;
         return wrapper;
     }
-    const Matrix* inputDelta() {
+    const Matrix& inputDelta() {
         assert(needInputDelta);
         return *tl_input_delta;
     }
     
     void applyBatchGradient() {
         updater.update(0, this->output_dimension, bias, biasDelta);
-        updater.update(this->output_dimension, this->output_dimension * this->input_dimension,
+        updater.update(this->output_dimension, output_dimension * input_dimension,
                        weight, weightDelta);
         
         if (this->nextLayer) {
@@ -233,13 +219,13 @@ protected:
     
     float* dropout_mask;
     
-    ThreadLocal<Matrix*> tl_output_act; // wx + b with activation
-    ThreadLocal<Matrix*> tl_input_delta; // delta of prevLayer wx+b Z_(L-1)
-    ThreadLocal<vector<float>*> tl_input;
+    ThreadLocal<Matrix> tl_output_act; // wx + b with activation
+    ThreadLocal<Matrix> tl_input_delta; // delta of prevLayer wx+b Z_(L-1)
+    ThreadLocal<vector<float> > tl_input;
     
     float error_clip_threshold;
     
-    ThreadLocal<vector<Matrix*>*> tl_wrapper;
+    ThreadLocal<vector<Matrix*> > tl_wrapper;
     
     AdagradUpdater_Num updater;
 };

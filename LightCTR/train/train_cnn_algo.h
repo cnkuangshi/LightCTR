@@ -58,24 +58,21 @@ public:
 #endif
     }
     
-    vector<float>* Predict(size_t rid, vector<vector<float> >* const dataRow) {
+    const vector<float>& Predict(size_t rid, vector<vector<float> >& dataRow) {
         Matrix*& dataRow_Matrix = *tl_dataRow_Matrix;
         if (dataRow_Matrix == NULL) {
             dataRow_Matrix = new Matrix(sqrt((float)this->feature_cnt),
                                         sqrt((float)this->feature_cnt), 0);
         }
-        vector<Matrix*>*& wrapper = *tl_wrapper;
-        if (wrapper == NULL) {
-            wrapper = new vector<Matrix*>();
-            wrapper->resize(1);
-        }
-        dataRow_Matrix->loadDataPtr(&dataRow->at(rid));
+        vector<Matrix*>& wrapper = *tl_wrapper;
+        wrapper.resize(1);
+        dataRow_Matrix->loadDataPtr(&dataRow[rid]);
         
-        wrapper->at(0) = dataRow_Matrix;
+        wrapper[0] = dataRow_Matrix;
         return this->inputLayer->forward(wrapper);
     }
     
-    void BP(size_t rid, vector<Matrix*>* grad) {
+    void BP(size_t rid, const vector<Matrix*>& grad) {
         this->outputLayer->backward(grad);
     }
     
@@ -89,7 +86,7 @@ public:
     }
 private:
     Worker_RingReduce<float>* syncer;
-    ThreadLocal<vector<Matrix*>*> tl_wrapper;
+    ThreadLocal<vector<Matrix*> > tl_wrapper;
     ThreadLocal<Matrix*> tl_dataRow_Matrix;
 };
 

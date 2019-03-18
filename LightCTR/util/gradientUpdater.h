@@ -138,14 +138,15 @@ public:
     template<typename T>
     void update(size_t offset, size_t len, T& weight, T& grad) {
         assert(offset + len <= __adagrad_params_cnt);
+        avx_vecScale(grad, grad, len, 1.0 / __global_minibatch_size);
         for (size_t i = 0; i < len; i++) {
-            float g = grad[i] / __global_minibatch_size;
+            const float g = grad[i];
             if (g != 0) {
                 __adagrad_accum[offset + i] += g * g;
                 weight[i] -= __global_learning_rate * g / sqrt(__adagrad_accum[offset + i] + 1e-12);
             }
+            grad[i] = 0;
         }
-        memset(grad, 0, len * sizeof(float));
     }
 private:
     vector<float> __adagrad_accum;

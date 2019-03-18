@@ -37,15 +37,12 @@ public:
     }
     
     // Attention input data should be data concating rnn encoder output sequence, rather than one cell's output
-    vector<float>* forward(vector<Matrix*>* const prevLOutputMatrix) {
-        assert(prevLOutputMatrix->size() == batch_size);
+    vector<float>& forward(const vector<Matrix*>& prevLOutputMatrix) {
+        assert(prevLOutputMatrix.size() == batch_size);
         
         // init threadlocal var
-        vector<Matrix*>*& input = *tl_input;
-        if (input == NULL) {
-            input = new vector<Matrix*>();
-            input->resize(batch_size);
-        }
+        vector<Matrix*>& input = *tl_input;
+        input.resize(batch_size);
         Matrix*& attentionOutput = *tl_attentionOutput;
         if (attentionOutput == NULL) {
             attentionOutput = new Matrix(1, dimension);
@@ -56,53 +53,42 @@ public:
         }
         Matrix*& cache = *tl_cache;
         
-        vector<Matrix*>*& wrapper = *tl_wrapper;
-        if (wrapper == NULL) {
-            wrapper = new vector<Matrix*>();
-            wrapper->resize(1);
-        }
+        vector<Matrix*>& wrapper = *tl_wrapper;
+        wrapper.resize(1);
         
-        FOR(idx, prevLOutputMatrix->size()) {
-            input->at(idx) = prevLOutputMatrix->at(idx)->copy(input->at(idx)); // 1xD
-            assert(input->at(idx)->size() == dimension);
-            wrapper->at(0) = input->at(idx);
+        FOR(idx, prevLOutputMatrix.size()) {
+            input[idx] = prevLOutputMatrix[idx]->copy(input[idx]); // 1xD
+            assert(input[idx]->size() == dimension);
+            wrapper[0] = input[idx];
             auto res = transformFunc->forward(wrapper);
-            assert(res->size() == 1);
-            *fc_output_act->getEle(0, idx) = res->at(0);
+            assert(res.size() == 1);
+            *fc_output_act->getEle(0, idx) = res[0];
         }
         // Softmax normalization
         softmax.forward(fc_output_act->pointer());
         
         attentionOutput->zeroInit();
-        FOR(idx, prevLOutputMatrix->size()) {
-            cache = input->at(idx)->copy(cache)->scale(*fc_output_act->getEle(0, idx));
+        FOR(idx, prevLOutputMatrix.size()) {
+            cache = input[idx]->copy(cache)->scale(*fc_output_act->getEle(0, idx));
             attentionOutput->add(cache);
         }
         
-        return attentionOutput->pointer();
+        return attentionOutput->reference();
     }
     
-    void backward(vector<Matrix*>* const outputDeltaMatrix) {
-        Matrix* outputDelta = outputDeltaMatrix->at(0);
+    void backward(const vector<Matrix*>& outputDeltaMatrix) {
+        Matrix* outputDelta = outputDeltaMatrix[0];
         assert(outputDelta->size() == this->output_dimension);
         
         // init threadlocal var
-        vector<Matrix*>*& input = *tl_input;
-        assert(input);
+        vector<Matrix*>& input = *tl_input;
         Matrix*& fc_output_act = *tl_fc_output_act;
         assert(fc_output_act);
-        vector<Matrix*>*& wrapper = *tl_wrapper;
-        assert(wrapper);
-        vector<float>*& scaleDelta = *tl_scaleDelta;
-        if (scaleDelta == NULL) {
-            scaleDelta = new vector<float>();
-            scaleDelta->resize(batch_size);
-        }
-        vector<Matrix*>*& input_delta = *tl_input_delta;
-        if (input_delta == NULL) {
-            input_delta = new vector<Matrix*>();
-            input_delta->resize(batch_size);
-        }
+        vector<Matrix*>& wrapper = *tl_wrapper;
+        vector<float>& scaleDelta = *tl_scaleDelta;
+        scaleDelta.resize(batch_size);
+        vector<Matrix*>& input_delta = *tl_input_delta;
+        input_delta.resize(batch_size);
         Matrix*& cache_bp = *tl_cache_bp;
         if (cache_bp == NULL) {
             cache_bp = new Matrix(1, 1);
@@ -110,40 +96,39 @@ public:
         Matrix*& cache = *tl_cache;
         assert(cache);
         
-        FOR(idx, input->size()) {
+        FOR(idx, input.size()) {
             // update softmax_fc by delta of softmax_fc(X)
-            auto res = input->at(idx)->Multiply(cache_bp, outputDelta->transpose());
+            auto res = input[idx]->Multiply(cache_bp, outputDelta->transpose());
             outputDelta->transpose(); // recover
             assert(res->size() == 1);
-            scaleDelta->at(idx) = *cache_bp->getEle(0, 0);
+            scaleDelta[idx] = *cache_bp->getEle(0, 0);
         }
-        softmax.backward(scaleDelta, fc_output_act->pointer(), scaleDelta);
+        softmax.backward(&scaleDelta, fc_output_act->pointer(), &scaleDelta);
         // update transformFunc
-        FOR(idx, input->size()) {
-            *cache_bp->getEle(0, 0) = scaleDelta->at(idx);
-            wrapper->at(0) = cache_bp;
+        FOR(idx, input.size()) {
+            *cache_bp->getEle(0, 0) = scaleDelta[idx];
+            wrapper[0] = cache_bp;
             transformFunc_bp->backward(wrapper);
             // input delta of transformFunc
-            const Matrix* delta = transformFunc->inputDelta();
-            input_delta->at(idx) = delta->copy(input_delta->at(idx));
+            const Matrix& delta = transformFunc->inputDelta();
+            input_delta[idx] = delta.copy(input_delta[idx]);
         }
         // pass back delta of X
-        FOR(idx, input->size()) {
+        FOR(idx, input.size()) {
             cache = outputDelta->copy(cache)->scale(*fc_output_act->getEle(0, idx));
-            input_delta->at(idx)->add(cache);
+            input_delta[idx]->add(cache);
         }
     }
     
-    const vector<Matrix*>* output() {
+    const vector<Matrix*>& output() {
         Matrix*& attentionOutput = *tl_attentionOutput;
         assert(attentionOutput);
-        vector<Matrix*>*& wrapper = *tl_wrapper;
-        wrapper->at(0) = attentionOutput;
+        vector<Matrix*>& wrapper = *tl_wrapper;
+        wrapper[0] = attentionOutput;
         return wrapper;
     }
-    vector<Matrix*>* inputDelta() {
-        vector<Matrix*>*& input_delta = *tl_input_delta;
-        assert(input_delta); // check layer connect
+    const vector<Matrix*>& inputDelta() {
+        vector<Matrix*>& input_delta = *tl_input_delta;
         return input_delta;
     }
     
@@ -159,15 +144,15 @@ private:
     Softmax softmax;
     size_t batch_size, dimension;
     
-    ThreadLocal<vector<Matrix*>*> tl_input;
+    ThreadLocal<vector<Matrix*> > tl_input;
     ThreadLocal<Matrix*> tl_attentionOutput;
     ThreadLocal<Matrix*> tl_fc_output_act;
     ThreadLocal<Matrix*> tl_cache, tl_cache_bp;
     
-    ThreadLocal<vector<float>*> tl_scaleDelta;
-    ThreadLocal<vector<Matrix*>*> tl_input_delta;
+    ThreadLocal<vector<float> > tl_scaleDelta;
+    ThreadLocal<vector<Matrix*> > tl_input_delta;
     
-    ThreadLocal<vector<Matrix*>*> tl_wrapper;
+    ThreadLocal<vector<Matrix*> > tl_wrapper;
 };
 
 #endif /* attention_unit_h */

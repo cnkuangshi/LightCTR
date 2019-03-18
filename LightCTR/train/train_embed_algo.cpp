@@ -230,13 +230,13 @@ void Train_Embed_Algo::Quantization(size_t part_cnt, uint8_t cluster_cnt) {
     md.close();
 }
 
-void Train_Embed_Algo::EmbeddingCluster(shared_ptr<vector<int> > clustered, size_t cluster_cnt) {
+void Train_Embed_Algo::EmbeddingCluster(const vector<int>& clustered, size_t cluster_cnt) {
     
     vector<vector<string> > topicSet;
     topicSet.resize(cluster_cnt);
-    for (size_t wid = 0; wid < clustered->size(); wid++) {
-        assert(clustered->at(wid) < cluster_cnt);
-        topicSet[clustered->at(wid)].push_back(vocabString[wid]);
+    for (size_t wid = 0; wid < clustered.size(); wid++) {
+        assert(clustered[wid] < cluster_cnt);
+        topicSet[clustered[wid]].push_back(vocabString[wid]);
     }
     ofstream md("./output/word_cluster.txt");
     if(!md.is_open()){

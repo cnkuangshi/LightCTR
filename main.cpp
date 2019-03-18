@@ -200,7 +200,7 @@ int main(int argc, const char * argv[]) {
                         /*scale*/10);
         train->Quantization(/*part_cnt*/20, /*cluster_cnt*/64);
         cluster->Train();
-        shared_ptr<vector<int> > ans = cluster->Predict();
+        const vector<int>& ans = cluster->Predict();
         train->EmbeddingCluster(ans, cluster_cnt);
 #endif
         cout << "------------" << endl;

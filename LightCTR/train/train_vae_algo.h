@@ -53,11 +53,11 @@ public:
     }
     
     void Train() {
-        static vector<float> *grad = new vector<float>();
+        static vector<float> grad;
         static Matrix* dataRow_Matrix = new Matrix(1, feature_cnt, 0);
         static Matrix* grad_Matrix = new Matrix(1, feature_cnt, 0);
-        static vector<Matrix*> *tmp = new vector<Matrix*>();
-        tmp->resize(1);
+        static vector<Matrix*> tmp;
+        tmp.resize(1);
         
         for (size_t p = 0; p < epoch; p++) {
             
@@ -66,16 +66,16 @@ public:
             // Mini-Batch SGD
             for (size_t rid = 0; rid < dataRow_cnt; rid++) {
                 dataRow_Matrix->loadDataPtr(&dataSet[rid]);
-                tmp->at(0) = dataRow_Matrix;
-                vector<float> *pred = this->encodeLayer->forward(tmp);
-                outputActivFun.forward(pred);
-                assert(pred->size() == feature_cnt);
-                grad->resize(pred->size());
-                lossFun.gradient(pred, &dataSet[rid], grad);
-                outputActivFun.backward(grad, pred, grad);
+                tmp[0] = dataRow_Matrix;
+                vector<float>& pred = this->encodeLayer->forward(tmp);
+                outputActivFun.forward(&pred);
+                assert(pred.size() == feature_cnt);
+                grad.resize(pred.size());
+                lossFun.gradient(&pred, &dataSet[rid], &grad);
+                outputActivFun.backward(&grad, &pred, &grad);
                 // if LossFunction is Logistic, annotation last line
-                grad_Matrix->loadDataPtr(grad);
-                tmp->at(0) = grad_Matrix;
+                grad_Matrix->loadDataPtr(&grad);
+                tmp[0] = grad_Matrix;
                 this->outputLayer->backward(tmp);
                 if ((rid + 1) % GradientUpdater::__global_minibatch_size == 0) {
                     this->encodeLayer->applyBatchGradient();
@@ -89,14 +89,14 @@ public:
                 float loss = 0.0f;
                 for (size_t rid = 0; rid < dataRow_cnt; rid+=2) {
                     dataRow_Matrix->loadDataPtr(&dataSet[rid]);
-                    tmp->at(0) = dataRow_Matrix;
-                    vector<float> *pred = this->encodeLayer->forward(tmp);
-                    outputActivFun.forward(pred);
-                    loss += lossFun.loss(pred, &dataSet[rid]);
+                    tmp[0] = dataRow_Matrix;
+                    vector<float> pred = this->encodeLayer->forward(tmp);
+                    outputActivFun.forward(&pred);
+                    loss += lossFun.loss(&pred, &dataSet[rid]);
                     if (rid == 4 || rid == 8) { // look like number 4 or 5
                         for (size_t i = 0; i < feature_cnt; i++) {
                             cout.width(3);
-                            cout << int(pred->at(i) * 255) << ",";
+                            cout << int(pred[i] * 255) << ",";
                             if ((i + 1) % 28 == 0) {
                                 cout << endl;
                             }

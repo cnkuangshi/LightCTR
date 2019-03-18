@@ -72,12 +72,8 @@ private:
                   int& candidate_ps,
                   size_t epoch,
                   std::function<void(size_t)> callback) {
-        auto& pull_map_ptr = *tl_map;
-        if (pull_map_ptr == NULL) {
-            pull_map_ptr = new std::map<size_t, std::vector<TKey> >();
-        }
-        pull_map_ptr->clear();
-        auto& pull_map = *pull_map_ptr;
+        auto& pull_map = *tl_map;
+        pull_map.clear();
         
         for (auto it = keys.begin(); it != keys.end(); it++) {
             const size_t to_id = BEGIN_ID_OF_PS +
@@ -149,7 +145,7 @@ private:
 #endif
     }
     
-    ThreadLocal<std::map<size_t, std::vector<TKey> >*> tl_map;
+    ThreadLocal<std::map<size_t, std::vector<TKey> > > tl_map;
     
     char headByte = 'N';
     std::shared_ptr<BufferFusion<float> > buf_fusion = nullptr;

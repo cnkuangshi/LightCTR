@@ -54,8 +54,7 @@ public:
         cache_h_bp = new Matrix(hidden_size, hidden_size);
         
         error_clip_threshold = 15;
-        wrapper = new vector<Matrix*>();
-        wrapper->resize(1);
+        wrapper.resize(1);
         
         // init all weight and bias matrix, each one has 3 matrix and their grad
         INIT_MATRIX(fg);
@@ -109,12 +108,12 @@ public:
     }
     
     // Attention to LSTM Unit forward wouldn't auto pass data into next layer
-    vector<float>* forward(vector<Matrix*>* const prevLOutputMatrix) {
+    vector<float>& forward(const vector<Matrix*>& prevLOutputMatrix) {
         if (cur_seqid == batch_size) {
             cur_seqid = 0; // new batch input row
         }
-        assert(prevLOutputMatrix && prevLOutputMatrix->size() == 1);
-        Matrix* inputRow = prevLOutputMatrix->at(0);
+        assert(prevLOutputMatrix.size() == 1);
+        Matrix* inputRow = prevLOutputMatrix[0];
         assert(inputRow->x_len == 1);
         assert(inputRow->y_len == dimension);
         
@@ -147,19 +146,19 @@ public:
         assert(cur_seqid < batch_size);
         cur_seqid++;
         
-        return h_output[cur_seqid - 1]->pointer();
+        return h_output[cur_seqid - 1]->reference();
     }
     
-    void backward(vector<Matrix*>* const outputDeltaMatrix) {
+    void backward(const vector<Matrix*>& outputDeltaMatrix) {
         assert(cur_seqid == batch_size);
-        Matrix* outputDelta = outputDeltaMatrix->at(0);
+        Matrix* outputDelta = outputDeltaMatrix[0];
         assert(outputDelta->x_len == h_output[cur_seqid - 1]->x_len);
         assert(outputDelta->y_len == h_output[cur_seqid - 1]->y_len);
-        if (outputDeltaMatrix->size() > 1) {
-            assert(outputDeltaMatrix->size() == batch_size);
-            outputDelta = outputDeltaMatrix->at((int)cur_seqid - 1);
+        if (outputDeltaMatrix.size() > 1) {
+            assert(outputDeltaMatrix.size() == batch_size);
+            outputDelta = outputDeltaMatrix[(int)cur_seqid - 1];
         } else {
-            outputDelta = outputDeltaMatrix->at(0);
+            outputDelta = outputDeltaMatrix[0];
         }
         next_h_output_delta = outputDelta->copy(next_h_output_delta);
         if (h_output_delta == NULL) {
@@ -170,9 +169,9 @@ public:
         for (int seqid = (int)cur_seqid - 1; seqid >= 0; seqid--) {
             swap(h_output_delta, next_h_output_delta);
             next_h_output_delta->zeroInit();
-            if (outputDeltaMatrix->size() > 1) {
+            if (outputDeltaMatrix.size() > 1) {
                 // add this time's delta
-                next_h_output_delta->add(outputDeltaMatrix->at(seqid));
+                next_h_output_delta->add(outputDeltaMatrix[seqid]);
             }
             
             // grad clipping
@@ -259,8 +258,8 @@ public:
         } // end BPTT
     }
     
-    const vector<Matrix*>* output() { // get last ouput as context vector
-        wrapper->at(0) = h_output[cur_seqid - 1];
+    const vector<Matrix*>& output() { // get last ouput as context vector
+        wrapper[0] = h_output[cur_seqid - 1];
         return wrapper;
     }
     vector<Matrix*>* seq_output() { // get rnn encoder output sequence for attention decoder
@@ -347,7 +346,7 @@ private:
     Matrix *cache, *cache_bp, *cache_h_bp;
     
     float error_clip_threshold;
-    vector<Matrix*> *wrapper;
+    vector<Matrix*> wrapper;
     
     // for updater
     AdagradUpdater_Num updater_fg_w, updater_fg_h_w, updater_fg_b;

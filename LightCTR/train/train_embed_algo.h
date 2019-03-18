@@ -69,7 +69,7 @@ public:
     
     void Train();
     void Quantization(size_t part_cnt, uint8_t cluster_cnt);
-    void EmbeddingCluster(shared_ptr<vector<int> >, size_t);
+    void EmbeddingCluster(const vector<int>&, size_t);
     
     void loadPretrainFile(string embFile) {
         word_embedding.clear();

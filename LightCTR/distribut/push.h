@@ -54,12 +54,8 @@ private:
                   int& candidate_ps,
                   size_t epoch,
                   std::function<void()> callback) {
-        auto& push_map_ptr = *tl_map;
-        if (push_map_ptr == NULL) {
-            push_map_ptr = new std::map<size_t, std::vector<std::pair<TKey, TValue> > >();
-        }
-        push_map_ptr->clear();
-        auto& push_map = *push_map_ptr;
+        auto& push_map = *tl_map;
+        push_map.clear();
         
         for (auto it = grads.begin(); it != grads.end(); it++) {
             assert(it->second.checkValid());
@@ -113,7 +109,7 @@ private:
 #endif
     }
     
-    ThreadLocal<std::map<size_t, std::vector<std::pair<TKey, TValue> > >*> tl_map;
+    ThreadLocal<std::map<size_t, std::vector<std::pair<TKey, TValue> > > > tl_map;
     
     char headByte = 'N';
     std::shared_ptr<BufferFusion<float> > buf_fusion = nullptr;

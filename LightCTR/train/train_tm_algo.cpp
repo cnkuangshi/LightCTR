@@ -167,8 +167,8 @@ float Train_TM_Algo::Train_MStep(const vector<float>*) {
     return LogLKH;
 }
 
-shared_ptr<vector<int> > Train_TM_Algo::Predict() {
-    shared_ptr<vector<int> > ans = shared_ptr<vector<int> >(new vector<int>());
+vector<int> Train_TM_Algo::Predict() {
+    vector<int> ans = vector<int>();
     return ans;
 }
 

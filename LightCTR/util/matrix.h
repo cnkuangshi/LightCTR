@@ -23,6 +23,9 @@ struct Matrix_Description {
 // 2D Matrix
 class Matrix {
 public:
+    Matrix() {
+        x_len = y_len = 0;
+    }
     Matrix(size_t _x_len, size_t _y_len, bool alloc = 1): x_len(_x_len), y_len(_y_len) {
         if (alloc) {
             matrix = new vector<float>();
@@ -30,9 +33,21 @@ public:
         }
     }
     ~Matrix() {
-        matrix->clear();
+        if (matrix) {
+            matrix->clear();
+        }
         matrix = NULL;
     }
+    
+    inline void reset(size_t _x_len, size_t _y_len) {
+        x_len = _x_len;
+        y_len = _y_len;
+        if (!matrix) {
+            matrix = new vector<float>();
+        }
+        matrix->resize(x_len * y_len);
+    }
+    
     inline void loadDataPtr(vector<float>* const dataPtr) {
         assert(dataPtr->size() == size());
         this->matrix = dataPtr;
@@ -153,7 +168,7 @@ public:
         return this;
     }
     
-    inline Matrix* add(const Matrix* const another, float scale = 1.0, float self_scale = 1.0) {
+    inline Matrix* add(const Matrix* another, float scale = 1.0, float self_scale = 1.0) {
         assert(x_len == another->x_len && y_len == another->y_len);
         float* ptr = matrix->data();
         avx_vecScale(ptr, ptr, size(), self_scale);
@@ -165,7 +180,7 @@ public:
         return this;
     }
     
-    inline Matrix* subtract(const Matrix* const another, float scale = 1.0) {
+    inline Matrix* subtract(const Matrix* another, float scale = 1.0) {
         assert(x_len == another->x_len && y_len == another->y_len);
         float* ptr = matrix->data();
         avx_vecScalerAdd(ptr, another->pointer()->data(), ptr, -scale, size());
@@ -198,14 +213,14 @@ public:
         return this;
     }
     
-    inline Matrix* dotProduct(const Matrix* const another) {
+    inline Matrix* dotProduct(const Matrix* another) {
         assert(x_len == another->x_len && y_len == another->y_len);
         float* ptr = matrix->data();
         avx_vecScale(ptr, ptr, size(), another->pointer()->data());
         return this;
     }
     
-    inline Matrix* Multiply(Matrix* ansM, const Matrix* const another) {
+    inline Matrix* Multiply(Matrix* ansM, const Matrix* another) {
         assert(another && y_len == another->x_len);
         if (ansM == NULL) {
             ansM = new Matrix(x_len, another->y_len);
@@ -227,7 +242,7 @@ public:
     }
     
     // TODO support AVX instruction
-    inline void deconvolution_Delta(Matrix*& ansM, const Matrix* const filter, size_t padding = 0, size_t stride = 1) {
+    inline void deconvolution_Delta(Matrix*& ansM, const Matrix* filter, size_t padding = 0, size_t stride = 1) {
         size_t recover_x = (x_len - 1) * stride + filter->x_len - 2 * padding;
         size_t recover_y = (x_len - 1) * stride + filter->x_len - 2 * padding;
         
@@ -254,7 +269,7 @@ public:
             }
         }
     }
-    inline void deconvolution_Filter(const Matrix* const filterDelta, const Matrix* const input, size_t padding = 0, size_t stride = 1) {
+    inline void deconvolution_Filter(const Matrix* filterDelta, const Matrix* input, size_t padding = 0, size_t stride = 1) {
         assert(filterDelta && input);
         size_t recover_x = input->x_len;
         size_t recover_y = input->y_len;
@@ -317,7 +332,7 @@ public:
         assert(matrix);
         return this->matrix;
     }
-    inline vector<float>& reference() {
+    inline vector<float>& reference() const {
         assert(matrix);
         return *this->matrix;
     }
@@ -325,8 +340,7 @@ public:
     size_t x_len, y_len;
     
 private:
-    Matrix() = delete;
-    vector<float>* matrix;
+    vector<float>* matrix = NULL;
 };
 
 #endif /* matrix_h */
