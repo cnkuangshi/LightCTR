@@ -107,9 +107,9 @@ public:
         assert(prevLOutput.size() == this->input_dimension);
         
         // init ThreadLocal var
-        vector<Matrix*>& output_act = *tl_output_act;
-        output_act.resize(this->output_dimension);
-        Matrix*& cache = *tl_cache;
+        MatrixArr& output_act = *tl_output_act;
+        output_act.arr.resize(this->output_dimension);
+        Matrix* cache = NULL;
         
         if (this->bInputLayer) { // storage input only for input layer
             vector<Matrix*>& input = *tl_input;
@@ -120,7 +120,7 @@ public:
         }
         
         FOR(filid, filter_cnt) {
-            auto m_ptr = output_act[filid];
+            auto m_ptr = output_act.arr[filid];
             if (m_ptr) {
                 m_ptr->zeroInit();
             }
@@ -130,7 +130,6 @@ public:
                         prevLOutput[feamid]->convolution(m_ptr,
                                                          filterArr[filid],
                                                          config.padding, config.stride);
-                        assert(m_ptr);
                     } else {
                         prevLOutput[feamid]->convolution(cache,
                                                          filterArr[filid],
@@ -138,7 +137,6 @@ public:
                         assert(cache);
                         m_ptr->add(cache);
                     }
-                    
                 }
             }
             if (bias[filid] == NULL) { // lazy init
@@ -157,9 +155,10 @@ public:
                 assert(matrix);
                 this->getActiveFun().forward(matrix->data(), matrix->size());
             });
-            output_act[filid] = m_ptr;
+            output_act.arr[filid] = m_ptr;
         }
-        return this->nextLayer->forward(output_act);
+        delete cache;
+        return this->nextLayer->forward(output_act.arr);
     }
     
     void backward(const vector<Matrix*>& outputDelta) {
@@ -167,16 +166,16 @@ public:
         vector<Matrix*> prev_output_act;
         
         // init ThreadLocal var
-        vector<Matrix*>& input_delta = *tl_input_delta;
-        input_delta.resize(this->input_dimension);
-        Matrix*& cache_bp = *tl_cache_bp;
+        MatrixArr& input_delta = *tl_input_delta;
+        input_delta.arr.resize(this->input_dimension);
+        Matrix* cache_bp = NULL;
 
         if (!this->bInputLayer) {
             assert(this->prevLayer);
             prev_output_act = this->prevLayer->output();
             
             FOR(i, this->input_dimension) {
-                auto m_ptr = input_delta[i];
+                auto m_ptr = input_delta.arr[i];
                 if (m_ptr) {
                     m_ptr->zeroInit();
                 }
@@ -185,11 +184,10 @@ public:
                         // delta Z_(L) conv rot180 W_(L) * di-acti( Z_(L-1) )
                         if (m_ptr == NULL) {
                             outputDelta[j]->deconvolution_Delta(m_ptr, filterArr[j],
-                                                                    config.padding, config.stride);
-                            assert(m_ptr);
+                                                                config.padding, config.stride);
                         } else {
                             outputDelta[j]->deconvolution_Delta(cache_bp, filterArr[j],
-                                                                    config.padding, config.stride);
+                                                                config.padding, config.stride);
                             assert(cache_bp);
                             m_ptr->add(cache_bp);
                         }
@@ -200,9 +198,10 @@ public:
                                             this->prevLayer->output()[i]->pointer()->data(),
                                             matrix->data(), matrix->size());
                 });
-                input_delta[i] = m_ptr;
+                input_delta.arr[i] = m_ptr;
             }
-            this->prevLayer->backward(input_delta);
+            delete cache_bp;
+            this->prevLayer->backward(input_delta.arr);
         }
         
         // Asynchronous update filter weight and bias to minimize delta
@@ -229,8 +228,8 @@ public:
     }
     
     const vector<Matrix*>& output() {
-        vector<Matrix*>& output_act = *tl_output_act;
-        return output_act;
+        MatrixArr& output_act = *tl_output_act;
+        return output_act.arr;
     }
     
     void applyBatchGradient() {
@@ -267,11 +266,9 @@ protected:
     vector<Matrix*> filterDelta;
     vector<Matrix*> biasDelta;
     
-    ThreadLocal<vector<Matrix*> > tl_output_act;
-    ThreadLocal<vector<Matrix*> > tl_input_delta;
+    ThreadLocal<MatrixArr> tl_output_act;
+    ThreadLocal<MatrixArr> tl_input_delta;
     ThreadLocal<vector<Matrix*> > tl_input;
-    
-    ThreadLocal<Matrix*> tl_cache, tl_cache_bp;
     
     AdagradUpdater updater;
 };

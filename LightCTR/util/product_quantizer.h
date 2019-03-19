@@ -56,6 +56,10 @@ public:
             assert(centroids);
     }
     
+    ~Product_quantizer() {
+        delete[] centroids;
+    }
+    
     vector<vector<CompressT> > train(const RealT* data, size_t len) {
         assert(len >= cluster_cnt);
         

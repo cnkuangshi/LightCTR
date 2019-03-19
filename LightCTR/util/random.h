@@ -101,15 +101,14 @@ inline void shuffleSelectK(std::vector<int>* rankResult, int n, int k) {
         rankResult->clear();
         rankResult->resize(k);
     }
-    std::vector<int>* array = new std::vector<int>(n);
-    array = new std::vector<int>(n);
-    array->resize(n);
+    std::vector<int> array;
+    array.resize(n);
     for (int i = 0; i < n; i++) {
-        array->at(i) = i;
+        array[i] = i;
     }
     for (int i = 0; i < k; i++) {
         int index = (int)(UniformNumRand() * (n - i));
-        rankResult->at(i) = array->at(index);
+        rankResult->at(i) = array[index];
         array[index] = array[n - 1 - i];
     }
 }

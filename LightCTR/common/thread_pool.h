@@ -140,8 +140,7 @@ public:
         T* p = (T*)pthread_getspecific(threadSpecificKey_);
         if (!p && createLocal) {
             p = new T();
-            int ret = pthread_setspecific(threadSpecificKey_, p);
-            assert(ret == 0);
+            assert(pthread_setspecific(threadSpecificKey_, p) == 0);
         }
         return p;
     }

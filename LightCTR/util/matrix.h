@@ -35,17 +35,20 @@ public:
     ~Matrix() {
         if (matrix) {
             matrix->clear();
+            delete matrix;
+            matrix = NULL;
         }
-        matrix = NULL;
     }
     
-    inline void reset(size_t _x_len, size_t _y_len) {
+    inline void reset(size_t _x_len, size_t _y_len, bool alloc = 1) {
         x_len = _x_len;
         y_len = _y_len;
-        if (!matrix) {
-            matrix = new vector<float>();
+        if (alloc) {
+            if (!matrix) {
+                matrix = new vector<float>();
+            }
+            matrix->resize(x_len * y_len);
         }
-        matrix->resize(x_len * y_len);
     }
     
     inline void loadDataPtr(vector<float>* const dataPtr) {
@@ -101,7 +104,7 @@ public:
         }
     }
     
-    inline bool checkConvergence(const Matrix* const another) {
+    inline bool checkConvergence(const Matrix* another) {
         assert(size() == another->size());
         for (auto it = matrix->begin(), it2 = another->pointer()->begin();
              it != matrix->end(); it++, it2++) {
@@ -241,7 +244,6 @@ public:
         return ansM;
     }
     
-    // TODO support AVX instruction
     inline void deconvolution_Delta(Matrix*& ansM, const Matrix* filter, size_t padding = 0, size_t stride = 1) {
         size_t recover_x = (x_len - 1) * stride + filter->x_len - 2 * padding;
         size_t recover_y = (x_len - 1) * stride + filter->x_len - 2 * padding;
@@ -296,7 +298,7 @@ public:
         }
     }
     // conv conform to commutative principle
-    inline void convolution(Matrix*& ansM, const Matrix* const filter, size_t padding = 0, size_t stride = 1) {
+    inline void convolution(Matrix*& ansM, const Matrix* filter, size_t padding = 0, size_t stride = 1) {
         assert(filter && (filter->x_len <= x_len) && (filter->y_len <= y_len));
         size_t new_x_len = (x_len - filter->x_len + 2 * padding) / stride + 1;
         size_t new_y_len = (y_len - filter->y_len + 2 * padding) / stride + 1;
@@ -341,6 +343,17 @@ public:
     
 private:
     vector<float>* matrix = NULL;
+};
+
+struct MatrixArr {
+    vector<Matrix*> arr;
+    ~MatrixArr() {
+        for (size_t i = 0; i < arr.size(); i++) {
+            delete arr[i];
+            arr[i] = NULL;
+        }
+        arr.clear();
+    }
 };
 
 #endif /* matrix_h */

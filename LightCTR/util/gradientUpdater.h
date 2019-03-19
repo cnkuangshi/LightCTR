@@ -145,8 +145,8 @@ public:
                 __adagrad_accum[offset + i] += g * g;
                 weight[i] -= __global_learning_rate * g / sqrt(__adagrad_accum[offset + i] + 1e-12);
             }
-            grad[i] = 0;
         }
+        memset(grad, 0, len * sizeof(T));
     }
 private:
     vector<float> __adagrad_accum;

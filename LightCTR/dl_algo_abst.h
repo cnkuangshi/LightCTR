@@ -35,23 +35,25 @@ public:
         dataSet.clear();
         delete threadpool;
         threadpool = NULL;
+        for (size_t i = 0; i < network.size(); i++) {
+            delete network[i];
+        }
     }
     
-    virtual void init(size_t hidden_size) {
-        // Multi-Layer Perception
-        this->inputLayer = new Fully_Conn_Layer<ActivationFunction>(NULL, feature_cnt, hidden_size);
-        this->outputLayer = new Fully_Conn_Layer<ActivationFunction>(inputLayer, hidden_size, multiclass_output_cnt);
-    }
+    virtual void initNetwork(size_t hidden_size) = 0;
     
     virtual const vector<float>& Predict(size_t, vector<vector<float> >&) = 0;
     virtual void BP(size_t, const vector<Matrix*>&) = 0;
     virtual void applyBP(size_t epoch) const = 0;
     
+    void appendNNLayer(Layer_Base* layer) {
+        network.push_back(layer);
+    }
+    
     void Train() {
         static ThreadLocal<vector<float> > tl_grad;
         static ThreadLocal<vector<int> > tl_onehot;
         static ThreadLocal<Matrix*> tl_grad_Matrix;
-        static ThreadLocal<vector<Matrix*> > tl_wrapper;
         
         for (size_t p = 0; p < epoch; p++) {
             
@@ -75,7 +77,8 @@ public:
                     if (grad_Matrix == NULL) {
                         grad_Matrix = new Matrix(1, multiclass_output_cnt, 0);
                     }
-                    vector<Matrix*>& wrapper = *tl_wrapper;
+
+                    vector<Matrix*> wrapper;
                     wrapper.resize(1);
                     
                     fill(onehot.begin(), onehot.end(), 0);
@@ -108,7 +111,7 @@ public:
                 }
             }
             
-            if (p % 1 == 0) {
+            if (p % 10 == 0) {
                 
                 GradientUpdater::__global_bTraining = false;
                 
@@ -210,6 +213,7 @@ public:
 protected:
     DL_Algo dl_algo;
     
+    vector<Layer_Base*> network;
     Layer_Base *inputLayer;
     Layer_Base *outputLayer;
     

@@ -37,10 +37,10 @@ public:
         assert(prevLOutput.size() == this->input_dimension);
         
         // init ThreadLocal var
-        vector<Matrix*>& output_act = *tl_output_act;
-        output_act.resize(this->output_dimension);
-        vector<Matrix*>& input_delta = *tl_input_delta;
-        input_delta.resize(this->input_dimension);
+        MatrixArr& output_act = *tl_output_act;
+        output_act.arr.resize(this->output_dimension);
+        MatrixArr& input_delta = *tl_input_delta;
+        input_delta.arr.resize(this->input_dimension);
         
         // do Max pooling
         FOR(feamid, this->input_dimension) {
@@ -48,15 +48,15 @@ public:
             
             assert(mat->x_len >= config.size && mat->y_len >= config.size);
             
-            if (input_delta[feamid] == NULL) {
-                output_act[feamid] = new Matrix((mat->x_len - config.size) / config.size + 1,
+            if (input_delta.arr[feamid] == NULL) {
+                output_act.arr[feamid] = new Matrix((mat->x_len - config.size) / config.size + 1,
                                                 (mat->y_len - config.size) / config.size + 1);
-                input_delta[feamid] = new Matrix(mat->x_len, mat->y_len);
+                input_delta.arr[feamid] = new Matrix(mat->x_len, mat->y_len);
             }
             
-            auto cur_out = output_act[feamid];
+            auto cur_out = output_act.arr[feamid];
             cur_out->zeroInit();
-            auto cur_in = input_delta[feamid];
+            auto cur_in = input_delta.arr[feamid];
             cur_in->zeroInit();
             for (size_t i = 0; i < mat->x_len - config.size + 1; i+= config.size) {
                 for (size_t j = 0; j < mat->y_len - config.size + 1; j+=config.size) {
@@ -75,17 +75,17 @@ public:
                 }
             }
         }
-        return this->nextLayer->forward(output_act);
+        return this->nextLayer->forward(output_act.arr);
     }
     
     void backward(const vector<Matrix*>& outputDelta) {
         assert(outputDelta.size() == this->output_dimension);
         
-        vector<Matrix*>& input_delta = *tl_input_delta;
+        MatrixArr& input_delta = *tl_input_delta;
         
         // Unpooling
         FOR(fid, this->input_dimension) {
-            Matrix* mat = input_delta[fid];
+            Matrix* mat = input_delta.arr[fid];
             for (size_t i = 0; i < mat->x_len - config.size + 1; i+= config.size) {
                 for (size_t j = 0; j < mat->y_len - config.size + 1; j+=config.size) {
                     // loop pooling size
@@ -99,18 +99,18 @@ public:
                 }
             }
         }
-        return this->prevLayer->backward(input_delta);
+        return this->prevLayer->backward(input_delta.arr);
     }
     
     const vector<Matrix*>& output() {
-        vector<Matrix*>& output_act = *tl_output_act;
-        return output_act;
+        MatrixArr& output_act = *tl_output_act;
+        return output_act.arr;
     }
     
 private:
     Pool_Config config;
-    ThreadLocal<vector<Matrix*> > tl_output_act;
-    ThreadLocal<vector<Matrix*> > tl_input_delta; // mask of max position
+    ThreadLocal<MatrixArr> tl_output_act;
+    ThreadLocal<MatrixArr> tl_input_delta; // mask of max position
 };
 
 #endif /* poolingLayer_h */

@@ -29,15 +29,16 @@ public:
     
     vector<float>& forward(const vector<Matrix*>& prevLOutput) {
         // init ThreadLocal var
-        Matrix*& output_act = *tl_output_act;
-        vector<Matrix*>& input_delta = *tl_input_delta;
-        if (output_act == NULL) { // indicate lazy init once
-            assert(this->output_dimension == prevLOutput.size() * prevLOutput[0]->size());
-            output_act = new Matrix(1, this->output_dimension);
-            input_delta.resize(this->input_dimension);
-            FOR(i, this->input_dimension) {
-                input_delta[i] =
-                        new Matrix(prevLOutput[0]->x_len, prevLOutput[0]->y_len);
+        Matrix& output_act = *tl_output_act;
+        MatrixArr& input_delta = *tl_input_delta;
+        // indicate lazy init once
+        assert(this->output_dimension == prevLOutput.size() * prevLOutput[0]->size());
+        output_act.reset(1, this->output_dimension);
+        input_delta.arr.resize(this->input_dimension);
+        FOR(i, this->input_dimension) {
+            if (!input_delta.arr[i]) {
+                input_delta.arr[i] =
+                    new Matrix(prevLOutput[0]->x_len, prevLOutput[0]->y_len);
             }
         }
         
@@ -46,7 +47,7 @@ public:
             // Flatten data row
             FOR(x, prevLOutput[i]->x_len) {
                 FOR(y, prevLOutput[i]->y_len) {
-                    *output_act->getEle(0, offset + x * prevLOutput[i]->y_len + y) =
+                    *output_act.getEle(0, offset + x * prevLOutput[i]->y_len + y) =
                             *prevLOutput[i]->getEle(x, y);
                 }
             }
@@ -55,7 +56,7 @@ public:
         // init threadlocal wrapper
         vector<Matrix*>& wrapper = *tl_wrapper;
         wrapper.resize(1);
-        wrapper[0] = output_act;
+        wrapper[0] = &output_act;
         return this->nextLayer->forward(wrapper);
     }
     
@@ -63,10 +64,10 @@ public:
         vector<float>* outputDelta = outputDeltaMatrix[0]->pointer();
         assert(outputDelta->size() == this->output_dimension);
         
-        vector<Matrix*>& input_delta = *tl_input_delta;
+        MatrixArr& input_delta = *tl_input_delta;
         
         FOR(i, this->input_dimension) {
-            auto m_ptr = input_delta[i];
+            auto m_ptr = input_delta.arr[i];
             assert(m_ptr);
             size_t offset = i * m_ptr->size();
             FOR(x, m_ptr->x_len) {
@@ -75,20 +76,19 @@ public:
                 }
             }
         }
-        this->prevLayer->backward(input_delta);
+        this->prevLayer->backward(input_delta.arr);
     }
     
     const vector<Matrix*>& output() {
-        Matrix*& output_act = *tl_output_act;
-        assert(output_act);
+        Matrix& output_act = *tl_output_act;
         vector<Matrix*>& wrapper = *tl_wrapper;
-        wrapper[0] = output_act;
+        wrapper[0] = &output_act;
         return wrapper;
     }
     
 private:
-    ThreadLocal<Matrix*> tl_output_act; // wx + b with activation
-    ThreadLocal<vector<Matrix*> > tl_input_delta; // delta of prevLayer wx+b Z_(L-1)
+    ThreadLocal<Matrix> tl_output_act; // wx + b with activation
+    ThreadLocal<MatrixArr> tl_input_delta; // delta of prevLayer wx+b Z_(L-1)
     
     ThreadLocal<vector<Matrix*> > tl_wrapper;
 };

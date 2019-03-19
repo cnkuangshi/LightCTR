@@ -24,24 +24,24 @@ public:
                    dataPath, _epoch, _feature_cnt, _hidden_size, _multiclass_output_cnt),
     batch_size(_recurrent_cnt), hidden_size(_hidden_size) {
         this->dl_algo = RNN;
-        this->init(_hidden_size);
+        initNetwork(hidden_size);
     }
     Train_RNN_Algo() = delete;
                                   
     ~Train_RNN_Algo() {
-        delete this->inputLayer;
-        delete this->attentionLayer;
-        delete this->fcLayer;
-        delete this->outputLayer;
     }
     
-    void init(size_t hidden_size) {
-        inputLayer = new LSTM_Unit<ActivationFunction>(28, hidden_size, batch_size);
+    void initNetwork(size_t hidden_size) {
+        inputLSTM = new LSTM_Unit<ActivationFunction>(28, hidden_size, batch_size);
+        this->appendNNLayer(inputLSTM);
         attentionLayer =
             new Attention_Unit<ActivationFunction>(hidden_size, /*fc_hidden*/20, batch_size);
+        this->appendNNLayer(attentionLayer);
         fcLayer = new Fully_Conn_Layer<ActivationFunction>(attentionLayer, hidden_size, 72);
-        outputLayer =
+        this->appendNNLayer(fcLayer);
+        this->outputLayer =
             new Fully_Conn_Layer<ActivationFunction>(fcLayer, 72, this->multiclass_output_cnt);
+        this->appendNNLayer(this->outputLayer);
     }
     
     vector<float>& Predict(size_t rid, vector<vector<float> >& dataRow) {
@@ -57,12 +57,12 @@ public:
             begin = dataRow[rid].begin() + i * 28;
             end = dataRow[rid].begin() + (i + 1) * 28;
             dataRow_Matrix->pointer()->assign(begin, end);
-            this->inputLayer->forward(tmp);
+            inputLSTM->forward(tmp);
         }
         assert(end == dataRow[rid].end());
         
         // Attention Unit
-        vector<float> pred = attentionLayer->forward(inputLayer->seq_output());
+        vector<float> pred = attentionLayer->forward(inputLSTM->seq_output());
         
         assert(pred.size() == hidden_size);
         dataRow_Matrix_fc->loadDataPtr(&pred);
@@ -73,21 +73,19 @@ public:
     void BP(size_t rid, const vector<Matrix*>& grad) {
         assert(GradientUpdater::__global_bTraining);
         this->outputLayer->backward(grad);
-        this->inputLayer->backward(attentionLayer->inputDelta());
+        inputLSTM->backward(attentionLayer->inputDelta());
     }
     
     void applyBP(size_t epoch) const {
-        this->inputLayer->applyBatchGradient();
-        this->attentionLayer->applyBatchGradient();
+        inputLSTM->applyBatchGradient();
+        attentionLayer->applyBatchGradient();
     }
     
 private:
     size_t batch_size, hidden_size;
-    
-    LSTM_Unit<ActivationFunction> *inputLayer;
-    Attention_Unit<ActivationFunction> *attentionLayer;
-    Fully_Conn_Layer<ActivationFunction>* fcLayer;
-    Fully_Conn_Layer<ActivationFunction> *outputLayer;
+    LSTM_Unit<ActivationFunction>* inputLSTM;
+    Attention_Unit<ActivationFunction>* attentionLayer;
+    Layer_Base* fcLayer;
 };
 
 #endif /* train_rnn_algo_h */
