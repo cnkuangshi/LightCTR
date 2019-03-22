@@ -14,6 +14,7 @@
 #include "../common/buffer_fusion.h"
 #include "../common/avx.h"
 #include "../common/barrier.h"
+#include "../common/lock.h"
 
 const time_t kTimeoutRetryMSInterval = 10000;
 
@@ -122,15 +123,18 @@ private:
             step_barrier.reset();
             
             // receive segment from last-skip on the ring topology
-            if (!cache.empty()) {
+            {
+                unique_lock<SpinLock> glock(cache_lock);
+                if (!cache.empty()) {
 #ifdef DEBUG
-                printf("[REDUCE] step = %zu read from cache\n", step_version);
+                    printf("[REDUCE] step = %zu read from cache\n", step_version);
 #endif
-                auto request = cache.front();
-                cache.pop();
-                assert(request->epoch_version == step_version);
-                _do_reduce(_buf_fusion, request->content);
-                step_barrier.unblock();
+                    auto request = cache.front();
+                    cache.pop();
+                    assert(request->epoch_version == step_version);
+                    _do_reduce(_buf_fusion, request->content);
+                    step_barrier.unblock();
+                }
             }
             
             PackageDescript desc(REQUEST_PUSH, step_version);
@@ -173,15 +177,18 @@ private:
             step_barrier.reset();
             
             // receive segment from last-skip on the ring topology
-            if (!cache.empty()) {
+            {
+                unique_lock<SpinLock> glock(cache_lock);
+                if (!cache.empty()) {
 #ifdef DEBUG
-                printf("[GATHER] step = %zu read from cache\n", step_version);
+                    printf("[GATHER] step = %zu read from cache\n", step_version);
 #endif
-                auto request = cache.front();
-                cache.pop();
-                assert(request->epoch_version == step_version);
-                _do_gather(_buf_fusion, request->content);
-                step_barrier.unblock();
+                    auto request = cache.front();
+                    cache.pop();
+                    assert(request->epoch_version == step_version);
+                    _do_gather(_buf_fusion, request->content);
+                    step_barrier.unblock();
+                }
             }
             
             PackageDescript desc(REQUEST_PUSH, step_version);
@@ -255,15 +262,18 @@ private:
             assert(worker_id == recv_from_id);
             
 //            assert(request->epoch_version >= step_version);
-            if (step_version != request->epoch_version) {
-                // cache the request into deque and response the situation
-                cache.push(request);
+            {
+                unique_lock<SpinLock> glock(cache_lock);
+                if (step_version != request->epoch_version) {
+                    // cache the request into deque and response the situation
+                    cache.push(request);
 #ifdef DEBUG
-                printf("[RING] receive not match %zu expected %zu, cache it\n",
-                       request->epoch_version, step_version);
+                    printf("[RING] receive not match %zu expected %zu, cache it\n",
+                           request->epoch_version, step_version);
 #endif
-                response.epoch_version = step_version;
-                return;
+                    response.epoch_version = step_version;
+                    return;
+                }
             }
             
             assert(request->content.size() % sizeof(T) == 0);
@@ -293,7 +303,8 @@ private:
     volatile size_t rcv_offset;
     volatile size_t recv_segment_id;
     
-    MessageQueue<std::shared_ptr<PackageDescript> > cache;
+    queue<std::shared_ptr<PackageDescript> > cache;
+    SpinLock cache_lock;
     
     size_t _param_size;
     const size_t _ring_size = 0;

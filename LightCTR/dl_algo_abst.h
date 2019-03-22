@@ -55,6 +55,7 @@ public:
         static ThreadLocal<vector<int> > tl_onehot;
         static ThreadLocal<Matrix*> tl_grad_Matrix;
         
+        size_t batch_epoch = 0;
         for (size_t p = 0; p < epoch; p++) {
             
             GradientUpdater::__global_bTraining = true;
@@ -107,7 +108,7 @@ public:
                 
                 if ((rid + 1) % GradientUpdater::__global_minibatch_size == 0) {
                     threadpool->wait();
-                    applyBP(p);
+                    applyBP(batch_epoch++);
                 }
             }
             

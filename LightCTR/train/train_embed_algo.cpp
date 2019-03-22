@@ -221,7 +221,7 @@ void Train_Embed_Algo::Quantization(size_t part_cnt, uint8_t cluster_cnt) {
         exit(1);
     }
     for (size_t wid = 0; wid < vocab_cnt; wid++) {
-        for (int i = 0; i < part_cnt; i++) {
+        for (size_t i = 0; i < part_cnt; i++) {
             md << static_cast<int>(quantizated_codes[i][wid]) << " ";
         }
         md << endl;
