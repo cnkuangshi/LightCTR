@@ -22,7 +22,7 @@ wait
 echo
 echo
 echo "[Build Success]"
-echo "Please copy different BIN file to corresponding machine, DON'T forget expert LightCTR_PS_NUM, LightCTR_WORKER_NUM and LightCTR_MASTER_ADDR, run Master first"
+echo "Please copy different BIN file to corresponding machine, DON'T forget export LightCTR_PS_NUM, LightCTR_WORKER_NUM and LightCTR_MASTER_ADDR, run Master first"
 echo
 echo "[or] Press any key to run clunster on standalone mode"
 read -n 1
