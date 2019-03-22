@@ -22,7 +22,7 @@ inline void avx_vecAdd(const float* x, const float* y, float* res, size_t len) {
     if (len > 7) {
         for (; len > 7; len -= 8) {
             __m256 t = _mm256_add_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y));
-            _mm256_store_ps(res, t);
+            _mm256_storeu_ps(res, t);
             x += 8;
             y += 8;
             res += 8;
@@ -42,7 +42,7 @@ inline void avx_vecAdd(const float* x, const float const_delta, float* res, size
     if (len > 7) {
         for (; len > 7; len -= 8) {
             __m256 t = _mm256_add_ps(_mm256_loadu_ps(x), delta);
-            _mm256_store_ps(res, t);
+            _mm256_storeu_ps(res, t);
             x += 8;
             res += 8;
         }
@@ -62,7 +62,7 @@ inline void avx_vecScalerAdd(const float* x, const float* y, float* res,
         for (; len > 7; len -= 8) {
             __m256 t = _mm256_add_ps(_mm256_loadu_ps(x),
                                      _mm256_mul_ps(_mm256_loadu_ps(y), _scalar));
-            _mm256_store_ps(res, t);
+            _mm256_storeu_ps(res, t);
             x += 8;
             y += 8;
             res += 8;
@@ -83,7 +83,7 @@ inline void avx_vecScalerAdd(const float* x, const float* y, float* res,
             __m256 t = _mm256_add_ps(_mm256_loadu_ps(x),
                                      _mm256_mul_ps(_mm256_loadu_ps(y),
                                                    _mm256_loadu_ps(y_scalar)));
-            _mm256_store_ps(res, t);
+            _mm256_storeu_ps(res, t);
             x += 8;
             y += 8;
             y_scalar += 8;
@@ -162,7 +162,7 @@ inline void avx_vecSqrt(const float* x, float *res, size_t len) {
     if (len > 7) {
         for (; len > 7; len -= 8) {
             __m256 t = _mm256_sqrt_ps(_mm256_loadu_ps(x));
-            _mm256_store_ps(res, t);
+            _mm256_storeu_ps(res, t);
             x += 8;
             res += 8;
         }
@@ -178,7 +178,7 @@ inline void avx_vecRsqrt(const float* x, float *res, size_t len) {
     if (len > 7) {
         for (; len > 7; len -= 8) {
             __m256 t = _mm256_rsqrt_ps(_mm256_loadu_ps(x));
-            _mm256_store_ps(res, t);
+            _mm256_storeu_ps(res, t);
             x += 8;
             res += 8;
         }
@@ -194,7 +194,7 @@ inline void avx_vecRcp(const float* x, float *res, size_t len) {
     if (len > 7) {
         for (; len > 7; len -= 8) {
             __m256 t = _mm256_rcp_ps(_mm256_loadu_ps(x));
-            _mm256_store_ps(res, t);
+            _mm256_storeu_ps(res, t);
             x += 8;
             res += 8;
         }
@@ -211,7 +211,7 @@ inline void avx_vecScale(const float* x, float *res, size_t len, const float sca
     if (len > 7) {
         for (; len > 7; len -= 8) {
             __m256 t = _mm256_mul_ps(_mm256_loadu_ps(x), _scalar);
-            _mm256_store_ps(res, t);
+            _mm256_storeu_ps(res, t);
             x += 8;
             res += 8;
         }
@@ -227,7 +227,7 @@ inline void avx_vecScale(const float* x, float *res, size_t len, const float* sc
     if (len > 7) {
         for (; len > 7; len -= 8) {
             __m256 t = _mm256_mul_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(scalar));
-            _mm256_store_ps(res, t);
+            _mm256_storeu_ps(res, t);
             x += 8;
             scalar += 8;
             res += 8;
@@ -245,7 +245,7 @@ inline void avx_vecDiv(const float* x, const float* y, float* res, size_t len) {
     if (len > 7) {
         for (; len > 7; len -= 8) {
             __m256 t = _mm256_div_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y));
-            _mm256_store_ps(res, t);
+            _mm256_storeu_ps(res, t);
             x += 8;
             y += 8;
             res += 8;

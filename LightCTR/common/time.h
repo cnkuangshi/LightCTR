@@ -42,7 +42,7 @@ inline time_t __must_inline__ get_now_s(void) {
 
 inline time_t __must_inline__ gettickspan(uint64_t old_tick = get_now_ms()) {
     update_tv();
-    int64_t cur_tick = get_now_ms();
+    uint64_t cur_tick = get_now_ms();
     if (old_tick > cur_tick) {
         return 0;
     }
