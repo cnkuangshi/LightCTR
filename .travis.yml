@@ -1,12 +1,12 @@
 os:
   - osx
-  - linux
+
 language: cpp
 
 script:
   - make
-  - build.sh 3 3 127.0.0.1:17832
-  - build_ring.sh 3 127.0.0.1:17832
+  - ./build.sh 3 3 127.0.0.1:17832
+  - ./build_ring.sh 3 127.0.0.1:17832
 
 notifications:
   email:

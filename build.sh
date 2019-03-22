@@ -23,18 +23,3 @@ echo
 echo
 echo "[Build Success]"
 echo "Please copy different BIN file to corresponding machine, DON'T forget export LightCTR_PS_NUM, LightCTR_WORKER_NUM and LightCTR_MASTER_ADDR, run Master first"
-echo
-echo "[or] Press any key to run clunster on standalone mode"
-read -n 1
-
-./LightCTR_BIN_Master &
-
-for ((i=0; i<${LightCTR_PS_NUM}; ++i)); do
-	./LightCTR_BIN_PS &
-done
-
-for ((i=0; i<${LightCTR_WORKER_NUM}; ++i)); do
-	./LightCTR_BIN_Worker &
-done
-
-wait

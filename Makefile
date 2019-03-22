@@ -22,7 +22,7 @@ ring_master : $(DISTRIBUT)
 ring_worker : $(DISTRIBUT)
 
 $(BIN) :
-	$(CXX) $(CFLAGS) -o $@ $(filter %.cpp %.o %.c, $^) -Xlinker $(LDFLAGS)
+	$(CXX) $(CFLAGS) -o $@ $(filter %.cpp %.o %.c, $^) $(LDFLAGS)
 
 master :
 	$(CXX) $(CFLAGS) -o LightCTR_BIN_Master $(filter %.cpp %.o %.c, $^) -D MASTER -Xlinker $(ZMQ_LIB) $(LDFLAGS)
