@@ -4,6 +4,10 @@ if [ $# -lt 2 ]; then
     exit -1;
 fi
 
+cd ./LightCTR/third
+sh ./install_third.sh
+cd ../../
+
 export LightCTR_PS_NUM=0
 export LightCTR_WORKER_NUM=$1
 shift
@@ -16,7 +20,7 @@ wait
 echo
 echo
 echo "[Build Success]"
-echo "Please copy different BIN file to corresponding machine, run Master first"
+echo "Please copy different BIN file to corresponding machine, DON'T forget expert LightCTR_PS_NUM, LightCTR_WORKER_NUM and LightCTR_MASTER_ADDR, run Master first"
 echo
 echo "[or] Press any key to run clunster on standalone mode"
 read -n 1

@@ -18,8 +18,8 @@ using namespace std;
 
 class Activation {
 public:
-    virtual inline void forward(float* input, size_t len) = 0;
-    virtual inline void backward(const float* delta, const float* forward_output, float* to, size_t len) = 0;
+    virtual void forward(float* input, size_t len) = 0;
+    virtual void backward(const float* delta, const float* forward_output, float* to, size_t len) = 0;
 };
 
 class Identity : public Activation {

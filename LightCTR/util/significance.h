@@ -10,6 +10,7 @@
 #define significance_h
 
 #include <cmath>
+#include "assert.h"
 
 // error function
 inline double Erf(double x) {

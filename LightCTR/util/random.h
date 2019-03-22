@@ -94,20 +94,20 @@ inline size_t subSampleSize(double sampleAlpha = 0.05, double sampleErrorBound =
     return sampleSize;
 }
 
-inline void shuffleSelectK(std::vector<int>* rankResult, int n, int k) {
+inline void shuffleSelectK(std::vector<size_t>* rankResult, size_t n, size_t k) {
     // when n equal to k mean shuffle, otherwise sample should adjust k
     assert(n / 2 >= k);
     if (rankResult->size() != k) {
         rankResult->clear();
         rankResult->resize(k);
     }
-    std::vector<int> array;
+    std::vector<size_t> array;
     array.resize(n);
-    for (int i = 0; i < n; i++) {
+    for (size_t i = 0; i < n; i++) {
         array[i] = i;
     }
-    for (int i = 0; i < k; i++) {
-        int index = (int)(UniformNumRand() * (n - i));
+    for (size_t i = 0; i < k; i++) {
+        size_t index = UniformNumRand() * (n - i);
         rankResult->at(i) = array[index];
         array[index] = array[n - 1 - i];
     }

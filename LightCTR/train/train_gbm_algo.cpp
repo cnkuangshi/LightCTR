@@ -67,19 +67,18 @@ void Train_GBM_Algo::flash(RegTreeNode *root, size_t inClass) { // run per gbm t
         // K-th tree should re-compute Softmax grad and hess for next K trees
         sumGrad = 0, sumHess = 0;
         
-        static vector<float>* tmp = new vector<float>();
-        tmp->resize(multiclass);
+        vector<float> tmp;
+        tmp.resize(multiclass);
         
         for (size_t rid = 0; rid < this->dataRow_cnt; rid++) {
             if (!sampleDataSetIndex[rid]) {
                 continue;
             }
-            tmp->assign(&dataSet_Pred[rid * multiclass],
+            tmp.assign(&dataSet_Pred[rid * multiclass],
                         &dataSet_Pred[rid * multiclass + multiclass]);
-            assert(tmp->size() == multiclass);
-            softmax.forward(tmp->data(), tmp->size());
+            softmax.forward(tmp.data(), tmp.size());
             for (size_t c = 0; c < multiclass; c++) {
-                float grad_t = tmp->at(c);
+                float grad_t = tmp[c];
                 float hess_t = grad_t * (1.0 - grad_t) * 2.0;
                 assert(hess_t > 0);
                 if (c == label[rid]) {
@@ -203,7 +202,7 @@ void Train_GBM_Algo::Train() {
                         // skip data has been in leaf, only new split LeafNodes are active
                         continue;
                     }
-                    pair<float, float> pair = move(dataSet_Grad[rid * multiclass + inClass]);
+                    pair<float, float> pair = dataSet_Grad[rid * multiclass + inClass];
                     node->leafStat->sumGrad += pair.first;
                     node->leafStat->sumHess += pair.second;
                 }

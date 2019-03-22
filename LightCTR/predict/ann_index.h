@@ -250,11 +250,11 @@ private:
             float dis1 = ic * Euclidean_distance(centroid1, points_set[index]);
             float dis2 = jc * Euclidean_distance(centroid2, points_set[index]);
             if (dis1 < dis2) {
-                for (int i = 0; i < centroid1.size(); i++)
+                for (size_t i = 0; i < centroid1.size(); i++)
                     centroid1[i] = (centroid1[i] * ic + points_set[index][i]) / (ic + 1);
                 ic++;
             } else if (dis1 > dis2) {
-                for (int i = 0; i < centroid2.size(); i++)
+                for (size_t i = 0; i < centroid2.size(); i++)
                     centroid2[i] = (centroid2[i] * jc + points_set[index][i]) / (jc + 1);
                 jc++;
             } else {
@@ -262,10 +262,10 @@ private:
             }
         }
         
-        for (int i = 0; i < centroid2.size(); i++)
+        for (size_t i = 0; i < centroid2.size(); i++)
             hyperplane[i] = centroid1[i] - centroid2[i];
         normalize(hyperplane); // normalize to avoid repeat calculate
-        for (int i = 0; i < centroid2.size(); i++)
+        for (size_t i = 0; i < centroid2.size(); i++)
             bias -= hyperplane[i] * (centroid1[i] + centroid2[i]) / 2.0f;
     }
     
@@ -280,7 +280,7 @@ private:
         float norm = avx_dotProduct(&point[0], &point[0], point.size());
         assert(norm > 0);
         norm = sqrt(norm);
-        for (int i = 0; i < point.size(); i++) {
+        for (size_t i = 0; i < point.size(); i++) {
             point[i] /= norm;
         }
     }

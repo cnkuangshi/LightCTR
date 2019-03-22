@@ -11,6 +11,10 @@
 
 #define float16_t unsigned short
 
+#include <algorithm>
+#include <functional>
+#include "assert.h"
+
 class Float16 {
 public:
     Float16() {
@@ -91,7 +95,7 @@ private:
         return *reinterpret_cast<float*>(&f);
     }
     
-    inline float16_t convert(float src) {
+    inline float16_t convert(const float& src) {
         // convert Float32 into Binary float16 (unsigned short) based IEEE754 standard
         unsigned const& s = *reinterpret_cast<unsigned const*>(&src);
 
@@ -152,7 +156,7 @@ private:
     void print_bin(float num) {
         printf("32: ");
         unsigned const& s = *reinterpret_cast<unsigned const*>(&num);
-        for(int i = 1; i <= sizeof(num) * 8; i++) {
+        for(size_t i = 1; i <= sizeof(num) * 8; i++) {
             printf("%d", (s >> (sizeof(num) * 8 - i)) & 1);
             if (i == 1 || i == 9 || i == 32) {
                 printf("\t");
@@ -163,7 +167,7 @@ private:
     void print_bin16(float16_t num) {
         printf("16: ");
         unsigned const& s = *reinterpret_cast<unsigned const*>(&num);
-        for(int i = 1; i <= sizeof(num) * 8; i++) {
+        for(size_t i = 1; i <= sizeof(num) * 8; i++) {
             printf("%d", (s >> (sizeof(num) * 8 - i)) & 1);
             if (i == 1 || i == 6 || i == 16) {
                 printf("\t");

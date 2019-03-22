@@ -59,7 +59,7 @@ public:
             memsize = this->feature_cnt * this->field_cnt * this->factor_cnt;
         }
         V = new float[memsize];
-        const float scale = 0.1f / sqrt(this->factor_cnt);
+        const float scale = 1.0 / sqrt(this->factor_cnt);
         for (size_t i = 0; i < memsize; i++) {
             V[i] = GaussRand() * scale;
         }

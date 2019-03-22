@@ -28,15 +28,15 @@ public:
         res.resize(sub_results[0].size());
         
         if (is_prob_avg_voting) {
-            for (int i = 0; i < sub_results[0].size(); i++) {
+            for (size_t i = 0; i < sub_results[0].size(); i++) {
                 res[i] = 0;
-                for (int j = 0; j < sub_results.size(); j++) {
+                for (size_t j = 0; j < sub_results.size(); j++) {
                     res[i] += sub_results[j][i];
                 }
                 res[i] /= sub_results.size();
             }
         } else {
-            for (int i = 0; i < sub_results.size(); i++) {
+            for (size_t i = 0; i < sub_results.size(); i++) {
                 const size_t index = std::distance(sub_results[i].begin(),
                                                    std::max_element(sub_results[i].begin(), sub_results[i].end())
                                                    );
@@ -57,7 +57,7 @@ public:
     explicit AdaBoost(size_t _sample_cnt): sample_cnt(_sample_cnt) {
         weights = new float[_sample_cnt];
         const float init_w = 1.0 / _sample_cnt;
-        for (int i = 0; i < _sample_cnt; i++) {
+        for (size_t i = 0; i < _sample_cnt; i++) {
             *(weights + i) = init_w;
         }
     }
@@ -69,7 +69,7 @@ public:
     
     std::shared_ptr<float> ensembling_weak_model(std::vector<bool>& pred_correct_mask) {
         float err_rate = 0.;
-        for (int i = 0; i < sample_cnt; i++) {
+        for (size_t i = 0; i < sample_cnt; i++) {
             if (pred_correct_mask[i] == false)
                 err_rate += 1.;
         }
@@ -79,7 +79,7 @@ public:
         _model_weights.emplace_back(alpha);
         
         float reweighting = std::exp(alpha);
-        for (int i = 0; i < sample_cnt; i++) {
+        for (size_t i = 0; i < sample_cnt; i++) {
             if (pred_correct_mask[i] == false) {
                 *(weights + i) *= reweighting;
             } else {

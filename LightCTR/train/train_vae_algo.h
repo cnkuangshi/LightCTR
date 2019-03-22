@@ -108,13 +108,6 @@ public:
         return encode;
     }
     
-    vector<float>* decode(vector<float>* input) {
-        assert(input->size() == gauss_cnt);
-        vector<float> *decode = this->decodeLayer->forward(input);
-        outputActivFun.forward(decode);
-        return decode;
-    }
-    
     void saveModel(size_t epoch) {
         
     }

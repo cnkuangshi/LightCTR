@@ -1,6 +1,6 @@
 export CC  = gcc
 export CXX = g++
-export CFLAGS = -std=c++11 -Wall -O3 -D__AVX__ -mavx -mssse3 -Wno-unknown-pragmas -Wno-reorder -Wno-null-conversion
+export CFLAGS = -std=c++11 -Wall -O3 -D__AVX__ -mavx -mssse3 -Wno-unknown-pragmas -Wno-reorder -Wno-null-conversion -Wno-strict-aliasing
 
 BIN = LightCTR_BIN
 ZMQ_INC = ./LightCTR/third/zeromq/include
@@ -9,10 +9,10 @@ OBJ =
 .PHONY: clean all
 
 all: $(BIN) $(OBJ)
-export LDFLAGS= -pthread -lm
+export LDFLAGS= -pthread -lm -ldl
 
-STANDALONE = *.cpp $(ZMQ_INC) LightCTR/*.h LightCTR/common/*.h LightCTR/predict/*.h LightCTR/predict/*.cpp LightCTR/util/*.h LightCTR/train/*.h LightCTR/train/*.cpp LightCTR/train/layer/*.h LightCTR/train/unit/*.h
-DISTRIBUT = $(STANDALONE) LightCTR/distribut/*.h
+STANDALONE = *.cpp LightCTR/*.h LightCTR/common/*.h LightCTR/predict/*.h LightCTR/predict/*.cpp LightCTR/util/*.h LightCTR/train/*.h LightCTR/train/*.cpp LightCTR/train/layer/*.h LightCTR/train/unit/*.h
+DISTRIBUT = $(STANDALONE) $(ZMQ_INC) LightCTR/distribut/*.h
 
 LightCTR_BIN : $(STANDALONE)
 master : $(DISTRIBUT)
@@ -22,22 +22,22 @@ ring_master : $(DISTRIBUT)
 ring_worker : $(DISTRIBUT)
 
 $(BIN) :
-	$(CXX) $(CFLAGS) -Xlinker $(ZMQ_LIB) $(LDFLAGS) -o $@ $(filter %.cpp %.o %.c, $^)
+	$(CXX) $(CFLAGS) -o $@ $(filter %.cpp %.o %.c, $^) -Xlinker $(ZMQ_LIB) $(LDFLAGS)
 
 master :
-	$(CXX) $(CFLAGS) -Xlinker $(ZMQ_LIB) $(LDFLAGS) -o LightCTR_BIN_Master $(filter %.cpp %.o %.c, $^) -D MASTER
+	$(CXX) $(CFLAGS) -o LightCTR_BIN_Master $(filter %.cpp %.o %.c, $^) -D MASTER -Xlinker $(ZMQ_LIB) $(LDFLAGS)
 
 ps :
-	$(CXX) $(CFLAGS) -Xlinker $(ZMQ_LIB) $(LDFLAGS) -o LightCTR_BIN_PS $(filter %.cpp %.o %.c, $^) -D PS
+	$(CXX) $(CFLAGS) -o LightCTR_BIN_PS $(filter %.cpp %.o %.c, $^) -D PS -Xlinker $(ZMQ_LIB) $(LDFLAGS)
 
 worker :
-	$(CXX) $(CFLAGS) -Xlinker $(ZMQ_LIB) $(LDFLAGS) -o LightCTR_BIN_Worker $(filter %.cpp %.o %.c, $^) -D WORKER
+	$(CXX) $(CFLAGS) -o LightCTR_BIN_Worker $(filter %.cpp %.o %.c, $^) -D WORKER -Xlinker $(ZMQ_LIB) $(LDFLAGS)
 
 ring_master :
-	$(CXX) $(CFLAGS) -Xlinker $(ZMQ_LIB) $(LDFLAGS) -o LightCTR_BIN_Ring_Master $(filter %.cpp %.o %.c, $^) -D MASTER_RING
+	$(CXX) $(CFLAGS) -o LightCTR_BIN_Ring_Master $(filter %.cpp %.o %.c, $^) -D MASTER_RING -Xlinker $(ZMQ_LIB) $(LDFLAGS)
 
 ring_worker :
-	$(CXX) $(CFLAGS) -Xlinker $(ZMQ_LIB) $(LDFLAGS) -o LightCTR_BIN_Ring_Worker $(filter %.cpp %.o %.c, $^) -DWORKER_RING -DTEST_CNN
+	$(CXX) $(CFLAGS) -o LightCTR_BIN_Ring_Worker $(filter %.cpp %.o %.c, $^) -DWORKER_RING -DTEST_CNN -Xlinker $(ZMQ_LIB) $(LDFLAGS)
 
 $(OBJ) :
 	$(CXX) -c $(CFLAGS) -o $@ $(firstword $(filter %.cpp %.c, $^) )

@@ -10,6 +10,7 @@
 #define buffer_h
 
 #include "float16.h"
+#include <cstring>
 
 class Buffer {
 public:
@@ -26,7 +27,7 @@ public:
         _buffer = new char[_capacity];
         _cursor = _end = _buffer;
         
-        memcpy(_buffer, buf, len);
+        std::memcpy(_buffer, buf, len);
         _end += len;
     }
     
@@ -104,7 +105,7 @@ public:
             reserve(new_cap);
         }
         assert(size() + len <= _capacity); // check address sanitizer
-        memcpy(_end, x, len);
+        std::memcpy(_end, x, len);
         _end += len;
     }
     
@@ -131,7 +132,7 @@ public:
         if (len == 0) {
             len = size(); // read all
         }
-        memcpy(x, _cursor, len);
+        std::memcpy(x, _cursor, len);
         _cursor += len;
         assert(_cursor <= _end);
     }
@@ -139,7 +140,7 @@ public:
     template <typename T>
     inline void readHalfFloat(T* x) {
         float16_t t;
-        memcpy(&t, _cursor, sizeof(float16_t));
+        std::memcpy(&t, _cursor, sizeof(float16_t));
         _cursor += sizeof(float16_t);
         assert(_cursor <= _end);
         if (sizeof(T) == 4 || sizeof(T) == 8) {
@@ -205,7 +206,7 @@ protected:
             char* newbuf = new char[newcap];
             assert(newbuf);
             if (size() > 0) {
-                memcpy(newbuf, _buffer, size());
+                std::memcpy(newbuf, _buffer, size());
             }
             
             const size_t cursor_offset = readed_size();

@@ -67,7 +67,7 @@ public:
         
         vector<vector<CompressT> > quantizated_codes;
         quantizated_codes.reserve(part_cnt);
-        for (auto i = 0; i < part_cnt; i++) {
+        for (size_t i = 0; i < part_cnt; i++) {
             auto part_centroids = centroids + i * cluster_cnt * part_dim_interval;
             auto part_quancodes = std::vector<CompressT>(len);
             kmeans(data, len, i, part_centroids, part_dim_interval, part_quancodes);
@@ -92,14 +92,14 @@ private:
         std::iota(perm.begin(), perm.end(), 0);
         std::shuffle(perm.begin(), perm.end(), rng);
         
-        for (auto i = 0; i < cluster_cnt; i++) {
+        for (size_t i = 0; i < cluster_cnt; i++) {
             auto init_centroid = data + perm[i] * dimension;
             auto x = init_centroid + which_part * sub_dim;
             memcpy(&part_centroids[i * sub_dim], x, sub_dim * sizeof(RealT));
         }
         // begin to train by kmeans
         float preIntera = 0x0fffffff;
-        for (auto i = 0; i < 100; i++) {
+        for (size_t i = 0; i < 100; i++) {
             auto intera = Estep(data, len, which_part, part_centroids,
                                 part_quancodes.data(), sub_dim);
             if (fabs(preIntera - intera) < 1e-5) {
@@ -116,13 +116,13 @@ private:
                CompressT* part_quancodes, size_t sub_dim) const {
         float interactive = 0;
         // loop all data rows
-        for (auto i = 0; i < len; i++) {
+        for (size_t i = 0; i < len; i++) {
             auto row = data + i * dimension;
             auto x = row + which_part * sub_dim;
             // comparing with each centroids to find closest centroid
             RealT dis = avx_L2Distance(x, part_centroids, sub_dim);
             *part_quancodes = 0;
-            for (auto j = 1; j < cluster_cnt; j++) {
+            for (size_t j = 1; j < cluster_cnt; j++) {
                 RealT tmp = avx_L2Distance(x, part_centroids + j * sub_dim, sub_dim);
                 if (tmp < dis) {
                     *part_quancodes = static_cast<CompressT>(j);
@@ -142,7 +142,7 @@ private:
         std::vector<size_t> ele_cnt(cluster_cnt, 0);
         memset(part_centroids, 0, cluster_cnt * sub_dim * sizeof(RealT));
 
-        for (auto i = 0; i < len; i++) {
+        for (size_t i = 0; i < len; i++) {
             auto row = data + i * dimension;
             auto x = row + which_part * sub_dim;
             
@@ -174,7 +174,7 @@ private:
                 memcpy(part_centroids + k * sub_dim,
                        part_centroids + m * sub_dim,
                        sizeof(RealT) * sub_dim);
-                for (auto j = 0; j < sub_dim; j++) {
+                for (size_t j = 0; j < sub_dim; j++) {
                     int32_t sign = (j % 2) * 2 - 1;
                     centroids[k * sub_dim + j] += sign * 1e-5;
                     centroids[m * sub_dim + j] -= sign * 1e-5;
