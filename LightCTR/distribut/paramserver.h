@@ -52,9 +52,6 @@ public:
         regist_ack_handler();
         regist_fin_handler();
         
-        serving_barrier.block();
-        status_serving = true;
-        
         paramShardTable.reserve(1 << 20); // reserve 1000k
         paramShardTable.rehash(1 << 20); // prevent rehashing of unordered_map
         
@@ -62,6 +59,9 @@ public:
         tensorShardTable.rehash(1 << 20);
         
         regist_pull_push_handler();
+        
+        serving_barrier.block();
+        status_serving = true;
         
         terminate_barrier.block();
     }

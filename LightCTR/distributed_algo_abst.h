@@ -166,7 +166,7 @@ public:
         train_loss = 0;
         accuracy = 0;
         
-        batchGradCompute(0x7fffffff, 0, this->dataRow_cnt, true);
+        batchGradCompute(0, 0, this->dataRow_cnt, true);
         
         printf("[Worker Predict] loss = %f accuracy = %f\n",
                train_loss, 1.0 * accuracy / dataRow_cnt);

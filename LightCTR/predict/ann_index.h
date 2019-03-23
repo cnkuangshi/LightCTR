@@ -78,7 +78,7 @@ class ANNIndex {
     };
     
 public:
-    ANNIndex(string dataPath, size_t _feature_cnt, size_t tree_cnt = 5) :
+    ANNIndex(string dataPath, size_t _feature_cnt, size_t tree_cnt = 20) :
         feature_cnt(_feature_cnt) {
         assert(tree_cnt > 0);
         loadDataRow(dataPath, feature_cnt);
@@ -108,7 +108,7 @@ public:
     }
     
     void query(const Point& input, size_t beamSearchK, vector<size_t>& result_indices) {
-        assert(beamSearchK > leaf_min_points);
+        assert(beamSearchK >= leaf_min_points);
         
         result_indices.reserve(beamSearchK);
         for (size_t i = 0; i < forest.size(); i++) {
@@ -167,29 +167,17 @@ private:
         }
         Point hyperplane;
         hyperplane.resize(feature_cnt);
-        float bias = 0.0f;
-        split_twoPart(indices, hyperplane, bias);
+        float bias = split_twoPart(indices, hyperplane);
         
         vector<size_t> leftSet, rightSet;
+        leftSet.reserve(feature_cnt);
+        rightSet.reserve(feature_cnt);
         for (size_t i = 0; i < indices.size(); i++) {
             size_t index = indices[i];
             if (side(hyperplane, points_set[index], bias)) {
                 leftSet.emplace_back(index);
             } else {
                 rightSet.emplace_back(index);
-            }
-        }
-        while (leftSet.size() == 0 || rightSet.size() == 0) {
-            leftSet.clear(), rightSet.clear();
-            hyperplane.clear();
-            bias = 0;
-            // random split
-            for (size_t i = 0; i < indices.size(); i++) {
-                if (SampleBinary(0.5f)) {
-                    leftSet.emplace_back(indices[i]);
-                } else {
-                    rightSet.emplace_back(indices[i]);
-                }
             }
         }
         curNode->saveHyperplane(hyperplane, bias);
@@ -222,6 +210,7 @@ private:
                 result.insert(result.end(), pointSet->begin(), pointSet->end());
             } else {
                 assert(curNode->innerPoints == NULL && !curNode->hyperplane.empty());
+                
                 float dis = margin(curNode->hyperplane, input, curNode->bias);
                 
                 if (dis > 0) {
@@ -233,7 +222,7 @@ private:
         }
     }
     
-    inline void split_twoPart(const vector<size_t>& indices, Point& hyperplane, float &bias) {
+    inline float split_twoPart(const vector<size_t>& indices, Point& hyperplane) {
         int iteration_steps = 200;
         
         size_t count = indices.size();
@@ -250,44 +239,43 @@ private:
             float dis1 = ic * Euclidean_distance(centroid1, points_set[index]);
             float dis2 = jc * Euclidean_distance(centroid2, points_set[index]);
             if (dis1 < dis2) {
-                for (size_t i = 0; i < centroid1.size(); i++)
-                    centroid1[i] = (centroid1[i] * ic + points_set[index][i]) / (ic + 1);
+                avx_vecScalerAdd(points_set[index].data(), centroid1.data(),
+                                 centroid1.data(), ic, centroid1.size());
+                avx_vecScale(centroid1.data(), centroid1.data(),
+                             centroid1.size(), 1.0 / (ic + 1));
                 ic++;
             } else if (dis1 > dis2) {
-                for (size_t i = 0; i < centroid2.size(); i++)
-                    centroid2[i] = (centroid2[i] * jc + points_set[index][i]) / (jc + 1);
+                avx_vecScalerAdd(points_set[index].data(), centroid2.data(),
+                                 centroid2.data(), jc, centroid2.size());
+                avx_vecScale(centroid2.data(), centroid2.data(),
+                             centroid2.size(), 1.0 / (jc + 1));
                 jc++;
             } else {
                 // do nothing
             }
         }
         
-        for (size_t i = 0; i < centroid2.size(); i++)
-            hyperplane[i] = centroid1[i] - centroid2[i];
-        normalize(hyperplane); // normalize to avoid repeat calculate
-        for (size_t i = 0; i < centroid2.size(); i++)
-            bias -= hyperplane[i] * (centroid1[i] + centroid2[i]) / 2.0f;
+        // compute normal direction of hyperplane and normalize to avoid repeat calculate
+        avx_vecScalerAdd(centroid1.data(), centroid2.data(),
+                         hyperplane.data(), -1, hyperplane.size());
+        float norm = avx_L2Norm(hyperplane.data(), hyperplane.size());
+        norm = 1.0 / sqrt(norm);
+        avx_vecScale(hyperplane.data(), hyperplane.data(), hyperplane.size(), norm);
+        // bias of hyperplane
+        avx_vecAdd(centroid1.data(), centroid2.data(), centroid1.data(), centroid1.size());
+        avx_vecScale(centroid1.data(), centroid1.data(), centroid1.size(), 0.5);
+        return - avx_dotProduct(hyperplane.data(), centroid1.data(), centroid1.size());
     }
     
     // some math formula about geometry
     inline float Euclidean_distance(const Point& x, const Point& y) {
-        assert(x.size() == y.size());
-        return avx_dotProduct(&x[0], &x[0], x.size()) + avx_dotProduct(&y[0], &y[0], y.size())
-            - 2.0f * avx_dotProduct(&x[0], &y[0], y.size());
-    }
-    
-    inline void normalize(Point& point) {
-        float norm = avx_dotProduct(&point[0], &point[0], point.size());
-        assert(norm > 0);
-        norm = sqrt(norm);
-        for (size_t i = 0; i < point.size(); i++) {
-            point[i] /= norm;
-        }
+        return avx_L2Norm(x.data(), x.size())
+               + avx_L2Norm(y.data(), y.size())
+               - 2.0f * avx_dotProduct(x.data(), y.data(), y.size());
     }
     
     inline float margin(const Point& x, const Point& y, float bias) {
-        assert(x.size() == y.size());
-        return bias + avx_dotProduct(&x[0], &y[0], x.size());
+        return bias + avx_dotProduct(x.data(), y.data(), x.size());
     }
     
     inline bool side(const Point& x, const Point& y, float bias) {

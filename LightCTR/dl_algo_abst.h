@@ -112,7 +112,7 @@ public:
                 }
             }
             
-            if (p % 10 == 0) {
+            if (batch_epoch % 50 == 0) {
                 
                 GradientUpdater::__global_bTraining = false;
                 
@@ -152,7 +152,7 @@ public:
                 }
                 threadpool->wait();
                 printf("Epoch %zu Loss = %f correct = %.3f\n",
-                       p, loss, 1.0f * correct / dataRow_cnt);
+                       batch_epoch, loss, 1.0f * correct / dataRow_cnt);
             }
         }
     }

@@ -58,8 +58,8 @@ using namespace std;
  * RNN batch=10 lr=0.03
  */
 
-size_t GradientUpdater::__global_minibatch_size(10);
-float GradientUpdater::__global_learning_rate(0.1);
+size_t GradientUpdater::__global_minibatch_size(50);
+float GradientUpdater::__global_learning_rate(0.05);
 float GradientUpdater::__global_ema_rate(0.99);
 float GradientUpdater::__global_sparse_rate(0.6);
 float GradientUpdater::__global_lambdaL2(0.001f);

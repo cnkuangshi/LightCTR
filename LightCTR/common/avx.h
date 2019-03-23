@@ -131,7 +131,8 @@ inline float avx_L2Norm(const float* x, size_t f) {
     if (f > 7) {
         __m256 d = _mm256_setzero_ps();
         for (; f > 7; f -= 8) {
-            d = _mm256_add_ps(d, _mm256_mul_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(x)));
+            __m256 _x = _mm256_loadu_ps(x);
+            d = _mm256_add_ps(d, _mm256_mul_ps(_x, _x));
             x += 8;
         }
         result += hsum256_ps_avx(d);
