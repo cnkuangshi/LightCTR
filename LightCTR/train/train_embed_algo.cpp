@@ -12,8 +12,6 @@
 #include "../common/avx.h"
 #include "../util/product_quantizer.h"
 
-#define FOR_D for (size_t i = 0; i < emb_dimension; i++)
-
 void Train_Embed_Algo::init() {
     learning_rate = 0.05f;
     negSample_cnt = 12;

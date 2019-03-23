@@ -24,7 +24,9 @@
 using namespace std;
 
 #define IGNORE_CHAR ch != ' ' && ch != '\n' && ch != '\t' && ch != '.'
-#define BLETTER (ch>='a' && ch<='z')||(ch>='A' && ch<='Z')
+#define BLETTER ((ch>='a' && ch<='z')||(ch>='A' && ch<='Z'))
+
+#define FOR_D for (size_t i = 0; i < emb_dimension; i++)
 
 class Train_Embed_Algo {
     struct Node {
@@ -144,14 +146,14 @@ private:
             getline(fin_, line);
             const char *pline = line.c_str();
             if(sscanf(pline, "%d %s %d", &wid, str, &fre) >= 1){
-                assert(!isnan(wid) && (wid == 0 ^ (wid != 0 && fre <= prefre) == 1));
+                assert(!isnan(wid) && (((wid == 0) ^ (wid != 0 && fre <= prefre)) == 1));
                 prefre = fre;
                 total_words_cnt += fre;
                 word_frequency.emplace_back(fre);
                 vocabTable[string(str)] = wid;
                 vocabString.emplace_back(string(str));
                 
-                for (int i = 0; i < emb_dimension; i++) { // random init embedding
+                FOR_D { // random init embedding
                     float r = UniformNumRand() - 0.5f;
                     word_embedding[wid * emb_dimension + i] = r / emb_dimension;
                 }
@@ -175,7 +177,7 @@ private:
         // negative sampling weight init with 0
         fill(negWeight.begin(), negWeight.end(), 0);
         
-        int a;
+        size_t a;
         long long sum_word_pow = 0; // normalizer
         float d1, power = 0.75;
         negSampleTable = new int[negTable_size];

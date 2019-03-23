@@ -57,6 +57,9 @@ public:
         paramShardTable.reserve(1 << 20); // reserve 1000k
         paramShardTable.rehash(1 << 20); // prevent rehashing of unordered_map
         
+        tensorShardTable.reserve(1 << 20);
+        tensorShardTable.rehash(1 << 20);
+        
         status_serving = true;
         
         regist_pull_push_handler();
