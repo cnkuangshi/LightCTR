@@ -58,6 +58,8 @@ public:
         tensorShardTable.reserve(1 << 20);
         tensorShardTable.rehash(1 << 20);
         
+        puts("[PS] Allocate Hashmap memory complete");
+        
         regist_pull_push_handler();
         
         serving_barrier.block();

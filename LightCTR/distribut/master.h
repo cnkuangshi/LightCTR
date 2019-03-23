@@ -117,8 +117,12 @@ private:
             assert(registered_ps_cnt <= config_ps_cnt);
             assert(registered_worker_cnt <= config_worker_cnt);
             
-            if (registered_ps_cnt == config_ps_cnt &&
+            if (run_mode == Run_Mode::PS_Mode &&
+                registered_ps_cnt == config_ps_cnt &&
                 registered_worker_cnt == config_worker_cnt) {
+                ping_barrier.unblock();
+            } else if (run_mode == Run_Mode::Ring_Mode &&
+                       registered_worker_cnt == config_worker_cnt) {
                 ping_barrier.unblock();
             }
         };
