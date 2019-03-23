@@ -62,6 +62,7 @@ private:
             printf("[Worker] Complete Register cur_node_id = %zu\n", node_id);
             gDelivery.set_node_id(node_id);
             assert(gDelivery.node_id() >= BEGIN_ID_OF_WORKER);
+            serving_barrier.unblock();
         };
         gDelivery.send_async(desc, 0);
     }
@@ -99,7 +100,7 @@ private:
     }
     
     bool status_serving{false};
-    Barrier serving_barrier;
+    Barrier serving_barrier{2};
 protected:
     Delivery& gDelivery;
 };

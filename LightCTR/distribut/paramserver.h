@@ -53,14 +53,13 @@ public:
         regist_fin_handler();
         
         serving_barrier.block();
+        status_serving = true;
         
         paramShardTable.reserve(1 << 20); // reserve 1000k
         paramShardTable.rehash(1 << 20); // prevent rehashing of unordered_map
         
         tensorShardTable.reserve(1 << 20);
         tensorShardTable.rehash(1 << 20);
-        
-        status_serving = true;
         
         regist_pull_push_handler();
         
@@ -87,6 +86,7 @@ private:
             printf("[PS] Complete Register cur_node_id = %zu\n", node_id);
             gDelivery.set_node_id(node_id);
             assert(gDelivery.node_id() >= BEGIN_ID_OF_PS);
+            serving_barrier.unblock();
         };
         gDelivery.send_async(desc, 0);
     }
@@ -346,7 +346,7 @@ private:
     
     UpdaterType updaterType;
     bool status_serving{false};
-    Barrier serving_barrier;
+    Barrier serving_barrier{2};
     Barrier terminate_barrier;
     Delivery& gDelivery;
 };
