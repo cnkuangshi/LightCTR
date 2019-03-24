@@ -28,10 +28,11 @@ Meanwhile, LightCTR is also an open source project that oriented to code readers
 * Approximate Nearest Neighbors Retrieval
 
 ## Benchmark
-![Alt text -w70](./vs_libfm.png)
-![Alt text -w70](./vs_libffm.png)
-![Alt text -w70](./vs_tf_cpu.png)
+![Alt text -w70](./benchmark/vs_libfm.png)
+![Alt text -w70](./benchmark/vs_libffm.png)
+![Alt text -w70](./benchmark/vs_tf_cpu.png)
 
+## Introduction (zh)
 #### 用于群体发现
 点击率预估即是给合适的用户群体投放合适的内容，以达成促进广告收益或交易转化率的目的。具体操作来说，将收集到的用户点击与行为数据，用离散值与连续值结构化描述特征、归一化与De-bias等处理后，就要选择合适的模型，来对用户是否会对某一内容感兴趣并带来商业转化的概率进行评估；通常可将所有特征组合输入集成树模型`LightCTR::GBM`预先找群体，训练得到的每个叶子节点代表一个用户群，再使用`LightCTR::LR`或`LightCTR::MLP`对树模型建立的低维0/1群体特征做进一步分类。
 当标识类别的离散特征过多使得输入变得高维稀疏，可能达到树模型与神经网络的处理瓶颈；一般可使用`LightCTR::FM`或`LightCTR::FFM`将离散特征做特征交叉训练，提升了特征利用率并降低了数据稀疏下的过拟合的风险，每维特征映射在低维空间中，也方便作为连续特征输入其他模型。
