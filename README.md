@@ -24,13 +24,17 @@ Meanwhile, LightCTR is also an open source project that oriented to code readers
 * Approximate Nearest Neighbors Retrieval
 
 ## Benchmark
+#### Hign performance
 <div>
-<img src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/vs_libfm.png" width = "400"/>
-<img style="float:left;" src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/vs_libffm.png" width = "400"/>
+<img style="float:left;" src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/vs_libfm.png" width = "300"/>
+<img style="float:left;" src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/vs_libffm.png" width = "300"/>
+<img style="float:left;" src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/vs_tf_cpu.png" width = "300"/>
 </div>
+
+#### Scalable
 <div>
-<img src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/vs_tf_cpu.png" width = "400"/>
 <img style="float:left;" src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/4_node_ps.png" width = "400"/>
+<img style="float:left;" src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/4_node_ring.png" width = "400"/>
 </div>
 
 ## Introduction (zh)
