@@ -52,7 +52,6 @@ void Train_FM_Algo::Train() {
                                      min(start_pos + thread_hold_dataRow_cnt, this->dataRow_cnt)));
         }
         threadpool->wait();
-        assert(proc_data_left == 0);
         
         printf("Epoch %zu Train Loss = %f Accuracy = %f\n", i, __loss, __accuracy / dataRow_cnt);
         ApplyGrad();

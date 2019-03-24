@@ -15,22 +15,19 @@ Meanwhile, LightCTR is also an open source project that oriented to code readers
 ## List of Implemented Algorithms
 
 * Wide & Deep Model
-* Factorization Machine
-* Field-aware Factorization Machine
-* Neural Factorization Machine
+* Factorization Machine, Field-aware Factorization Machine, Neural Factorization Machine
 * Gradient Boosting Tree Model
 * Gaussian Mixture Clustering Model
-* Topic Model PLSA
-* Embedding Model
-* Ngram Convolution Neural Network
-* Self-Attention Recurrent Neural Network
+* Topic Model PLSA, Embedding Model
+* Ngram Convolution Neural Network, Self-Attention Recurrent Neural Network
 * Variational AutoEncoder
 * Approximate Nearest Neighbors Retrieval
 
 ## Benchmark
-![Alt text -w70](./benchmark/vs_libfm.png)
-![Alt text -w70](./benchmark/vs_libffm.png)
-![Alt text -w70](./benchmark/vs_tf_cpu.png)
+<img src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/vs_libfm.png" width = "400"/>
+<img src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/vs_libffm.png" width = "400"/>
+<img src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/vs_tf_cpu.png" width = "400"/>
+<img src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/4_node_ps.png" width = "400"/>
 
 ## Introduction (zh)
 #### 用于群体发现
