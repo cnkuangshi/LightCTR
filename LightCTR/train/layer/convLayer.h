@@ -209,17 +209,15 @@ public:
             unique_lock<SpinLock> glock(this->lock);
             FOR(filid, filter_cnt) {
                 FOR(feamid, this->input_dimension) {
-                    if (bConnect(feamid, filid)) {
-                        // delta Z_(L) conv acti( Z_(L-1) )
-                        if (this->bInputLayer) {
-                            vector<Matrix*>& input = *tl_input;
-                            outputDelta[filid]->deconvolution_Filter(filterDelta[filid],
-                                    input[feamid], config.padding, config.stride);
-                        } else {
-                            outputDelta[filid]->deconvolution_Filter(filterDelta[filid],
-                                    this->prevLayer->output()[feamid],
-                                    config.padding, config.stride);
-                        }
+                    // delta Z_(L) conv acti( Z_(L-1) )
+                    if (this->bInputLayer) {
+                        vector<Matrix*>& input = *tl_input;
+                        outputDelta[filid]->deconvolution_Filter(filterDelta[filid],
+                                input[feamid], config.padding, config.stride);
+                    } else {
+                        outputDelta[filid]->deconvolution_Filter(filterDelta[filid],
+                                this->prevLayer->output()[feamid],
+                                config.padding, config.stride);
                     }
                 }
                 biasDelta[filid]->add(outputDelta[filid]);

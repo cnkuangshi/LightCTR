@@ -12,7 +12,7 @@
 void GBM_Predict::Predict(string savePath) {
     static vector<float> ans, tmp;
     static vector<int> pLabel;
-    size_t badcase = 0;
+    
     tmp.resize(gbm->multiclass);
     ans.clear();
     pLabel.clear();
@@ -27,13 +27,7 @@ void GBM_Predict::Predict(string savePath) {
                                                test_dataSet[rid]);
             }
         }
-        for (size_t c = 0; c < gbm->multiclass; c++) {
-            assert(!isnan(tmp[c]));
-            if(tmp[c] < -30 || tmp[c] > 30){
-                badcase ++;
-                break;
-            }
-        }
+        
         float pCTR;
         if (gbm->multiclass == 1) {
             pCTR = sigmoid.forward(tmp[0]);
@@ -47,9 +41,6 @@ void GBM_Predict::Predict(string savePath) {
         
         assert(!isnan(pCTR));
         ans.emplace_back(pCTR);
-    }
-    if (badcase == test_dataRow_cnt) {
-        puts("Have overfitting");
     }
     
     if (!test_label.empty()) {
@@ -71,7 +62,7 @@ void GBM_Predict::Predict(string savePath) {
             }
         }
         cout << "total log likelihood = " << -loss << " correct = " << setprecision(5) <<
-        (float)correct / test_dataRow_cnt << " with badcase = " << badcase;
+        (float)correct / test_dataRow_cnt;
         
         if (gbm->multiclass == 1) {
             auc->init(&ans, &test_label);

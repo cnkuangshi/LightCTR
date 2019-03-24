@@ -11,7 +11,6 @@
 
 void FM_Predict::Predict(string savePath) {
     vector<float> ans;
-    int badcase = 0;
     
     vector<float> tmp_vec;
     tmp_vec.resize(fm->factor_cnt);
@@ -54,9 +53,6 @@ void FM_Predict::Predict(string savePath) {
         }
         
         float pCTR = sigmoid.forward(fm_pred);
-        if(fm_pred < -30 || fm_pred > 30){
-            badcase ++;
-        }
         
         ans.emplace_back(pCTR);
     }
@@ -75,7 +71,7 @@ void FM_Predict::Predict(string savePath) {
             }
         }
         cout << "total log likelihood = " << loss << " correct = " << setprecision(5) <<
-                (float)correct / test_dataRow_cnt << " with badcase = " << badcase;
+                (float)correct / test_dataRow_cnt;
         
         auc->init(&ans, &test_label);
         printf(" auc = %.4f\n", auc->Auc());

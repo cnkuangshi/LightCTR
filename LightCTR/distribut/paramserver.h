@@ -40,7 +40,8 @@ class ParamServer {
     struct TensorWrapper {
         TensorWrapper(size_t _len) {
             data.resize(_len);
-            std::fill(data.begin(), data.end(), 0);
+            for (size_t i = 0; i < _len; i++)
+                data[i] = GaussRand();
         }
         vector<float> data;
     };
@@ -319,7 +320,7 @@ private:
             init_data_pair.first = key;
             ValueWrapper val_wrapper;
             val_wrapper.data.initParam();
-            val_wrapper.data_accum = TValue(1e-8);
+            val_wrapper.data_accum = TValue(1e-7);
             val_wrapper.data_readonly = val_wrapper.data;
             val_wrapper.shadow_copies = NULL;
             if (updaterType == UpdaterType::DCASGD || updaterType == UpdaterType::DCASGDA) {

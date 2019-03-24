@@ -152,8 +152,8 @@ float Train_TM_Algo::Train_MStep(const vector<float>*) {
                     float t1 = words_of_topics[tid * word_cnt + wid];
                     float t2 = topics_of_docs[docid * topic_cnt + tid];
                     assert(t1 >= 0 && t1 <= 1 && t2 >= 0 && t2 <= 1);
-                    tmp = log(words_of_topics[tid * word_cnt + wid] + 1e-12)
-                        + log(topics_of_docs[docid * topic_cnt + tid] + 1e-12);
+                    tmp = log(words_of_topics[tid * word_cnt + wid] + 1e-7)
+                        + log(topics_of_docs[docid * topic_cnt + tid] + 1e-7);
                     assert(!isnan(tmp));
                     sum_tmp += tmp
                             * latentVar[docid * word_cnt * topic_cnt + wid * topic_cnt + tid];

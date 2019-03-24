@@ -199,6 +199,10 @@ public:
         updater.update(this->output_dimension, output_dimension * input_dimension,
                        weight, weightDelta);
         
+        FOR(i, output_dimension) { // re-define dropout mask
+            dropout_mask[i] = SampleBinary(GradientUpdater::__global_sparse_rate) ? 1. : 0.;
+        }
+        
         if (this->nextLayer) {
             this->nextLayer->applyBatchGradient();
         }

@@ -40,7 +40,6 @@ public:
     
 private:
     ThreadPool *threadpool;
-    SpinLock lock;
     int proc_data_left;
     size_t epoch_cnt;
     
@@ -49,10 +48,9 @@ private:
     void flash();
     
     Sigmoid sigmoid;
-    vector<float>* *update_threadLocal;
     
-    void batchGradCompute(size_t, size_t, size_t);
-    void accumWVGrad(size_t, float, vector<float>*);
+    void batchGradCompute(size_t, size_t);
+    void accumWVGrad(size_t, float);
 
     float *update_g;
     inline float* update_W(size_t fid) const {

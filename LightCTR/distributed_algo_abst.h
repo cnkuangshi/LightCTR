@@ -75,11 +75,11 @@ struct Value {
     }
     bool checkPreferredValue() const {
         // ignore obsolete feature
-        return abs(w) > 1e-12 && abs(w) < 15;
+        return abs(w) > 1e-7 && abs(w) < 15;
     }
     void sqrt(Value& newValue) const { // return new instance
         assert(w >= 0);
-        newValue.w = ::sqrt(w + 1e-12);
+        newValue.w = ::sqrt(w + 1e-7);
     }
     string toString() const {
         stringstream ss;

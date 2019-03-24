@@ -108,7 +108,6 @@ public:
         assert(size() == another->size());
         for (auto it = matrix->begin(), it2 = another->pointer()->begin();
              it != matrix->end(); it++, it2++) {
-            assert(!isnan(*it) && !isnan(*it2));
             if (fabs(*it - *it2) > 1e-4) {
                 return false;
             }
@@ -272,7 +271,6 @@ public:
         }
     }
     inline void deconvolution_Filter(const Matrix* filterDelta, const Matrix* input, size_t padding = 0, size_t stride = 1) {
-        assert(filterDelta && input);
         size_t recover_x = input->x_len;
         size_t recover_y = input->y_len;
         
@@ -324,7 +322,6 @@ public:
                     }
                 }
                 float sum = avx_dotProduct(tmp_vec.data(), filter->pointer()->data(), tmp_vec.size());
-                assert(!isnan(sum));
                 *ansM->getEle(i / stride, j / stride) = sum;
             }
         }

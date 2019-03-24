@@ -164,6 +164,8 @@ protected:
     }
     
     AdagradUpdater_Num updater;
+    float __loss;
+    float __accuracy;
     
     vector<int> label;
     vector<set<int> > cross_field;

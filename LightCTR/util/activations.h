@@ -63,19 +63,19 @@ public:
 class Sigmoid : public Activation {
 public:
     inline float forward(float input) const {
-        if(input < -30){
-            return 1e-12;
-        } else if(input > 30) {
-            return 1.0 - 1e-12;
+        if(input < -16){
+            return 1e-7;
+        } else if(input > 16) {
+            return 1.0 - 1e-7;
         }
         return 1.0f / (1.0f + exp(-input));
     }
     inline void forward(float* input, size_t len) {
         for (size_t i = 0; i < len; i++) {
-            if(input[i] < -30){
-                input[i] = 1e-12;
-            } else if(input[i] > 30) {
-                input[i] = 1.0 - 1e-12;
+            if(input[i] < -16){
+                input[i] = 1e-7;
+            } else if(input[i] > 16) {
+                input[i] = 1.0 - 1e-7;
             } else {
                 input[i] = 1.0f / (1.0f + exp(- input[i]));
             }
@@ -107,9 +107,9 @@ public:
         for (size_t i = 0; i < len; i++) {
             input[i] = exp((input[i] - maxV) / softTargetRate) / sum;
             if (input[i] == 0) {
-                input[i] = 1e-12;
+                input[i] = 1e-7;
             } else if (input[i] == 1) {
-                input[i] = 1.0 - 1e-12;
+                input[i] = 1.0 - 1e-7;
             }
         }
     }

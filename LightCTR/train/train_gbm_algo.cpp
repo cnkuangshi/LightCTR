@@ -11,7 +11,7 @@
 #include <algorithm>
 
 void Train_GBM_Algo::init() { // run once per gbm train stage
-    eps_feature_value = 1e-8;
+    eps_feature_value = 1e-7;
     lambda = 1e-5;
     learning_rate = 0.6f;
     
@@ -261,7 +261,7 @@ void Train_GBM_Algo::findSplitFeature(size_t rbegin, size_t rend,
                 assert(((stat->split_feature_index == -1) ^
                         (stat->split_feature_index != -1 && stat->gain != 0)) == 1);
                 assert(stat->sumHess == 0 && stat->sumGrad == 0 &&
-                       stat->last_value_toCheck == 1e-12);
+                       stat->last_value_toCheck == 1e-8);
             } else {
                 if (fabs(value - stat->last_value_toCheck) > eps_feature_value) {
                     assert(stat->sumHess >= 0);
@@ -276,7 +276,7 @@ void Train_GBM_Algo::findSplitFeature(size_t rbegin, size_t rend,
                         
                         if (stat->needUpdate(splitGain, fid)) {
                             stat->split_feature_index = (int)fid;
-                            stat->split_threshold = value + (dataNAN_go_Right ? 1e-11f : -1e-11f);
+                            stat->split_threshold = value + (dataNAN_go_Right ? 1e-6f : -1e-6f);
                             stat->gain = splitGain; // for global select max Gain
                             stat->dataNAN_go_Right = dataNAN_go_Right;
                         }
@@ -312,7 +312,7 @@ void Train_GBM_Algo::findSplitFeature(size_t rbegin, size_t rend,
                 assert(splitGain > 0);
                 stat->split_feature_index = (int)fid;
                 stat->split_threshold = stat->last_value_toCheck;
-                dataNAN_go_Right ? stat->split_threshold += 1e-11f : stat->split_threshold -= 1e-11f;
+                dataNAN_go_Right ? stat->split_threshold += 1e-6f : stat->split_threshold -= 1e-6f;
                 stat->gain = splitGain;
                 stat->dataNAN_go_Right = dataNAN_go_Right;
             }

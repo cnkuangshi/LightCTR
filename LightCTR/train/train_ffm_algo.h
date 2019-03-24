@@ -41,7 +41,7 @@ public:
     
 private:
     size_t epoch;
-    size_t batch_size;
+    int proc_data_left;
     
     Sigmoid sigmoid;
     

@@ -11,7 +11,6 @@
 
 void Train_FFM_Algo::init() {
     L2Reg_ratio = 0.001f;
-    batch_size = GradientUpdater::__global_minibatch_size;
     
     learnable_params_cnt = this->feature_cnt * this->field_cnt * this->factor_cnt
                            + this->feature_cnt;
@@ -26,18 +25,23 @@ void Train_FFM_Algo::Train() {
     GradientUpdater::__global_bTraining = true;
     
     for (size_t i = 0; i < this->epoch; i++) {
+        __loss = 0;
+        __accuracy = 0;
         
-        size_t minibatch_epoch = (this->dataRow_cnt + this->batch_size - 1) / this->batch_size;
+        this->proc_data_left = (int)this->dataRow_cnt;
         
-        for (size_t p = 0; p < minibatch_epoch; p++) {
-            
-            memset(update_g, 0, sizeof(float) * learnable_params_cnt);
-            
-            size_t start_pos = p * batch_size;
-            batchGradCompute(start_pos, min(start_pos + batch_size, this->dataRow_cnt));
-            // apply gradient
-            ApplyGrad();
+        size_t thread_hold_dataRow_cnt = (this->dataRow_cnt + this->proc_cnt - 1) / this->proc_cnt;
+        
+        for (size_t pid = 0; pid < this->proc_cnt; pid++) {
+            size_t start_pos = pid * thread_hold_dataRow_cnt;
+            threadpool->addTask(bind(&Train_FFM_Algo::batchGradCompute, this, start_pos,
+                                     min(start_pos + thread_hold_dataRow_cnt, this->dataRow_cnt)));
         }
+        threadpool->wait();
+        
+        printf("Epoch %zu Train Loss = %f Accuracy = %f\n", i, __loss, __accuracy / dataRow_cnt);
+        // apply gradient
+        ApplyGrad();
     }
     
     GradientUpdater::__global_bTraining = false;
@@ -45,38 +49,44 @@ void Train_FFM_Algo::Train() {
 
 void Train_FFM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
     for (size_t rid = rbegin; rid < rend; rid++) { // data row
-        threadpool->addTask([&, rid]() {
-            float fm_pred = 0.0f;
+        float fm_pred = 0.0f;
+        
+        for (size_t i = 0; i < dataSet[rid].size(); i++) {
+            const size_t fid = dataSet[rid][i].first;
+            const float X = dataSet[rid][i].second;
+            const size_t field = dataSet[rid][i].field;
             
-            for (size_t i = 0; i < dataSet[rid].size(); i++) {
-                const size_t fid = dataSet[rid][i].first;
-                assert(fid < this->feature_cnt);
-                const float X = dataSet[rid][i].second;
-                const size_t field = dataSet[rid][i].field;
+            fm_pred += W[fid] * X;
+            
+            for (size_t j = i + 1; j < dataSet[rid].size(); j++) {
+                const size_t fid2 = dataSet[rid][j].first;
+                const float X2 = dataSet[rid][j].second;
+                const size_t field2 = dataSet[rid][j].field;
                 
-                fm_pred += W[fid] * X;
-                
-                for (size_t j = i + 1; j < dataSet[rid].size(); j++) {
-                    const size_t fid2 = dataSet[rid][j].first;
-                    const float X2 = dataSet[rid][j].second;
-                    const size_t field2 = dataSet[rid][j].field;
-                    
-                    float field_w = avx_dotProduct(getV_field(fid, field2, 0),
-                                                   getV_field(fid2, field, 0), factor_cnt);
-                    fm_pred += field_w * X * X2;
-                }
+                float field_w = avx_dotProduct(getV_field(fid, field2, 0),
+                                               getV_field(fid2, field, 0), factor_cnt);
+                fm_pred += field_w * X * X2;
             }
-            accumWVGrad(rid, sigmoid.forward(fm_pred));
-        });
+        }
+        accumWVGrad(rid, sigmoid.forward(fm_pred));
     }
-    threadpool->wait();
+    assert(this->proc_data_left > 0);
+    this->proc_data_left -= rend - rbegin;
 }
 
 void Train_FFM_Algo::accumWVGrad(size_t rid, float pred) {
-    const float loss = pred - label[rid];
+    const float target = label[rid];
+    const float loss = pred - target;
     if (loss == 0) {
         return;
     }
+    __loss += target == 1 ? -log(pred) : -log(1.0 - pred);
+    if (pred > 0.5 && target == 1) {
+        __accuracy++;
+    } else if (pred < 0.5 && target == 0) {
+        __accuracy++;
+    }
+    
     size_t fid, fid2, field, field2;
     float x, x2;
     for (size_t i = 0; i < dataSet[rid].size(); i++) {

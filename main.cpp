@@ -61,7 +61,7 @@ using namespace std;
 size_t GradientUpdater::__global_minibatch_size(50);
 float GradientUpdater::__global_learning_rate(0.05);
 float GradientUpdater::__global_ema_rate(0.99);
-float GradientUpdater::__global_sparse_rate(0.6);
+float GradientUpdater::__global_sparse_rate(0.8);
 float GradientUpdater::__global_lambdaL2(0.001f);
 float GradientUpdater::__global_lambdaL1(1e-5);
 float MomentumUpdater::__global_momentum(0.8);
@@ -70,6 +70,11 @@ float MomentumUpdater::__global_momentum_adam2(0.999);
 bool GradientUpdater::__global_bTraining(true);
 
 int main(int argc, const char * argv[]) {
+    float a = 1 + 1e-7;
+    assert(a > 1);
+    
+    uint32_t seed = (uint32_t)time(NULL);
+    srand(seed);
     
 #ifdef MASTER
     {
@@ -98,24 +103,24 @@ int main(int argc, const char * argv[]) {
     
 #ifdef TEST_FM
     FM_Algo_Abst *train = new Train_FM_Algo(
-                        "./data/train_sparse.csv",
+                        "./data/ad_data.csv",
                         /*epoch*/5,
-                        /*factor_cnt*/8);
-    FM_Predict pred(train, "./data/train_sparse.csv", true);
+                        /*factor_cnt*/16);
+    FM_Predict pred(train, "./data/ad_test.csv", true);
 #elif defined TEST_FFM
     FM_Algo_Abst *train = new Train_FFM_Algo(
-                                            "./data/train_sparse.csv",
+                                            "./data/ad_data.csv",
                                             /*epoch*/5,
-                                            /*factor_cnt*/2,
+                                            /*factor_cnt*/4,
                                             /*field*/68);
-    FM_Predict pred(train, "./data/train_sparse.csv", true);
+    FM_Predict pred(train, "./data/ad_test.csv", true);
 #elif defined TEST_NFM
     FM_Algo_Abst *train = new Train_NFM_Algo(
-                                             "./data/train_sparse.csv",
+                                             "./data/ad_data.csv",
                                              /*epoch*/5,
                                              /*factor_cnt*/10,
                                              /*hidden_layer_size*/32);
-    FM_Predict pred(train, "./data/train_sparse.csv", true);
+    FM_Predict pred(train, "./data/ad_test.csv", true);
 #elif defined TEST_GBM
     GBM_Algo_Abst *train = new Train_GBM_Algo(
                           "./data/train_dense.csv",
@@ -154,9 +159,9 @@ int main(int argc, const char * argv[]) {
     DL_Algo_Abst<Square<float, int>, Tanh, Softmax> *train =
     new Train_CNN_Algo<Square<float, int>, Tanh, Softmax>(
                          "./data/train_dense.csv",
-                         /*epoch*/300,
+                         /*epoch*/500,
                          /*feature_cnt*/784,
-                         /*hidden_size*/50,
+                         /*hidden_size*/200,
                          /*multiclass_output_cnt*/10);
     T = 1;
 #elif defined TEST_VAE

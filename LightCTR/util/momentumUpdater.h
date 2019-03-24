@@ -50,9 +50,9 @@ public:
             __adadelta_accum[offset + i]->add(tmp, 1.0 - __global_momentum, __global_momentum);
             
             tmp = __adadelta_accum[__adadelta_params_cnt + offset + i]->copy(tmp);
-            tmp->add(1e-12);
+            tmp->add(1e-7);
             tmp_E = __adadelta_accum[offset + i]->copy(tmp_E);
-            tmp_E->add(1e-12);
+            tmp_E->add(1e-7);
             
             tmp->dotProduct(tmp_E->inverse())->pow(0.5);
             grad[i]->dotProduct(tmp);
@@ -92,8 +92,8 @@ public:
             if (g != 0) {
                 __adadelta_accum[offset + i] = __adadelta_accum[offset + i] * __global_momentum
                                                + (1.0 - __global_momentum) * g * g;
-                tmp = (__adadelta_accum[__adadelta_params_cnt + offset + i] + 1e-12)
-                      / (__adadelta_accum[offset + i] + 1e-12);
+                tmp = (__adadelta_accum[__adadelta_params_cnt + offset + i] + 1e-7)
+                      / (__adadelta_accum[offset + i] + 1e-7);
                 g *= sqrt(tmp);
                 
                 __adadelta_accum[__adadelta_params_cnt + offset + i] =
@@ -151,7 +151,7 @@ public:
             
             tmp_v = __adam_accum[__adam_params_cnt + offset + i]->copy(tmp_v);
             tmp_v->pow(0.5);
-            tmp_v->add(1e-12);
+            tmp_v->add(1e-7);
             
             tmp = __adam_accum[offset + i]->copy(tmp);
             
@@ -201,7 +201,7 @@ public:
                     + (1.0 - __global_momentum) * g * g;
                 // accumulate like RMSProp
                 tmp = __adam_accum[offset + i]
-                     / (sqrt(__adam_accum[__adam_params_cnt + offset + i]) + 1e-12);
+                     / (sqrt(__adam_accum[__adam_params_cnt + offset + i]) + 1e-7);
                 
                 weight[i] -= __global_learning_rate * correction * tmp;
             }

@@ -17,13 +17,12 @@ void Train_FM_Algo::init() {
     learnable_params_cnt = this->feature_cnt;
 #endif
     sumVX = new float[this->dataRow_cnt * this->factor_cnt];
+    assert(sumVX);
     memset(sumVX, 0, sizeof(float) * this->dataRow_cnt * this->factor_cnt);
     
     update_g = new float[learnable_params_cnt];
+    assert(update_g);
     updater.learnable_params_cnt(learnable_params_cnt);
-    
-    update_threadLocal = new vector<float>*[this->proc_cnt];
-    memset(update_threadLocal, NULL, sizeof(vector<float>*) * this->proc_cnt);
 }
 
 void Train_FM_Algo::flash() {
@@ -39,6 +38,8 @@ void Train_FM_Algo::Train() {
     GradientUpdater::__global_minibatch_size = dataRow_cnt;
     
     for (size_t i = 0; i < this->epoch_cnt; i++) {
+        __loss = 0;
+        __accuracy = 0;
         
         flash();
         this->proc_data_left = (int)this->dataRow_cnt;
@@ -47,25 +48,20 @@ void Train_FM_Algo::Train() {
         
         for (size_t pid = 0; pid < this->proc_cnt; pid++) {
             size_t start_pos = pid * thread_hold_dataRow_cnt;
-            threadpool->addTask(bind(&Train_FM_Algo::batchGradCompute, this, pid, start_pos,
+            threadpool->addTask(bind(&Train_FM_Algo::batchGradCompute, this, start_pos,
                                      min(start_pos + thread_hold_dataRow_cnt, this->dataRow_cnt)));
         }
         threadpool->wait();
         assert(proc_data_left == 0);
         
+        printf("Epoch %zu Train Loss = %f Accuracy = %f\n", i, __loss, __accuracy / dataRow_cnt);
         ApplyGrad();
     }
     
     GradientUpdater::__global_bTraining = false;
 }
 
-void Train_FM_Algo::batchGradCompute(size_t pid, size_t rbegin, size_t rend) {
-
-    if (update_threadLocal[pid] == NULL) {
-        update_threadLocal[pid] = new vector<float>();
-        update_threadLocal[pid]->resize(learnable_params_cnt);
-    }
-    fill(update_threadLocal[pid]->begin(), update_threadLocal[pid]->end(), 0.0f);
+void Train_FM_Algo::batchGradCompute(size_t rbegin, size_t rend) {
     
     vector<float> tmp_vec;
     tmp_vec.resize(factor_cnt);
@@ -74,7 +70,6 @@ void Train_FM_Algo::batchGradCompute(size_t pid, size_t rbegin, size_t rend) {
         float fm_pred = 0.0f;
         for (size_t i = 0; i < dataSet[rid].size(); i++) {
             const size_t fid = dataSet[rid][i].first;
-            assert(fid < this->feature_cnt);
             
             const float X = dataSet[rid][i].second;
             fm_pred += W[fid] * X;
@@ -87,28 +82,22 @@ void Train_FM_Algo::batchGradCompute(size_t pid, size_t rbegin, size_t rend) {
 #ifdef FM
         fm_pred += 0.5 * avx_dotProduct(getSumVX(rid, 0), getSumVX(rid, 0), factor_cnt);
 #endif
-        accumWVGrad(rid, sigmoid.forward(fm_pred), update_threadLocal[pid]);
+        accumWVGrad(rid, sigmoid.forward(fm_pred));
     }
     
-    // synchronize to accumulate global gradient update_W and update_V
-    {
-        unique_lock<SpinLock> glock(this->lock);
-        avx_vecAdd(update_W(0), update_threadLocal[pid]->data(), update_W(0), feature_cnt);
-        for (size_t fid = 0; fid < this->feature_cnt; fid++) {
-#ifdef FM
-            avx_vecAdd(update_V(fid, 0),
-                       update_threadLocal[pid]->data() + feature_cnt + fid * factor_cnt,
-                       update_V(fid, 0), factor_cnt);
-#endif
-        }
-        assert(this->proc_data_left > 0);
-        this->proc_data_left -= rend - rbegin;
-    }
+    this->proc_data_left -= rend - rbegin;
 }
 
-void Train_FM_Algo::accumWVGrad(size_t rid, float pred, vector<float>* update_local) {
-    assert(update_local && update_local->size() == learnable_params_cnt);
+void Train_FM_Algo::accumWVGrad(size_t rid, float pred) {
     const float target = label[rid];
+    
+    __loss += target == 1 ? -log(pred) : -log(1.0 - pred);
+    if (pred > 0.5 && target == 1) {
+        __accuracy++;
+    } else if (pred < 0.5 && target == 0) {
+        __accuracy++;
+    }
+    
     size_t fid;
     float x;
     vector<float> tmp_vec;
@@ -116,12 +105,11 @@ void Train_FM_Algo::accumWVGrad(size_t rid, float pred, vector<float>* update_lo
     
     for (size_t i = 0; i < dataSet[rid].size(); i++) {
         fid = dataSet[rid][i].first;
-        assert(fid < this->feature_cnt);
         x = dataSet[rid][i].second;
         const float gradW = LogisticGradW(pred, target, x) + L2Reg_ratio * W[fid];
-        update_local->at(fid) += gradW;
+        *update_W(fid) += gradW;
 #ifdef FM
-        float* ptr = update_local->data() + feature_cnt + fid * factor_cnt;
+        float* ptr = update_V(fid, 0);
         avx_vecScalerAdd(getSumVX(rid, 0), getV(fid, 0),
                          tmp_vec.data(), -x, factor_cnt);
         avx_vecScalerAdd(ptr, tmp_vec.data(), ptr, gradW, factor_cnt);

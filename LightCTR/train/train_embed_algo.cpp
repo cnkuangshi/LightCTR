@@ -157,9 +157,7 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
             for (size_t c = 0; c < word_code[cur_wid].length(); c++) {
                 int realdir = word_code[cur_wid][c] - '0';
                 float preddir = avx_dotProduct(curNode->weight, ctx_sum.data(), emb_dimension);
-                if(!(preddir > -30 && preddir < 30)) {
-                    printf("-- warning hiso %zu-%zu preddir = %f\n", cur_wid, c, preddir);
-                }
+                
                 preddir = sigmoid.forward(preddir);
                 hiso_loss += (1 == realdir) ? -log(preddir) : -log(1.0 - preddir);
                 // LR gradient to max Loglikelihood
@@ -184,9 +182,7 @@ void Train_Embed_Algo::TrainDocument(size_t docid, size_t offset) {
                 }
                 float* nw_ptr = negWeight.data() + wid * emb_dimension;
                 float preddir = avx_dotProduct(nw_ptr, ctx_sum.data(), emb_dimension);
-                if(!(preddir > -30 && preddir < 30)) {
-                    printf("-- warning negsa %zu preddir = %f\n", cur_wid, preddir);
-                }
+                
                 preddir = sigmoid.forward(preddir);
                 negsa_loss += (1 == label) ? -log(preddir) : -log(1.0 - preddir);
                 // LR gradient to max Loglikelihood

@@ -106,7 +106,7 @@ public:
             }
             cache = grad[i]->scale(1.0 / __global_minibatch_size)->copy(cache);
             cache->pow(2.0);
-            cache->add(1e-12);
+            cache->add(1e-7);
             
             if (__adagrad_accum[offset + i] == NULL) {
                 __adagrad_accum[offset + i] = new Matrix(cache->x_len, cache->y_len);
@@ -143,7 +143,7 @@ public:
             const float g = grad[i];
             if (g != 0) {
                 __adagrad_accum[offset + i] += g * g;
-                weight[i] -= __global_learning_rate * g / sqrt(__adagrad_accum[offset + i] + 1e-12);
+                weight[i] -= __global_learning_rate * g / sqrt(__adagrad_accum[offset + i] + 1e-7);
             }
         }
         memset(grad, 0, len * sizeof(T));
@@ -182,7 +182,7 @@ public:
             __rms_accum[offset + i]->add(tmp, 1.0 - __global_ema_rate, __global_ema_rate);
             
             tmp = __rms_accum[offset + i]->copy(tmp);
-            tmp->add(1e-12);
+            tmp->add(1e-7);
             tmp->pow(0.5);
             
             grad[i]->dotProduct(tmp->inverse());
@@ -219,7 +219,7 @@ public:
                 __rms_accum[offset + i] =
                     __rms_accum[offset + i] * __global_ema_rate +
                     (1.0 - __global_ema_rate) * g * g;
-                tmp = 1.0 / (__rms_accum[offset + i] + 1e-12);
+                tmp = 1.0 / (__rms_accum[offset + i] + 1e-7);
                 g *= sqrt(tmp);
                 
                 weight[i] -= __global_learning_rate * g;

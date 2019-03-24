@@ -34,7 +34,7 @@ class Train_GBM_Algo : public GBM_Algo_Abst {
         inline void clear() {
             sumGrad = 0.0f;
             sumHess = 0.0f;
-            last_value_toCheck = 1e-12;
+            last_value_toCheck = 1e-8;
         }
         inline bool needUpdate(float splitGain, size_t split_index) {
             assert(!isnan(splitGain));
