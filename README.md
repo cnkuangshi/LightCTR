@@ -24,10 +24,14 @@ Meanwhile, LightCTR is also an open source project that oriented to code readers
 * Approximate Nearest Neighbors Retrieval
 
 ## Benchmark
+<div>
 <img src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/vs_libfm.png" width = "400"/>
-<img src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/vs_libffm.png" width = "400"/>
+<img style="float:left;" src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/vs_libffm.png" width = "400"/>
+</div>
+<div>
 <img src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/vs_tf_cpu.png" width = "400"/>
-<img src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/4_node_ps.png" width = "400"/>
+<img style="float:left;" src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/4_node_ps.png" width = "400"/>
+</div>
 
 ## Introduction (zh)
 #### 用于群体发现
