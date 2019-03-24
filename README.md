@@ -1,8 +1,8 @@
 ![Alt text -w135](./LightCTR_LOGO.png)
 ## LightCTR Overview
-LightCTR is a lightweight and scalable framework that combines mainstream algorithms of Click-Through-Rate prediction Based Machine Learning, Philosophy of Parameter Server and Ring-AllReduce collective communication. The library is suitable for sparse data and designed for large-scale distributed model training.
+LightCTR is a lightweight and scalable framework that combines mainstream algorithms of Click-Through-Rate prediction based Machine Learning, Philosophy of parameter server and Ring-AllReduce collective communication. The library is suitable for sparse data and designed for large-scale distributed model training.
 
-Meanwhile, LightCTR is also an open source project that oriented to code readers. The clear execution logic will be of significance to leaners on Machine-Learning related field.
+Meanwhile, LightCTR is also an open source project that oriented to code readers. The clear execution logic will be of significance to leaners on machine-learning related field.
 
 ## Features
 * Distributed training based on Parameter Server and Ring-AllReduce collective communication
@@ -58,7 +58,7 @@ Meanwhile, LightCTR is also an open source project that oriented to code readers
 当模型参数量超过单机内存容量、或单机训练效率达不到时效性要求时，LightCTR基于参数服务器、Ring-AllReduce与异步梯度下降理论，支持可扩展性的模型参数集群训练。参数服务器模式下集群分为Master, ParamServer与Worker三种角色；一个集群有一个Master负责集群启动与运行状态的维护，大规模模型稀疏与稠密Tensor参数以DHT散布在多个ParamServer上，与多个负责模型数据并行梯度运算的Worker协同，每轮训练都先从ParamServer拉取(Pull)一个样本Batch的参数，运算得到的参数梯度推送(Push)到ParamServer进行梯度汇总，ParamServer通过梯度截断、延迟梯度补偿等手段，异步无锁的半同步更新参数。参数在ParamServer上紧凑存储、变长压缩传输，通过特征命中率与权值大小进行特征优选与淘汰，提升集群内通信效率。Ring-AllReduce模式下，集群基于集合通信去中心化的同步梯度，每个节点存储全量模型可单独提供推理预测能力，训练过程通过有限次迭代获取其他节点梯度结果，在一定集群规模下可实现线性加速比。LightCTR分布式集群采取心跳监控、消息重传等容错方式。
 
 ## Quick Start
-* LightCTR depends on C++11 and ZeroMQ only
+* LightCTR depends on C++11 and ZeroMQ only, lightweight and modular design
 * Change configuration (e.g. Learning Rate, Data source) in `main.cpp`
 * run `./build.sh` to start training task on Parameter Server mode or `./build_ring.sh` to start on Ring-AllReduce mode
 * Current CI Status: [![Build Status](https://travis-ci.org/cnkuangshi/LightCTR.svg?branch=master)](https://travis-ci.org/cnkuangshi/LightCTR)

@@ -10,6 +10,7 @@
 #define adapterLayer_h
 
 #include "layer_abst.h"
+#include <string.h>
 
 // Flatten and concat Matrixs into dataRow adapting CNN to FC or LSTM sequences to Attention input
 template <typename ActivationFunction>
@@ -42,15 +43,12 @@ public:
             }
         }
         
+        const size_t prevLOutput_size = prevLOutput[0]->size();
         FOR(i, prevLOutput.size()) {
-            size_t offset = i * prevLOutput[i]->x_len * prevLOutput[i]->y_len;
+            const size_t offset = i * prevLOutput_size;
             // Flatten data row
-            FOR(x, prevLOutput[i]->x_len) {
-                FOR(y, prevLOutput[i]->y_len) {
-                    *output_act.getEle(0, offset + x * prevLOutput[i]->y_len + y) =
-                            *prevLOutput[i]->getEle(x, y);
-                }
-            }
+            memcpy(output_act.getEle(0, offset), prevLOutput[i]->getEle(0, 0),
+                   prevLOutput_size * sizeof(float));
         }
         
         // init threadlocal wrapper
@@ -66,15 +64,11 @@ public:
         
         MatrixArr& input_delta = *tl_input_delta;
         
+        const size_t input_delta_size = input_delta.arr[0]->size();
         FOR(i, this->input_dimension) {
-            auto m_ptr = input_delta.arr[i];
-            assert(m_ptr);
-            size_t offset = i * m_ptr->size();
-            FOR(x, m_ptr->x_len) {
-                FOR(y, m_ptr->y_len) {
-                    *m_ptr->getEle(x, y) = outputDelta->at(offset + x * m_ptr->y_len + y);
-                }
-            }
+            const size_t offset = i * input_delta_size;
+            memcpy(input_delta.arr[i]->getEle(0, 0),
+                   outputDelta->data() + offset, input_delta_size * sizeof(float));
         }
         this->prevLayer->backward(input_delta.arr);
     }
