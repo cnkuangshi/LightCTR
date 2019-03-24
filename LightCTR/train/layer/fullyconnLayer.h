@@ -162,24 +162,21 @@ public:
             }
         }
         
-        // Asynchronous update weight and bias to minimize delta
-        {
-            unique_lock<SpinLock> glock(this->lock);
-            if (this->bInputLayer) {
-                FOR(j, this->output_dimension) {
-                    vector<float>& input = *tl_input;
-                    avx_vecScalerAdd(getWeightDelta(j, 0), input.data(),
-                                     getWeightDelta(j, 0), outputDelta->at(j), input_dimension);
-                }
-            } else {
-                FOR(j, this->output_dimension) {
-                    assert(prev_output_act);
-                    avx_vecScalerAdd(getWeightDelta(j, 0), prev_output_act->data(),
-                                     getWeightDelta(j, 0), outputDelta->at(j), input_dimension);
-                }
+        // update weight and bias to minimize delta
+        if (this->bInputLayer) {
+            FOR(j, this->output_dimension) {
+                vector<float>& input = *tl_input;
+                avx_vecScalerAdd(getWeightDelta(j, 0), input.data(),
+                                 getWeightDelta(j, 0), outputDelta->at(j), input_dimension);
             }
-            avx_vecAdd(biasDelta, outputDelta->data(), biasDelta, output_dimension);
+        } else {
+            FOR(j, this->output_dimension) {
+                assert(prev_output_act);
+                avx_vecScalerAdd(getWeightDelta(j, 0), prev_output_act->data(),
+                                 getWeightDelta(j, 0), outputDelta->at(j), input_dimension);
+            }
         }
+        avx_vecAdd(biasDelta, outputDelta->data(), biasDelta, output_dimension);
     }
     
     const vector<Matrix*>& output() {

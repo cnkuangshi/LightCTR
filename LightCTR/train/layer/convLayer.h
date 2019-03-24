@@ -205,23 +205,20 @@ public:
         }
         
         // Asynchronous update filter weight and bias to minimize delta
-        {
-            unique_lock<SpinLock> glock(this->lock);
-            FOR(filid, filter_cnt) {
-                FOR(feamid, this->input_dimension) {
-                    // delta Z_(L) conv acti( Z_(L-1) )
-                    if (this->bInputLayer) {
-                        vector<Matrix*>& input = *tl_input;
-                        outputDelta[filid]->deconvolution_Filter(filterDelta[filid],
-                                input[feamid], config.padding, config.stride);
-                    } else {
-                        outputDelta[filid]->deconvolution_Filter(filterDelta[filid],
-                                this->prevLayer->output()[feamid],
-                                config.padding, config.stride);
-                    }
+        FOR(filid, filter_cnt) {
+            FOR(feamid, this->input_dimension) {
+                // delta Z_(L) conv acti( Z_(L-1) )
+                if (this->bInputLayer) {
+                    vector<Matrix*>& input = *tl_input;
+                    outputDelta[filid]->deconvolution_Filter(filterDelta[filid],
+                            input[feamid], config.padding, config.stride);
+                } else {
+                    outputDelta[filid]->deconvolution_Filter(filterDelta[filid],
+                            this->prevLayer->output()[feamid],
+                            config.padding, config.stride);
                 }
-                biasDelta[filid]->add(outputDelta[filid]);
             }
+            biasDelta[filid]->add(outputDelta[filid]);
         }
     }
     
