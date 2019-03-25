@@ -1,6 +1,6 @@
 ![Alt text -w135](./LightCTR_LOGO.png)
 ## LightCTR Overview
-LightCTR is a lightweight and scalable framework that combines mainstream algorithms of Click-Through-Rate prediction based Machine Learning, Philosophy of parameter server and Ring-AllReduce collective communication. The library is suitable for sparse data and designed for large-scale distributed model training.
+LightCTR is a lightweight and scalable framework that combines mainstream algorithms of Click-Through-Rate prediction based machine learning, philosophy of Parameter Server and Ring-AllReduce collective communication. The library is suitable for sparse data and designed for large-scale distributed model training.
 
 Meanwhile, LightCTR is also an open source project that oriented to code readers. The clear execution logic will be of significance to leaners on machine-learning related field.
 
@@ -24,7 +24,7 @@ Meanwhile, LightCTR is also an open source project that oriented to code readers
 * Approximate Nearest Neighbors Retrieval
 
 ## Benchmark
-#### Hign performance
+#### High performance
 <div>
 <img style="float:left;" src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/vs_libfm.png" width = "300"/>
 <img style="float:left;" src="https://github.com/cnkuangshi/LightCTR/blob/master/benchmark/vs_libffm.png" width = "300"/>
@@ -59,9 +59,9 @@ Meanwhile, LightCTR is also an open source project that oriented to code readers
 
 ## Quick Start
 * LightCTR depends on C++11 and ZeroMQ only, lightweight and modular design
-* Change configuration (e.g. Learning Rate, Data source) in `main.cpp`
+* Easy to use, just change configuration (e.g. Learning Rate, Data source) in `main.cpp`
 * run `./build.sh` to start training task on Parameter Server mode or `./build_ring.sh` to start on Ring-AllReduce mode
-* Current CI Status: [![Build Status](https://travis-ci.org/cnkuangshi/LightCTR.svg?branch=master)](https://travis-ci.org/cnkuangshi/LightCTR)
+* Current CI Status: [![Build Status](https://travis-ci.org/cnkuangshi/LightCTR.svg?branch=master)](https://travis-ci.org/cnkuangshi/LightCTR) on Ubuntu18.04 and OSX
 
 ## Welcome to Contribute
 * Welcome everyone interested in intersection of machine learning and scalable systems to contribute code, create issues or pull requests.
