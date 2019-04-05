@@ -12,7 +12,10 @@
 #include <stdio.h>
 #include <fstream>
 #include <iostream>
+#include <numeric>
+#include <algorithm>
 #include "common/thread_pool.h"
+#include "common/barrier.h"
 #include "util/loss.h"
 #include "train/layer/fullyconnLayer.h"
 using namespace std;
@@ -51,18 +54,22 @@ public:
     }
     
     void Train() {
-        static ThreadLocal<vector<float> > tl_grad;
-        static ThreadLocal<vector<int> > tl_onehot;
-        static ThreadLocal<Matrix*> tl_grad_Matrix;
         
         size_t batch_epoch = 0;
+        Barrier barrier;
         for (size_t p = 0; p < epoch; p++) {
             
             GradientUpdater::__global_bTraining = true;
             
+            vector<size_t> inner_order(dataRow_cnt);
+            iota(inner_order.begin(), inner_order.end(), 0);
+            random_shuffle(inner_order.begin(), inner_order.end());
+            
             // Mini-Batch SGD and shuffle selected
-            for (size_t rid = 0; rid < dataRow_cnt; rid++) {
-                
+            barrier.reset(GradientUpdater::__global_minibatch_size);
+            size_t i = 0;
+            for (; i < dataRow_cnt; i++) {
+                const size_t rid = inner_order[i];
                 auto task = [&, rid]() {
                     vector<float> pred = Predict(rid, dataSet);
                     
@@ -70,17 +77,8 @@ public:
                     outputActivFun.forward(pred.data(), pred.size());
                     
                     // init threadLocal var
-                    vector<float>& grad = *tl_grad;
-                    grad.resize(multiclass_output_cnt);
-                    vector<int>& onehot = *tl_onehot;
-                    onehot.resize(multiclass_output_cnt);
-                    Matrix*& grad_Matrix = *tl_grad_Matrix;
-                    if (grad_Matrix == NULL) {
-                        grad_Matrix = new Matrix(1, multiclass_output_cnt, 0);
-                    }
-
-                    vector<Matrix*> wrapper;
-                    wrapper.resize(1);
+                    vector<float>* grad = new vector<float>(multiclass_output_cnt);
+                    vector<int> onehot(multiclass_output_cnt);
                     
                     fill(onehot.begin(), onehot.end(), 0);
                     if (multiclass_output_cnt == 1) {
@@ -88,17 +86,22 @@ public:
                     } else {
                         onehot[label[rid]] = 1; // label should begin from 0
                     }
-                    lossFun.gradient(pred.data(), onehot.data(), grad.data(), pred.size());
+                    lossFun.gradient(pred.data(), onehot.data(), grad->data(), pred.size());
                     if (multiclass_output_cnt > 1) {
                         // Notice when LossFunction is Logistic annotation next line,
                         // otherwise run this line like square + softmax
-                        outputActivFun.backward(grad.data(), pred.data(),
-                                                grad.data(), grad.size());
+                        outputActivFun.backward(grad->data(), pred.data(),
+                                                grad->data(), grad->size());
                     }
-                    grad_Matrix->loadDataPtr(&grad);
-                    wrapper[0] = grad_Matrix;
+                    Matrix grad_Matrix(1, multiclass_output_cnt, 0);
+                    grad_Matrix.loadDataPtr(grad);
+                    
+                    vector<Matrix*> wrapper(1);
+                    wrapper[0] = &grad_Matrix;
                     
                     BP(rid, wrapper);
+                    
+                    barrier.unblock();
                 };
                 if (dl_algo == RNN) {
                     task(); // force RNN into serialization
@@ -106,54 +109,71 @@ public:
                     threadpool->addTask(move(task));
                 }
                 
-                if ((rid + 1) % GradientUpdater::__global_minibatch_size == 0) {
-                    threadpool->wait();
-                    applyBP(batch_epoch++);
-                }
-            }
-            
-            if (batch_epoch % 50 == 0) {
-                
-                GradientUpdater::__global_bTraining = false;
-                
-                // Validate Loss
-                float loss = 0.0f;
-                int correct = 0;
-                for (size_t rid = 0; rid < dataRow_cnt; rid++) {
-                    auto task = [&, rid]() {
-                        vector<float> pred = Predict(rid, dataSet);
-                        
-                        outputActivFun.forward(pred.data(), pred.size());
-                        
-                        // init threadLocal var
-                        vector<float>& grad = *tl_grad;
-                        grad.resize(multiclass_output_cnt);
-                        vector<int>& onehot = *tl_onehot;
-                        onehot.resize(multiclass_output_cnt);
-                        
-                        auto idx = max_element(pred.begin(), pred.end()) - pred.begin();
-                        assert(idx >= 0);
-                        if (idx == label[rid]) {
-                            correct++;
-                        }
-                        fill(onehot.begin(), onehot.end(), 0);
-                        if (multiclass_output_cnt == 1) {
-                            onehot[0] = label[rid];
-                        } else {
-                            onehot[label[rid]] = 1; // label should begin from 0
-                        }
-                        loss += lossFun.loss(pred.data(), onehot.data(), pred.size());
-                    };
-                    if (dl_algo == RNN) {
-                        task();
+                if ((i + 1) % GradientUpdater::__global_minibatch_size == 0) {
+                    barrier.block();
+                    if (unlikely(i + GradientUpdater::__global_minibatch_size >= dataRow_cnt)) {
+                        barrier.reset(dataRow_cnt - i - 1);
                     } else {
-                        threadpool->addTask(move(task));
+                        barrier.reset(GradientUpdater::__global_minibatch_size);
                     }
+                    
+                    applyBP(batch_epoch);
+                    validate(batch_epoch++);
                 }
-                threadpool->wait();
-                printf("Epoch %zu Loss = %f correct = %.3f\n",
-                       batch_epoch, loss, 1.0f * correct / dataRow_cnt);
             }
+            if ((i + 1) % GradientUpdater::__global_minibatch_size != 0) {
+                barrier.block();
+                applyBP(batch_epoch); // apply residue datarows of minibatch
+                validate(batch_epoch++);
+            }
+        }
+        threadpool->wait();
+    }
+    
+    void validate(size_t batch_epoch) {
+        if (batch_epoch % 50 == 0) {
+            
+            GradientUpdater::__global_bTraining = false;
+            
+            // Validate Loss
+            float loss = 0.0f;
+            int correct = 0;
+            Barrier barrier(dataRow_cnt);
+            for (size_t rid = 0; rid < dataRow_cnt; rid++) {
+                auto task = [&, rid]() {
+                    vector<float> pred = Predict(rid, dataSet);
+                    
+                    outputActivFun.forward(pred.data(), pred.size());
+                    
+                    // init threadLocal var
+                    vector<int> onehot(multiclass_output_cnt);
+                    onehot.resize(multiclass_output_cnt);
+                    
+                    auto idx = max_element(pred.begin(), pred.end()) - pred.begin();
+                    assert(idx >= 0);
+                    if (idx == label[rid]) {
+                        correct++;
+                    }
+                    fill(onehot.begin(), onehot.end(), 0);
+                    if (multiclass_output_cnt == 1) {
+                        onehot[0] = label[rid];
+                    } else {
+                        onehot[label[rid]] = 1; // label should begin from 0
+                    }
+                    loss += lossFun.loss(pred.data(), onehot.data(), pred.size());
+                    barrier.unblock();
+                };
+                if (dl_algo == RNN) {
+                    task();
+                } else {
+                    threadpool->addTask(move(task));
+                }
+            }
+            barrier.block();
+            printf("Epoch %zu Loss = %f correct = %.3f\n",
+                   batch_epoch, loss, 1.0f * correct / dataRow_cnt);
+            
+            GradientUpdater::__global_bTraining = true;
         }
     }
     

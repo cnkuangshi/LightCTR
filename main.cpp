@@ -70,11 +70,9 @@ float MomentumUpdater::__global_momentum_adam2(0.999);
 bool GradientUpdater::__global_bTraining(true);
 
 int main(int argc, const char * argv[]) {
-    float a = 1 + 1e-7;
-    assert(a > 1);
+    assert(1 + 1e-7 > 1); // check precision
     
-    uint32_t seed = (uint32_t)time(NULL);
-    srand(seed);
+    srand((uint32_t)time(NULL));
     
 #ifdef MASTER
     {

@@ -27,13 +27,13 @@ public:
     Barrier() {
         
     }
-    explicit Barrier(int count) {
-        flag_ = count;
+    explicit Barrier(size_t count) {
+        flag_ = (int)count;
     }
     
-    inline void reset(int count = 1) {
+    inline void reset(size_t count = 1) {
         std::unique_lock<std::mutex> glock(lock_);
-        flag_ = count;
+        flag_ = (int)count;
     }
     
     inline void block() {

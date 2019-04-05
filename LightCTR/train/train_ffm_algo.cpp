@@ -23,6 +23,7 @@ void Train_FFM_Algo::init() {
 void Train_FFM_Algo::Train() {
     
     GradientUpdater::__global_bTraining = true;
+    GradientUpdater::__global_minibatch_size = dataRow_cnt;
     
     for (size_t i = 0; i < this->epoch; i++) {
         __loss = 0;

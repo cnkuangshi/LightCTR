@@ -338,6 +338,8 @@ private:
     Delivery &operator=(Delivery &&) = delete;
     
     void init() {
+        // TODO support InfiniBand RDMA Verbs API
+        
         // first regist master addr and regist cur node to master
         // master addr should be config
 #if (defined PS) || (defined WORKER) || (defined WORKER_RING)
