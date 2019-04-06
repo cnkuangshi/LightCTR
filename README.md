@@ -61,7 +61,7 @@ Meanwhile, LightCTR is also an open source project that oriented to code readers
 * LightCTR depends on C++11 and ZeroMQ only, lightweight and modular design
 * Easy to use, just change configuration (e.g. Learning Rate, Data source) in `main.cpp`
 * run `./build.sh` to start training task on Parameter Server mode or `./build_ring.sh` to start on Ring-AllReduce mode
-* Current CI Status: [![Build Status](https://travis-ci.org/cnkuangshi/LightCTR.svg?branch=master)](https://travis-ci.org/cnkuangshi/LightCTR) on Ubuntu18.04 and OSX
+* Current CI Status: [![Build Status](https://travis-ci.org/cnkuangshi/LightCTR.svg?branch=master)](https://travis-ci.org/cnkuangshi/LightCTR) on Ubuntu and MacOS
 
 ## Welcome to Contribute
 * Welcome everyone interested in intersection of machine learning and scalable systems to contribute code, create issues or pull requests.
