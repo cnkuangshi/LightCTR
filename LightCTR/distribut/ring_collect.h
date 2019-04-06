@@ -233,7 +233,6 @@ private:
                                       buffer += end - begin;
                                   });
         } else {
-            
             _buf_fusion->transform(rcv_offset,
                                   segment_size_arr[recv_segment_id],
                                   [&data](T* begin, T* end) {
@@ -243,8 +242,8 @@ private:
                                           *(begin + i) += grad_value;
                                       }
                                   });
-            assert(data.readEOF());
         }
+        assert(data.readEOF());
     }
     
     void _do_gather(std::shared_ptr<BufferFusion<T> > _buf_fusion, const Buffer& data) {

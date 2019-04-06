@@ -116,7 +116,7 @@ public:
         __n -= offset;
         
         size_t tmp = bufs_size_arr[++which_one];
-        while (__n >= tmp) {
+        while (__n > tmp) {
             (*__dst)->append(bufs_ptr_arr[which_one], tmp * sizeof(T));
             __n -= tmp;
             tmp = bufs_size_arr[++which_one];
@@ -143,7 +143,7 @@ public:
         __n -= offset;
         
         size_t tmp = bufs_size_arr[++which_one];
-        while (__n >= tmp) {
+        while (__n > tmp) {
             memcpy(bufs_ptr_arr[which_one], __src + offset, tmp * sizeof(T));
             __n -= tmp;
             offset += tmp;
@@ -173,7 +173,7 @@ public:
         __n -= offset;
         
         size_t tmp = bufs_size_arr[++which_one];
-        while (__n >= tmp) {
+        while (__n > tmp) {
             cb(bufs_ptr_arr[which_one], bufs_ptr_arr[which_one] + tmp);
             __n -= tmp;
             tmp = bufs_size_arr[++which_one];
