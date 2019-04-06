@@ -280,6 +280,7 @@ inline float avx_L2Distance(const float* x, const float *y, size_t f) {
     return result;
 }
 
+#ifdef __AVX_FP16C__
 inline void Float16_sum(void* invec1, void* invec2, void* res, int len) {
     auto* in1 = (float16_t*)invec1;
     auto* in2 = (float16_t*)invec2;
@@ -310,5 +311,6 @@ inline void Float16_sum(void* invec1, void* invec2, void* res, int len) {
         outp++;
     }
 }
+#endif
 
 #endif /* avx_h */

@@ -200,7 +200,7 @@ public:
             float pred = 0.0f;
             
             // wide part
-            set<size_t> feilds;
+            set<size_t> fields;
             for (size_t i = 0; i < dataSet[rid].size(); i++) {
                 const size_t fid = dataSet[rid][i].first;
                 const Value param = pull_map[fid];
@@ -208,9 +208,9 @@ public:
                 const float X = dataSet[rid][i].second;
                 pred += param.w * X;
                 
-                if (feilds.count(dataSet[rid][i].field) == 0) {
+                if (fields.count(dataSet[rid][i].field) == 0) {
                     tensor_map.insert(make_pair(fid, dataSet[rid][i].field));
-                    feilds.insert(dataSet[rid][i].field);
+                    fields.insert(dataSet[rid][i].field);
                 }
             }
             // pull dense model
@@ -220,8 +220,8 @@ public:
             Matrix deep_input(1, field_cnt * factor_dim);
             deep_input.zeroInit();
             for (auto it = tensor_map.begin(); it != tensor_map.end(); it++) {
-                auto memAddr = param_buf->getMemory((size_t)it->second.w);
-                memcpy(deep_input.pointer()->data() + (size_t)it->second.w * factor_dim,
+                auto memAddr = param_buf->getMemory(it->second);
+                memcpy(deep_input.pointer()->data() + it->second * factor_dim,
                        memAddr.first, factor_dim * sizeof(float));
             }
             vector<Matrix*> wrapper;
@@ -334,7 +334,7 @@ private:
     
     unordered_map<Key, Value> pull_map;
     unordered_map<Key, Value> push_map;
-    unordered_map<Key, Value> tensor_map;
+    unordered_map<Key, size_t> tensor_map;
     
     std::shared_ptr<BufferFusion<float> > param_buf = std::make_shared<BufferFusion<float> >(true, true);
     std::shared_ptr<BufferFusion<float> > grad_buf = std::make_shared<BufferFusion<float> >(false, true);

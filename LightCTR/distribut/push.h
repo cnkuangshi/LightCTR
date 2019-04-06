@@ -17,7 +17,6 @@
 #include "../common/buffer_fusion.h"
 
 // Push Grads to PS
-template <class TKey, class TValue>
 class Push {
     
 public:
@@ -33,6 +32,7 @@ public:
         buf_fusion = _buf_fusion;
     }
     
+    template <class TKey, class TValue>
     void sync(const std::unordered_map<TKey, TValue> &grads, size_t epoch) {
         if (headByte == 'T')
             assert(buf_fusion);
@@ -50,12 +50,12 @@ public:
     }
     
 private:
+    template <class TKey, class TValue>
     void sendToPS(const std::unordered_map<TKey, TValue> &grads,
                   int& candidate_ps,
                   size_t epoch,
                   std::function<void()> callback) {
-        auto& push_map = *tl_map;
-        push_map.clear();
+        std::map<size_t, std::vector<std::pair<TKey, TValue> > > push_map;
         
         for (auto it = grads.begin(); it != grads.end(); it++) {
             assert(it->second.checkValid());
@@ -82,16 +82,6 @@ private:
             PackageDescript desc(REQUEST_PUSH, epoch);
             desc.content << headByte;
             for (auto &grad_pair : item.second) {
-                if (headByte == 'T') {
-                    desc.content.appendVarUint(grad_pair.first);
-                    auto memAddr = buf_fusion->getMemory((size_t)grad_pair.second.w);
-                    desc.content.appendVarUint(memAddr.second);
-                    
-                    for (size_t i = 0; i < memAddr.second; i++) {
-                        desc.content << Float16(memAddr.first + i).float16_value();
-                    }
-                    continue;
-                }
                 // push data pair by VarUint & float16_t
                 desc.content.appendVarUint(grad_pair.first);
                 desc.content << Float16(&grad_pair.second).float16_value();
@@ -109,7 +99,48 @@ private:
 #endif
     }
     
-    ThreadLocal<std::map<size_t, std::vector<std::pair<TKey, TValue> > > > tl_map;
+    template <class TKey>
+    void sendToPS(const std::unordered_map<TKey, size_t> &grads,
+                  int& candidate_ps,
+                  size_t epoch,
+                  std::function<void()> callback) {
+        std::map<size_t, std::vector<std::pair<TKey, float> > > push_map;
+        
+        for (auto it = grads.begin(); it != grads.end(); it++) {
+            const size_t to_id = BEGIN_ID_OF_PS +
+            gConsistentHash.getNode(it->first);
+            if (push_map.count(to_id) == 0) {
+                push_map[to_id] = std::vector<std::pair<TKey, float> >();
+                candidate_ps++;
+            }
+            push_map[to_id].emplace_back(std::move(*it));
+        }
+        
+        for (auto &item : push_map) {
+            const size_t to_id = item.first;
+            PackageDescript desc(REQUEST_PUSH, epoch);
+            desc.content << headByte;
+            for (auto &grad_pair : item.second) {
+                desc.content.appendVarUint(grad_pair.first);
+                auto memAddr = buf_fusion->getMemory(grad_pair.second);
+                desc.content.appendVarUint(memAddr.second);
+                
+                for (size_t i = 0; i < memAddr.second; i++) {
+                    desc.content << Float16(memAddr.first + i).float16_value();
+                }
+            }
+            desc.callback = [callback](std::shared_ptr<PackageDescript> resp_package) {
+                // response without content
+                if (callback) {
+                    callback();
+                }
+            };
+            gDelivery.send_async(desc, to_id);
+        }
+#ifdef DEBUG
+        printf("[WORKER Push] %zu %c Grad-Tensors Sended\n", grads.size(), headByte);
+#endif
+    }
     
     char headByte = 'N';
     std::shared_ptr<BufferFusion<float> > buf_fusion = nullptr;

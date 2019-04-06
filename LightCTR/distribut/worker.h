@@ -24,11 +24,11 @@ public:
         
     }
     // for sparse model
-    Push<TKey, TValue> push_op = Push<TKey, TValue>('N');
-    Pull<TKey, TValue> pull_op = Pull<TKey, TValue>('N');
+    Push push_op = Push('N');
+    Pull pull_op = Pull('N');
     // for dense model
-    Push<TKey, TValue> push_tensor_op = Push<TKey, TValue>('T');
-    Pull<TKey, TValue> pull_tensor_op = Pull<TKey, TValue>('T');
+    Push push_tensor_op = Push('T');
+    Pull pull_tensor_op = Pull('T');
     
 private:
     ConsistentHash& gConsistentHash;

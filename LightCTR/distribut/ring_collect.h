@@ -11,6 +11,7 @@
 
 #include "dist_machine_abst.h"
 #include <vector>
+#include <type_traits>
 #include "../common/buffer_fusion.h"
 #include "../common/avx.h"
 #include "../common/barrier.h"
@@ -222,7 +223,7 @@ private:
         assert(segment_size_arr[recv_segment_id] * sizeof(T) == data.size());
         
         // accumulate gradients
-        if (typeid(T) == typeid(float)) { // try to use AVX
+        if (is_same<T, float>::value) { // try to use AVX
             const float* buffer = reinterpret_cast<const float*>(data.buffer());
             
             _buf_fusion->transform(rcv_offset,
