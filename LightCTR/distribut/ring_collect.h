@@ -147,7 +147,6 @@ private:
 #ifdef DEBUG
             desc.callback = [this](std::shared_ptr<PackageDescript> resp_package) {
                 printf("[REDUCE] send step = %zu package success\n", step_version);
-//                assert(resp_package->epoch_version && resp_package->epoch_version <= step_version);
             };
 #endif
             bool send_status = false;
@@ -201,7 +200,6 @@ private:
 #ifdef DEBUG
             desc.callback = [this](std::shared_ptr<PackageDescript> resp_package) {
                 printf("[GATHER] send step = %zu package success\n", step_version);
-//                assert(resp_package->epoch_version && resp_package->epoch_version <= step_version);
             };
 #endif
             
@@ -242,8 +240,8 @@ private:
                                           *(begin + i) += grad_value;
                                       }
                                   });
+            assert(data.readEOF());
         }
-        assert(data.readEOF());
     }
     
     void _do_gather(std::shared_ptr<BufferFusion<T> > _buf_fusion, const Buffer& data) {
@@ -261,7 +259,6 @@ private:
             const size_t worker_id = request->node_id;
             assert(worker_id == recv_from_id);
             
-//            assert(request->epoch_version >= step_version);
             {
                 unique_lock<SpinLock> glock(cache_lock);
                 if (step_version != request->epoch_version) {
