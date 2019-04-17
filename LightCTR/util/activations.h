@@ -114,8 +114,8 @@ public:
         }
     }
     inline void backward(const float* delta, const float* foutput, float* to, size_t len) {
-        // softmax Derivative (whether i == j) * softmax(input[i]) - softmax(input[i]) * softmax(input[i])
-        // each derivative of Z_(L) = sum_i( delta_(i) * -forward_output_(i) * forward_output_(L) )
+        // softmax Derivative (whether i == j) * softmax(input[i]) - softmax(input[i]) * softmax(input[j])
+        // each derivative of Z_(L) = sum_i( delta_(i) * -forward_output_(i) ) * forward_output_(L)
         //      + delta_(L) * forward_output_(L)
         float sum = avx_dotProduct(delta, foutput, len);
         avx_vecAdd(delta, -sum, to, len);

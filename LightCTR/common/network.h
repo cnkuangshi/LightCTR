@@ -339,6 +339,7 @@ private:
     
     void init() {
         // TODO support InfiniBand RDMA Verbs API
+        // TODO support Intel Data Plane Development Kit
         
         // first regist master addr and regist cur node to master
         // master addr should be config
