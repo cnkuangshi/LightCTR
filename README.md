@@ -2,7 +2,7 @@
 ## LightCTR Overview
 LightCTR is a lightweight and scalable framework that combines mainstream algorithms of Click-Through-Rate prediction based machine learning, philosophy of Parameter Server and Ring-AllReduce collective communication. The library is suitable for sparse data and designed for large-scale distributed model training.
 
-Meanwhile, LightCTR is also an open source project that oriented to code readers. The clear execution logic will be of significance to leaners on machine-learning related field.
+Meanwhile, LightCTR is also an open source project and undergoing experimental study that oriented to code readers. The clear execution logic will be of significance to leaners on the machine-learning related field.
 
 ## Features
 * Distributed training based on Parameter Server and Ring-AllReduce collective communication
@@ -56,8 +56,8 @@ Meanwhile, LightCTR is also an open source project that oriented to code readers
 
 #### 多机多线程并行计算
 LightCTR使用SIMD向量化指令、流水线并行、多核心多线程计算、Cache-aware等多重优化手段实现单机高性能数值计算，但当模型参数量超过单机内存容量、或单机训练效率达不到时效性要求时，LightCTR进一步提供了基于参数服务器与Ring-AllReduce的可扩展模型集群训练方案。
-* 参数服务器模式下，集群分为Master, ParamServer与Worker三种角色；一个集群有一个Master负责集群启动与运行状态的维护，大规模模型稀疏与稠密Tensor参数以DHT散布在多个ParamServer上，与多个负责模型数据并行梯度运算的Worker协同，每轮训练都先从ParamServer拉取(Pull)一个样本Batch的参数，运算得到的参数梯度推送(Push)到ParamServer进行梯度汇总，ParamServer通过梯度Top截断、延迟梯度补偿等手段，异步无锁的半同步更新参数。参数在ParamServer上紧凑存储，按特征命中率进行优选与淘汰；使用变长编码/半精度/Int8压缩梯度传输量，并用Batch化参数请求与读写双缓冲区的方法提升网络同步效率。
-* 环拓扑Ring-AllReduce模式下，LightCTR在不引入协调节点下实现集群训练进度的动态自平衡，并引入梯度融合机制，实现了高效、高稳定性的去中心化梯度同步，适合稠密参数模型的可扩展训练；在这种模式下每个节点存储全量模型可单独提供推理预测能力，训练过程通过有限次迭代获取其他节点梯度结果，在一定集群规模与合适的Batch size和学习率设置上可实现训练任务的线性加速比。
+* 参数服务器模式下，集群分为Master, ParamServer与Worker三种角色；一个集群有一个Master负责集群启动与运行状态的维护，大规模模型稀疏与稠密Tensor参数以DHT散布在多个ParamServer上，与多个负责模型数据并行梯度运算的Worker协同，每轮训练都先从ParamServer拉取(Pull)一个样本Batch的参数，运算得到的参数梯度推送(Push)到ParamServer进行梯度汇总。ParamServer通过梯度TopK截断、延迟梯度补偿等手段，异步无锁、半同步的更新参数。参数在ParamServer上紧凑存储，按特征命中率进行优选与淘汰；使用变长编码/半精度/Int8的方式压缩梯度传输量，并用Batch化参数请求与读写分离的方法提升网络同步效率。
+* 环拓扑Ring-AllReduce模式下，LightCTR在不引入协调节点下实现集群训练进度的动态自平衡，结合梯度融合机制，实现了高效、高稳定性的去中心化梯度同步，适合稠密参数模型的可扩展训练；在这种模式下每个节点存储全量模型可单独提供推理预测能力，训练过程通过有限次迭代获取其他节点梯度结果，在一定集群规模与合适的Batch size、学习率设置下可实现训练任务的线性加速比。
 * LightCTR分布式集群采取心跳监控、消息重传等Failover容错方式。此外，LightCTR也在探索RDMA、DPDK、多网卡等网络优化方式来降低网络通信延时。
 
 ## Quick Start
