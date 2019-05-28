@@ -12,6 +12,7 @@
 #include <list>
 #include <memory>
 #include "lock.h"
+#include <stddef.h>
 
 // Memory Pool for managing vector allocation and deallocation
 // Meanwhile, it can monitored memory leak and wild pointer
