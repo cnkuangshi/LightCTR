@@ -36,7 +36,6 @@ public:
     }
     
     inline void* allocate(size_t size) {
-        assert((size & 7) == 0);
         {
             freePtr_lock.lock();
             for (auto it = freePtr_list.begin(); it != freePtr_list.end(); it++) {

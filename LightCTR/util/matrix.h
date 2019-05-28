@@ -28,7 +28,8 @@ public:
         x_len = y_len = 0;
     }
     Matrix(size_t _x_len, size_t _y_len): x_len(_x_len), y_len(_y_len) {
-        matrix = new vector<float, ArrayAllocator<float> >(x_len * y_len);
+        matrix = new vector<float, ArrayAllocator<float> >();
+        matrix->resize(x_len * y_len);
     }
     ~Matrix() {
         matrix->clear();
@@ -40,8 +41,10 @@ public:
         x_len = _x_len;
         y_len = _y_len;
         if (!matrix) {
-            matrix = new vector<float, ArrayAllocator<float> >(x_len * y_len);
+            matrix = new vector<float, ArrayAllocator<float> >();
+            matrix->resize(x_len * y_len);
         }
+        assert(size() == matrix->size());
     }
     
     inline Matrix* copy(Matrix* newM = NULL) const {
