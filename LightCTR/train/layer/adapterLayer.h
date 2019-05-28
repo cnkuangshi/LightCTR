@@ -59,7 +59,7 @@ public:
     }
     
     void backward(const vector<Matrix*>& outputDeltaMatrix) {
-        vector<float>* outputDelta = outputDeltaMatrix[0]->pointer();
+        auto outputDelta = outputDeltaMatrix[0]->pointer();
         assert(outputDelta->size() == this->output_dimension);
         
         MatrixArr& input_delta = *tl_input_delta;

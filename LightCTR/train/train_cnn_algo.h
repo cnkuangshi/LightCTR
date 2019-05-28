@@ -74,9 +74,9 @@ public:
         Matrix*& dataRow_Matrix = *tl_dataRow_Matrix;
         if (dataRow_Matrix == NULL) {
             dataRow_Matrix = new Matrix(sqrt((float)this->feature_cnt),
-                                        sqrt((float)this->feature_cnt), 0);
+                                        sqrt((float)this->feature_cnt));
         }
-        dataRow_Matrix->loadDataPtr(&dataRow[rid]);
+        dataRow_Matrix->pointer()->assign(dataRow[rid].begin(), dataRow[rid].end());
         
         vector<Matrix*> wrapper;
         wrapper.resize(1);

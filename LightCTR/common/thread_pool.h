@@ -37,6 +37,10 @@ public:
     ThreadPool() = delete;
     ~ThreadPool();
     
+    static ThreadPool& Instance() { // singleton
+        static ThreadPool threadpool(std::thread::hardware_concurrency());
+        return threadpool;
+    }
     
     template<class F, class... Args>
     auto addTask(F&& f, Args&&... args) 

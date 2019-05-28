@@ -6,12 +6,15 @@
 //  Copyright © 2017年 SongKuangshi. All rights reserved.
 //
 
+#include <stdlib.h>
 #include <iostream>
 #include "LightCTR/common/time.h"
 #include "LightCTR/common/float16.h"
 #include "LightCTR/util/pca.h"
 #include "LightCTR/common/persistent_buffer.h"
 #include "LightCTR/util/shm_hashtable.h"
+
+#include "LightCTR/dag/dag_pipeline.h"
 
 #include "LightCTR/distribut/master.h"
 #include "LightCTR/distribut/paramserver.h"
@@ -73,6 +76,44 @@ int main(int argc, const char * argv[]) {
     assert(1 + 1e-7 > 1); // check precision
     
     srand((uint32_t)time(NULL));
+    
+#ifdef DAG
+    {
+        GradientUpdater::__global_minibatch_size = 1;
+        GradientUpdater::__global_learning_rate = 0.5;
+        auto w = make_shared<TrainableNode<AdagradUpdater_Num> >(1);
+        float w_f[] = {1,2,3,4};
+        w->setValue(std::make_shared<std::vector<float> >(w_f, w_f + 4));
+        auto x = make_shared<SourceNode>(1);
+        float x_f[] = {0.1,0.2,0.3,0.4};
+        x->setValue(std::make_shared<std::vector<float> >(x_f, x_f + 4));
+        auto b = make_shared<TrainableNode<AdagradUpdater_Num> >(1);
+        float b_f[] = {0.3};
+        b->setValue(std::make_shared<std::vector<float> >(b_f, b_f + 1));
+        
+        auto wx = make_shared<MatmulOp>(1);
+        DAG_Pipeline::addAutogradFlow(w, wx);
+        DAG_Pipeline::addAutogradFlow(x, wx);
+        auto wxb = make_shared<AddOp>(2, 1);
+        DAG_Pipeline::addAutogradFlow(wx, wxb);
+        DAG_Pipeline::addAutogradFlow(b, wxb);
+        auto sig = make_shared<ActivationsOp<Sigmoid> >(1);
+        DAG_Pipeline::addAutogradFlow(wxb, sig);
+        auto loss = make_shared<LossOp<Logistic<float, int> > >();
+        int label[] = {0};
+        loss->setLable(std::make_shared<std::vector<int> >(label, label + 1));
+        
+        DAG_Pipeline::addAutogradFlow(sig, loss);
+        for (int i = 0; i < 20; i++) {
+            loss->runFlow();
+            printf("%d: %f\n", i, loss->getLoss());
+            w->runFlow();
+            b->runFlow(true);
+        }
+    }
+    puts("-----   Pass All DAG UnitTest!  -----");
+    return 0;
+#endif
     
 #ifdef MASTER
     {

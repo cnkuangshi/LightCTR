@@ -227,7 +227,7 @@ public:
             vector<Matrix*> wrapper;
             wrapper.resize(1);
             wrapper[0] = &deep_input;
-            vector<float> ans = inputLayer->forward(wrapper);
+            auto ans = inputLayer->forward(wrapper);
             
             float pCTR = sigmoid.forward(pred + ans[0]);
             train_loss += (int)this->label[rid] == 1 ?

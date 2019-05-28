@@ -151,7 +151,7 @@ public:
             m_ptr->add(bias[filid]);
             
             // apply Activation Function
-            m_ptr->operate([this](vector<float>* matrix) {
+            m_ptr->operate([this](vector<float, ArrayAllocator<float> >* matrix) {
                 assert(matrix);
                 this->getActiveFun().forward(matrix->data(), matrix->size());
             });
@@ -193,7 +193,7 @@ public:
                         }
                     }
                 }
-                m_ptr->operate([&, i](vector<float>* matrix) {
+                m_ptr->operate([&, i](vector<float, ArrayAllocator<float> >* matrix) {
                     this->prevLayer->getActiveFun().backward(matrix->data(),
                                             this->prevLayer->output()[i]->pointer()->data(),
                                             matrix->data(), matrix->size());

@@ -11,7 +11,7 @@ OBJ =
 all: $(BIN) $(OBJ)
 export LDFLAGS= -pthread -lm -ldl
 
-STANDALONE = *.cpp LightCTR/*.h LightCTR/common/*.h LightCTR/predict/*.h LightCTR/predict/*.cpp LightCTR/util/*.h LightCTR/train/*.h LightCTR/train/*.cpp LightCTR/train/layer/*.h LightCTR/train/unit/*.h
+STANDALONE = *.cpp LightCTR/*.h LightCTR/common/*.h LightCTR/predict/*.h LightCTR/predict/*.cpp LightCTR/util/*.h LightCTR/dag/*.h LightCTR/dag/operator/*.h LightCTR/train/*.h LightCTR/train/*.cpp LightCTR/train/layer/*.h LightCTR/train/unit/*.h
 DISTRIBUT = $(STANDALONE) $(ZMQ_INC) LightCTR/distribut/*.h
 
 LightCTR_BIN : $(STANDALONE)

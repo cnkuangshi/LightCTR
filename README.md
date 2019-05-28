@@ -1,11 +1,12 @@
 ![Alt text -w135](./LightCTR_LOGO.png)
 ## LightCTR Overview
-LightCTR is a lightweight and scalable framework that combines mainstream algorithms of Click-Through-Rate prediction based machine learning, philosophy of Parameter Server and Ring-AllReduce collective communication. The library is suitable for sparse data and designed for large-scale distributed model training.
+LightCTR is a lightweight and scalable framework that combines mainstream algorithms of Click-Through-Rate prediction based **computational DAG, philosophy of Parameter Server and Ring-AllReduce collective communication**. The library is suitable for sparse data and designed for large-scale distributed model training.
 
-Meanwhile, LightCTR is also an open source project and undergoing experimental study that oriented to code readers. The clear execution logic will be of significance to leaners on the machine-learning related field.
+Meanwhile, LightCTR is also an **undergoing experimental study** and open source project that oriented to code readers. The clear execution logic will be of significance to leaners on the machine-learning related field.
 
 ## Features
 * Distributed training based on Parameter Server and Ring-AllReduce collective communication
+* Directed Acyclic Graph(DAG) of autograd computation
 * Gradient clipping, stale synchronous parallel(SSP) and Asynchronous SGD with Delay compensation
 * Compressing Neural Network with Half precision and Quantization(PQ or Int8)
 * Shared parameters Key-Value pairs store in physical nodes by DHT in Shared memory

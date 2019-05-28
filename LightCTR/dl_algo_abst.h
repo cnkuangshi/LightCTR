@@ -71,13 +71,13 @@ public:
             for (; i < dataRow_cnt; i++) {
                 const size_t rid = inner_order[i];
                 auto task = [&, rid]() {
-                    vector<float> pred = Predict(rid, dataSet);
+                    auto pred = Predict(rid, dataSet);
                     
                     assert(pred.size() == multiclass_output_cnt);
                     outputActivFun.forward(pred.data(), pred.size());
                     
                     // init threadLocal var
-                    vector<float>* grad = new vector<float>(multiclass_output_cnt);
+                    Matrix grad_Matrix(1, multiclass_output_cnt);
                     vector<int> onehot(multiclass_output_cnt);
                     
                     fill(onehot.begin(), onehot.end(), 0);
@@ -86,15 +86,13 @@ public:
                     } else {
                         onehot[label[rid]] = 1; // label should begin from 0
                     }
-                    lossFun.gradient(pred.data(), onehot.data(), grad->data(), pred.size());
+                    lossFun.gradient(pred.data(), onehot.data(), grad_Matrix.reference().data(), pred.size());
                     if (multiclass_output_cnt > 1) {
                         // Notice when LossFunction is Logistic annotation next line,
                         // otherwise run this line like square + softmax
-                        outputActivFun.backward(grad->data(), pred.data(),
-                                                grad->data(), grad->size());
+                        outputActivFun.backward(grad_Matrix.reference().data(), pred.data(),
+                                                grad_Matrix.reference().data(), grad_Matrix.size());
                     }
-                    Matrix grad_Matrix(1, multiclass_output_cnt, 0);
-                    grad_Matrix.loadDataPtr(grad);
                     
                     vector<Matrix*> wrapper(1);
                     wrapper[0] = &grad_Matrix;
@@ -128,6 +126,7 @@ public:
             }
         }
         threadpool->wait();
+        MemoryPool::Instance().leak_checkpoint();
     }
     
     void validate(size_t batch_epoch) {
@@ -141,7 +140,7 @@ public:
             Barrier barrier(dataRow_cnt);
             for (size_t rid = 0; rid < dataRow_cnt; rid++) {
                 auto task = [&, rid]() {
-                    vector<float> pred = Predict(rid, dataSet);
+                    auto pred = Predict(rid, dataSet);
                     
                     outputActivFun.forward(pred.data(), pred.size());
                     

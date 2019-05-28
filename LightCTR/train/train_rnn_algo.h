@@ -46,7 +46,7 @@ public:
     
     vector<float>& Predict(size_t rid, vector<vector<float> >& dataRow) {
         static Matrix* dataRow_Matrix = new Matrix(1, 28);
-        static Matrix* dataRow_Matrix_fc = new Matrix(1, hidden_size, 0);
+        static Matrix* dataRow_Matrix_fc = new Matrix(1, hidden_size);
         static vector<Matrix*> tmp;
         tmp.resize(1);
         tmp[0] = dataRow_Matrix;
@@ -62,10 +62,10 @@ public:
         assert(end == dataRow[rid].end());
         
         // Attention Unit
-        vector<float> pred = attentionLayer->forward(inputLSTM->seq_output());
+        auto pred = attentionLayer->forward(inputLSTM->seq_output());
         
         assert(pred.size() == hidden_size);
-        dataRow_Matrix_fc->loadDataPtr(&pred);
+        dataRow_Matrix_fc->pointer()->assign(pred.begin(), pred.end());
         tmp[0] = dataRow_Matrix_fc;
         return this->fcLayer->forward(tmp);
     }

@@ -79,7 +79,7 @@ public:
     // matrix's vector[1x1, 1x1, ...N] and one matrix[N]
     vector<float>& forward(const vector<Matrix*>& prevLOutputMatrix) { // prevLOutput is acti( Z_(L-1) )
         assert(prevLOutputMatrix.size() == 1);
-        const vector<float>* prevLOutput = prevLOutputMatrix[0]->pointer();
+        const auto prevLOutput = prevLOutputMatrix[0]->pointer();
         assert(prevLOutputMatrix[0]->size() == this->input_dimension);
         
         // init ThreadLocal var
@@ -118,7 +118,7 @@ public:
     }
     
     void backward(const vector<Matrix*>& outputDeltaMatrix) { // outputDelta is Z_(L)
-        vector<float>* outputDelta = outputDeltaMatrix[0]->pointer();
+        auto outputDelta = outputDeltaMatrix[0]->pointer();
         assert(outputDelta->size() == this->output_dimension);
         
         // init ThreadLocal var
@@ -130,7 +130,7 @@ public:
             outputDeltaMatrix[0]->clipping(error_clip_threshold);
         }
         
-        vector<float>* prev_output_act = NULL;
+        vector<float, ArrayAllocator<float> >* prev_output_act = NULL;
         // Z_(L) = W_(L) * acti( Z_(L-1) ) + b
         if (!this->bInputLayer || needInputDelta) {
             vector<float> tmp_vec;

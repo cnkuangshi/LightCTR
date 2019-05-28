@@ -13,6 +13,7 @@
 #include <vector>
 #include "random.h"
 #include "../common/avx.h"
+#include "../common/memory_pool.h"
 #include "assert.h"
 using namespace std;
 
@@ -26,34 +27,21 @@ public:
     Matrix() {
         x_len = y_len = 0;
     }
-    Matrix(size_t _x_len, size_t _y_len, bool alloc = 1): x_len(_x_len), y_len(_y_len) {
-        if (alloc) {
-            matrix = new vector<float>();
-            matrix->resize(x_len * y_len);
-        }
+    Matrix(size_t _x_len, size_t _y_len): x_len(_x_len), y_len(_y_len) {
+        matrix = new vector<float, ArrayAllocator<float> >(x_len * y_len);
     }
     ~Matrix() {
-        if (matrix) {
-            matrix->clear();
-            delete matrix;
-            matrix = NULL;
-        }
+        matrix->clear();
+        delete matrix;
+        matrix = NULL;
     }
     
-    inline void reset(size_t _x_len, size_t _y_len, bool alloc = 1) {
+    inline void reset(size_t _x_len, size_t _y_len) {
         x_len = _x_len;
         y_len = _y_len;
-        if (alloc) {
-            if (!matrix) {
-                matrix = new vector<float>();
-            }
-            matrix->resize(x_len * y_len);
+        if (!matrix) {
+            matrix = new vector<float, ArrayAllocator<float> >(x_len * y_len);
         }
-    }
-    
-    inline void loadDataPtr(vector<float>* const dataPtr) {
-        assert(dataPtr->size() == size());
-        this->matrix = dataPtr;
     }
     
     inline Matrix* copy(Matrix* newM = NULL) const {
@@ -327,20 +315,21 @@ public:
         }
     }
     
-    inline vector<float>* pointer() const {
+    inline vector<float, ArrayAllocator<float> >* pointer() const {
         assert(matrix);
         return this->matrix;
     }
-    inline vector<float>& reference() const {
+    inline vector<float>& reference() const { // adapte to non-Allocator
         assert(matrix);
-        return *this->matrix;
+        return *(vector<float>*)this->matrix;
     }
     
     size_t x_len, y_len;
     
 private:
-    vector<float>* matrix = NULL;
+    vector<float, ArrayAllocator<float> >* matrix = NULL;
 };
+
 
 struct MatrixArr {
     vector<Matrix*> arr;

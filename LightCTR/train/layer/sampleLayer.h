@@ -37,7 +37,7 @@ public:
     }
     
     vector<float>& forward(const vector<Matrix*>& prevLOutputMatrix) {
-        vector<float>* prevLOutput = prevLOutputMatrix[0]->pointer();
+        auto prevLOutput = prevLOutputMatrix[0]->pointer();
         assert(prevLOutput->size() == this->input_dimension);
         
         // init ThreadLocal var
@@ -72,9 +72,9 @@ public:
     
     void backward(const vector<Matrix*>& outputDeltaMatrix) {
         assert(this->prevLayer);
-        vector<float>* outputDelta = outputDeltaMatrix[0]->pointer();
+        auto outputDelta = outputDeltaMatrix[0]->pointer();
         assert(outputDelta->size() == this->output_dimension);
-        vector<float>* prev_output_act = this->prevLayer->output()[0]->pointer();
+        auto prev_output_act = this->prevLayer->output()[0]->pointer();
         assert(prev_output_act->size() == this->input_dimension);
         
         // init ThreadLocal var
