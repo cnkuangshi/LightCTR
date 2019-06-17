@@ -178,7 +178,7 @@ protected:
             auto out_futures = std::make_shared<std::vector<std::future<DAG_Output> > >(out_cnt);
             if (out_cnt > 0) {
                 for(size_t i = 0; i < out_cnt; i++) {
-                    out_futures->at(i) = out_nodes[i]->backward_run(getNodeId());
+                    out_futures->at(i) = out_nodes[i].lock()->backward_run(getNodeId());
                 }
             }
             return dag_threadpool.addTask([&, out_futures]() -> DAG_Output {
@@ -207,7 +207,7 @@ protected:
             node_delta.deal_flag = false;
         }
         for(auto& out_node : out_nodes) {
-            out_node->init_backward_Flow(keep_intermediate);
+            out_node.lock()->init_backward_Flow(keep_intermediate);
         }
     }
     
@@ -259,7 +259,7 @@ private:
     std::vector<size_t> in_promises_ids;
     size_t first_target_id; // record the first targeting node_id
     
-    std::vector<std::shared_ptr<Autograd_Node_Abst> > out_nodes;
+    std::vector<std::weak_ptr<Autograd_Node_Abst> > out_nodes;
     
     uint32_t backward_flag = 0;
     size_t in_id_inc = 0;

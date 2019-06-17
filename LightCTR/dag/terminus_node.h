@@ -11,6 +11,7 @@
 
 #include <vector>
 #include "node_abst.h"
+#include "../common/avx.h"
 
 class TerminusNode : public Autograd_Node_Abst {
 public:

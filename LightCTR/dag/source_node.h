@@ -12,6 +12,7 @@
 #include <vector>
 #include "string.h"
 #include "node_abst.h"
+#include "../common/avx.h"
 
 class SourceNode : public Autograd_Node_Abst {
 public:

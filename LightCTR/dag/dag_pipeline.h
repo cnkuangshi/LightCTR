@@ -32,7 +32,6 @@ public:
     
     static void addAutogradFlow(std::shared_ptr<Autograd_Node_Abst> source_ptr,
                                 std::shared_ptr<Autograd_Node_Abst> terminus_ptr) {
-        // TODO solve the circular reference
         terminus_ptr->regist_in_node(source_ptr);
         source_ptr->regist_out_node(terminus_ptr);
     }
